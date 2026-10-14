@@ -1,0 +1,66 @@
+# Local development stack: Postgres, Mailpit (SMTP catcher), migrations/seed, app and worker.
+#   docker compose up --build        → http://localhost:3000 , mail UI http://localhost:8025
+#   SEED=false docker compose up      → keep existing data
+name: hrms
+
+x-env: &app-env
+  DATABASE_URL: postgresql://hrms:hrms@db:5432/hrms?schema=public
+  AUTH_SECRET: ${AUTH_SECRET:-change-me-in-docker-compose-at-least-32-chars}
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  AUTH_URL: ${APP_URL:-http://localhost:3000}
+  EMAIL_TRANSPORT: smtp
+  EMAIL_FROM: "HR Portal <hr@falcongulf.ae>"
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  STORAGE_DIR: /app/storage
+  JOBS_TIMEZONE: Asia/Dubai
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hrms
+      POSTGRES_PASSWORD: hrms
+      POSTGRES_DB: hrms
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hrms -d hrms"]
+      interval: 5s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["8025:8025", "1025:1025"]
+
+  migrate:
+    build: { context: ., target: tools }
+    environment:
+      <<: *app-env
+      SEED: ${SEED:-true}
+    # Seeds demo data only when the database is empty (set SEED=false to skip entirely).
+    command: >
+      sh -c "npx prisma migrate deploy && npx tsx prisma/sync-permissions.ts &&
+             if [ \"$$SEED\" = 'true' ]; then npx tsx prisma/seed.ts --if-empty; fi"
+    depends_on:
+      db: { condition: service_healthy }
+
+  app:
+    build: { context: ., target: runner }
+    environment: *app-env
+    ports: ["3000:3000"]
+    volumes: [uploads:/app/storage]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    build: { context: ., target: tools }
+    environment: *app-env
+    command: ["npm", "run", "worker"]
+    volumes: [uploads:/app/storage]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+volumes:
+  pgdata:
+  uploads:
