@@ -1,0 +1,77 @@
+# Production-like stack, everything in containers:
+#   Postgres, Mailpit, a one-off migrate/seed job, the app (next build → production server) and the worker.
+#
+#   docker compose -f docker-compose.prod.yml up --build -d   → http://localhost:3000 , mail UI http://localhost:8026
+#   docker compose -f docker-compose.prod.yml logs -f app
+#   docker compose -f docker-compose.prod.yml down            (add -v to wipe the database)
+#
+# It is a separate compose project ("hrms-prod") with its own database volume, so it never touches your
+# dev data. Stop `npm run dev` first (both use port 3000). SEED=false skips demo data on a fresh database.
+name: hrms-prod
+
+x-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://hrms:hrms@db:5432/hrms?schema=public
+  AUTH_SECRET: ${AUTH_SECRET:-prod-compose-local-secret-change-me-at-least-32-chars}
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  AUTH_URL: ${APP_URL:-http://localhost:3000}
+  EMAIL_TRANSPORT: smtp
+  EMAIL_FROM: "HR Portal <hr@falcongulf.ae>"
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  STORAGE_DIR: /app/storage
+  JOBS_TIMEZONE: Asia/Dubai
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hrms
+      POSTGRES_PASSWORD: hrms
+      POSTGRES_DB: hrms
+    # Not published on the host, so it can run next to the dev database on 5432.
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hrms -d hrms"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.29
+    ports: ["8026:8025"]
+    restart: unless-stopped
+
+  migrate:
+    build: { context: ., target: tools }
+    environment:
+      <<: *app-env
+      SEED: ${SEED:-true}
+    # Applies migrations, syncs permissions, and seeds demo data only when the database is empty.
+    command: >
+      sh -c "npx prisma migrate deploy && npx tsx --conditions=react-server prisma/sync-permissions.ts &&
+             if [ \"$$SEED\" = 'true' ]; then npx tsx --conditions=react-server prisma/seed.ts --if-empty; fi"
+    depends_on:
+      db: { condition: service_healthy }
+
+  app:
+    build: { context: ., target: runner }
+    environment: *app-env
+    ports: ["3000:3000"]
+    volumes: [uploads:/app/storage]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., target: tools }
+    environment: *app-env
+    command: ["npm", "run", "worker"]
+    volumes: [uploads:/app/storage]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads:

@@ -18,7 +18,8 @@ stack, structure, data model and access model. It is updated at every checkpoint
 | Email              | Nodemailer; `EMAIL_TRANSPORT=console` logs in dev, `smtp` → Mailpit/real SMTP | templates in `src/server/mail/templates` |
 | PDF (Phase 3)      | `@react-pdf/renderer` (no headless browser needed in production image)     | |
 | Tests              | Vitest (unit), Playwright (e2e)                                            | |
-| Local dev          | Docker Compose: `app`, `worker`, `db` (Postgres 16), `mailpit`             | |
+| Local dev          | Postgres 16 + Mailpit in Docker (`docker-compose.yml`); app and worker run natively (`next dev --turbopack`) | |
+| Production test    | `docker-compose.prod.yml`: multi-stage image (`next build`, standalone production server), migrate job, worker, Postgres, Mailpit | |
 
 ### Deviations from the brief
 * **Session strategy.** Auth.js cannot persist database sessions for the Credentials provider. We use

@@ -1,19 +1,9 @@
-# Local development stack: Postgres, Mailpit (SMTP catcher), migrations/seed, app and worker.
-#   docker compose up --build        → http://localhost:3000 , mail UI http://localhost:8025
-#   SEED=false docker compose up      → keep existing data
+# Development infrastructure only: Postgres + Mailpit. The Next.js app and the worker run natively
+# on your machine (fast refresh, no container overhead) — see README "Development (app runs natively)".
+#   docker compose up -d      → Postgres on localhost:5432, Mailpit UI on http://localhost:8025 (SMTP :1025)
+#   docker compose down       → stop (data is kept in the pgdata volume; add -v to wipe it)
+# For a production-like stack (app built with `next build`, all in containers) use docker-compose.prod.yml.
 name: hrms
-
-x-env: &app-env
-  DATABASE_URL: postgresql://hrms:hrms@db:5432/hrms?schema=public
-  AUTH_SECRET: ${AUTH_SECRET:-change-me-in-docker-compose-at-least-32-chars}
-  APP_URL: ${APP_URL:-http://localhost:3000}
-  AUTH_URL: ${APP_URL:-http://localhost:3000}
-  EMAIL_TRANSPORT: smtp
-  EMAIL_FROM: "HR Portal <hr@falcongulf.ae>"
-  SMTP_HOST: mailpit
-  SMTP_PORT: "1025"
-  STORAGE_DIR: /app/storage
-  JOBS_TIMEZONE: Asia/Dubai
 
 services:
   db:
@@ -28,39 +18,12 @@ services:
       test: ["CMD-SHELL", "pg_isready -U hrms -d hrms"]
       interval: 5s
       retries: 20
+    restart: unless-stopped
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.29
     ports: ["8025:8025", "1025:1025"]
-
-  migrate:
-    build: { context: ., target: tools }
-    environment:
-      <<: *app-env
-      SEED: ${SEED:-true}
-    # Seeds demo data only when the database is empty (set SEED=false to skip entirely).
-    command: >
-      sh -c "npx prisma migrate deploy && npx tsx --conditions=react-server prisma/sync-permissions.ts &&
-             if [ \"$$SEED\" = 'true' ]; then npx tsx --conditions=react-server prisma/seed.ts --if-empty; fi"
-    depends_on:
-      db: { condition: service_healthy }
-
-  app:
-    build: { context: ., target: runner }
-    environment: *app-env
-    ports: ["3000:3000"]
-    volumes: [uploads:/app/storage]
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-
-  worker:
-    build: { context: ., target: tools }
-    environment: *app-env
-    command: ["npm", "run", "worker"]
-    volumes: [uploads:/app/storage]
-    depends_on:
-      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
 
 volumes:
   pgdata:
-  uploads:

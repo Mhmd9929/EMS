@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased — development setup
+
+### Changed
+- **Development runs natively.** `docker-compose.yml` now starts only Postgres and Mailpit. The app runs with
+  `npm run dev`, which now uses Turbopack: a page's first visit takes about 1–2 s instead of 10 s or more
+  with webpack. `npm run dev:webpack` keeps the old bundler.
+- `.env.example` defaults match the Docker services (Mailpit SMTP by default). There is a new
+  `npm run db:setup` (migrate, sync permissions, seed only if empty).
+- Mailpit is pinned to `v1.29` instead of `latest`.
+
+### Added
+- **`docker-compose.prod.yml`**: the full stack in production mode (`next build` image, migrate job, worker,
+  Postgres, Mailpit on :8026) as a separate Compose project with its own database. Start it with
+  `docker compose -f docker-compose.prod.yml up --build -d` or `npm run docker:prod`.
+
+### Upgrade notes
+- If you used the old all-in-Docker setup, run `docker compose down --remove-orphans` once. Your database
+  volume is kept and is reused by the new dev setup.
+
 ## Checkpoint 3 — Payroll (Phase 3)
 
 ### Added

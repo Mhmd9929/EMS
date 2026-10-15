@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1.7
-# Multi-stage build:
-#   tools  – full dependencies; used for migrations, seeding and the background worker
-#   runner – minimal Next.js standalone server
+# Production image (used by docker-compose.prod.yml). Multi-stage build:
+#   deps    – npm ci (cached until package-lock.json changes)
+#   tools   – full dependencies; used for migrations, seeding and the background worker
+#   builder – `next build` (optimised production bundle, output: "standalone")
+#   runner  – production server only: the standalone `server.js` that `next build` emits is the same
+#             server as `next start`, minus the dev dependencies (much smaller image, faster start)
 
 FROM node:22-bookworm-slim AS base
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*

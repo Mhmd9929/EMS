@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
+    "dev:webpack": "next dev",
     "build": "next build",
     "start": "next start",
     "worker": "tsx --conditions=react-server src/worker.ts",
@@ -15,12 +16,16 @@
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy && tsx --conditions=react-server prisma/sync-permissions.ts",
+    "db:setup": "prisma migrate deploy && tsx --conditions=react-server prisma/sync-permissions.ts && tsx --conditions=react-server prisma/seed.ts --if-empty",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "db:sync-permissions": "tsx --conditions=react-server prisma/sync-permissions.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "docker:dev": "docker compose up -d",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up --build -d",
+    "docker:prod:down": "docker compose -f docker-compose.prod.yml down"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "2.11.1",
