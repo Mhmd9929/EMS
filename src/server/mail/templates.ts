@@ -57,3 +57,12 @@ export function passwordChangedEmail(p: { to: string; name: string; company: str
     text: `Hi ${p.name}, your password was just changed. If this wasn't you, contact HR immediately.`,
   };
 }
+
+export function notificationEmail(p: { to: string; company: string; title: string; body: string; link: string | null }): MailMessage {
+  return {
+    to: p.to,
+    subject: p.title,
+    html: layout(p.company, p.title, `<p>${escape(p.body).replace(/\n/g, "<br>")}</p>${p.link ? button(p.link, "Open in HR Portal") : ""}`),
+    text: `${p.body}${p.link ? `\n\n${p.link}` : ""}`,
+  };
+}

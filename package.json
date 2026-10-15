@@ -14,15 +14,16 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy && tsx prisma/sync-permissions.ts",
+    "db:deploy": "prisma migrate deploy && tsx --conditions=react-server prisma/sync-permissions.ts",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
-    "db:sync-permissions": "tsx prisma/sync-permissions.ts",
+    "db:sync-permissions": "tsx --conditions=react-server prisma/sync-permissions.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
+    "@cantoo/pdf-lib": "2.11.1",
     "@date-fns/tz": "^1.5.0",
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-alert-dialog": "^1.2.1",
@@ -37,10 +38,12 @@
     "@radix-ui/react-slot": "^1.5.0",
     "@radix-ui/react-tabs": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.4.1",
+    "@react-pdf/renderer": "^4.9.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "exceljs": "^4.4.0",
     "lucide-react": "^1.56.0",
     "next": "^15.5.27",
     "next-auth": "^5.0.0-beta.32",
@@ -81,7 +84,7 @@
     "vitest": "^3.2.7"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx --conditions=react-server prisma/seed.ts"
   },
   "engines": {
     "node": ">=20.9"

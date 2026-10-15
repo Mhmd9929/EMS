@@ -21,6 +21,23 @@ export const PERMISSIONS = [
   { key: "employee.import", module: "Employees", description: "Bulk import employees from CSV" },
   { key: "employee.export", module: "Employees", description: "Export employee lists" },
   { key: "employee.sensitive.read", module: "Employees", description: "View unmasked identity documents and bank details" },
+
+  { key: "leave.config.manage", module: "Leave", description: "Configure leave types, policies, public holidays and leave settings" },
+  { key: "leave.request.read.all", module: "Leave", description: "View every leave request and the company-wide leave calendar" },
+  { key: "leave.approve.team", module: "Leave", description: "Approve or reject leave for direct reports (or as a delegate)" },
+  { key: "leave.approve.all", module: "Leave", description: "Act on any approval step, including HR steps" },
+  { key: "leave.balance.adjust", module: "Leave", description: "Manually adjust leave balances (reason required, audited)" },
+  { key: "leave.report.read", module: "Leave", description: "Run leave reports and export balances" },
+
+  { key: "payroll.settings.manage", module: "Payroll", description: "Manage pay components, proration, WPS and gratuity settings" },
+  { key: "payroll.salary.read", module: "Payroll", description: "View salaries and salary history" },
+  { key: "payroll.salary.manage", module: "Payroll", description: "Change salary structures and enter one-time adjustments" },
+  { key: "payroll.run.manage", module: "Payroll", description: "Create, calculate, review, release and cancel payroll runs" },
+  { key: "payroll.run.approve", module: "Payroll", description: "Approve payroll runs calculated by someone else (maker-checker)" },
+  { key: "payroll.run.reopen", module: "Payroll", description: "Reopen a released payroll run (reason required, audited)" },
+  { key: "payroll.export", module: "Payroll", description: "Export WPS SIF, bank transfer files and payroll registers" },
+  { key: "payslip.read.all", module: "Payroll", description: "View every employee's payslips" },
+  { key: "payroll.settlement.manage", module: "Payroll", description: "Calculate and approve end-of-service gratuity and final settlements" },
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number]["key"];
@@ -38,6 +55,7 @@ export const SYSTEM_ROLES = {
 export type SystemRoleKey = keyof typeof SYSTEM_ROLES;
 
 const everyone: PermissionKey[] = ["directory.read", "orgchart.read"];
+
 
 export const DEFAULT_ROLES: Record<SystemRoleKey, { name: string; description: string; permissions: PermissionKey[] }> = {
   SUPER_ADMIN: {
@@ -62,17 +80,37 @@ export const DEFAULT_ROLES: Record<SystemRoleKey, { name: string; description: s
       "employee.import",
       "employee.export",
       "employee.sensitive.read",
+      "leave.config.manage",
+      "leave.request.read.all",
+      "leave.approve.team",
+      "leave.approve.all",
+      "leave.balance.adjust",
+      "leave.report.read",
     ],
   },
   PAYROLL_ADMIN: {
     name: "Payroll Admin",
     description: "Salary structures, payroll runs, payslips, exports",
-    permissions: [...everyone, "employee.read.all", "employee.export", "employee.sensitive.read"],
+    permissions: [
+      ...everyone,
+      "employee.read.all",
+      "employee.export",
+      "employee.sensitive.read",
+      "leave.report.read",
+      "payroll.settings.manage",
+      "payroll.salary.read",
+      "payroll.salary.manage",
+      "payroll.run.manage",
+      "payroll.run.approve",
+      "payroll.export",
+      "payslip.read.all",
+      "payroll.settlement.manage",
+    ],
   },
   MANAGER: {
     name: "Manager",
     description: "View own team (direct and indirect reports), approve team leave",
-    permissions: [...everyone, "employee.read.team"],
+    permissions: [...everyone, "employee.read.team", "leave.approve.team"],
   },
   EMPLOYEE: {
     name: "Employee",

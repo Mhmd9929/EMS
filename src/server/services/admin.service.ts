@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { z } from "zod";
 import { db } from "@/server/db";
-import { assertCan, type AuthContext } from "@/server/auth/context";
+import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { writeAudit, diffSnapshots } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/server/errors";
 import { ALL_PERMISSION_KEYS, PERMISSIONS, SYSTEM_ROLES } from "@/server/rbac/catalogue";

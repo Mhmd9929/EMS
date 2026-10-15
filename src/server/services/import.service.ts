@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/server/db";
-import { assertCan, type AuthContext } from "@/server/auth/context";
+import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { writeAudit } from "@/server/audit";
 import { ValidationError } from "@/server/errors";
 import { parseCsv, validateImport, type ImportLookups, type ImportValidation } from "@/lib/import/employee-csv";

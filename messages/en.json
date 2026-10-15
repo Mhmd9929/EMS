@@ -1,5 +1,8 @@
 {
-  "app": { "name": "HR Portal", "tagline": "Employee Management Portal" },
+  "app": {
+    "name": "HR Portal",
+    "tagline": "Employee Management Portal"
+  },
   "nav": {
     "main": "Main",
     "dashboard": "Dashboard",
@@ -22,7 +25,24 @@
     "signOut": "Sign out",
     "changePassword": "Change password",
     "toggleTheme": "Toggle theme",
-    "openMenu": "Open navigation"
+    "openMenu": "Open navigation",
+    "leave": "Leave",
+    "myLeave": "My leave",
+    "approvals": "Approvals",
+    "leaveCalendar": "Leave calendar",
+    "allRequests": "All requests",
+    "balances": "Balances",
+    "reports": "Reports",
+    "leaveSettings": "Leave settings",
+    "notifications": "Notifications",
+    "teamRequests": "Team requests",
+    "payroll": "Payroll",
+    "myPayslips": "My payslips",
+    "payrollRuns": "Payroll runs",
+    "salaries": "Salaries",
+    "adjustments": "Adjustments",
+    "settlements": "Final settlements",
+    "payrollSettings": "Payroll settings"
   },
   "auth": {
     "signInTitle": "Sign in",

@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/server/db";
-import type { AuthContext } from "@/server/auth/context";
+import type { AuthContext } from "@/server/auth/permissions";
 import { addDays, todayInTimeZone } from "@/lib/dates";
 import { getTeamEmployeeIds } from "@/server/rbac/scope";
 

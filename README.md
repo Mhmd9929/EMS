@@ -1,7 +1,7 @@
 # HRMS — Employee Management Portal
 
 A multi-tenant-ready HR portal for UAE companies: employees, org structure, role-based access, audit
-trail — with Leave (Phase 2) and Payroll/WPS (Phase 3) to follow.
+trail, leave management and payroll with WPS.
 
 Built with Next.js 15 (App Router, TypeScript strict), PostgreSQL + Prisma, Auth.js, Tailwind CSS +
 shadcn/ui, Zod, pg-boss, Nodemailer, Vitest and Playwright. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
@@ -23,6 +23,54 @@ for the design and [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what's in each c
   zoom/pan, expand/collapse, search and employee cards, switchable between reporting line and departments.
 - **Admin**: roles & permissions editor (permissions in the DB), user/role assignment, audit-log viewer
   with before/after diffs, per-role dashboards (HR, manager, employee).
+
+## Features (Phase 2 — Leave)
+
+- **Leave types & policies** with every rule editable (UAE defaults pre-loaded), public holiday calendar per
+  year and location, policies by department / position / employment type.
+- **Apply for leave** with a live working-day count (weekends and holidays excluded), balance-after preview,
+  half days, attachments, overlap blocking and a "colleagues also off" warning.
+- **Approvals**: manager by default, Manager → HR chains per type, bulk approve, delegation while away,
+  reminders and escalation to HR, cancellation requests, email + in-app notifications at every step.
+- **Balances** per year (accrued, carried forward, adjustments, expired, taken, pending, available) driven by
+  an idempotent ledger and background jobs (monthly accrual, year-end carry-forward, expiry).
+- **Calendars & reports**: team / company month calendar, leave taken by department × type, Excel/CSV exports.
+
+### Try the leave flow
+1. `employee@` → **Leave → Apply for leave**, pick dates next month, watch the summary, submit.
+2. `manager@` → **Approvals** (badge in the sidebar) → open the request → Approve. Or select several and approve in bulk.
+3. `employee@` → the bell shows the decision; **My leave** shows the balance moved from pending to taken.
+4. `hr@` → **Approvals → All pending** (a Study Leave waits for the HR step), **Leave calendar → Company**,
+   **Balances** (adjust with a reason), **Reports**, **Leave settings**.
+5. Run `npm run worker` (or the `worker` container) for accruals, reminders and email retries.
+
+## Features (Phase 3 — Payroll)
+
+- **Pay components** (fixed or formula such as `BASIC * 0.5`) and **effective-dated salary structures**
+  with full history; one-time monthly **adjustments**.
+- **Payroll runs**: Draft → Calculated → Under review → Approved → Released (+ Cancelled), for all employees,
+  a department or a location.
+  - Pro-rating on a calendar-day or 30-day basis, and automatic unpaid-leave deduction.
+  - A review screen with issues and variance vs last month, and hold/exclude with a reason.
+  - **Maker-checker** approval; release locks the run, issues payslips and notifies employees.
+  - Reopen is Super Admin only.
+- **Payslips**: *My payslips*, in-browser view, PDF (net in words, YTD, masked IBAN, optional password).
+  Employees only ever see their own released payslips.
+- **Exports**: payroll register (Excel), bank transfer CSV, **WPS SIF**.
+- **End of service**: gratuity calculator on the employee page and final settlement (unpaid salary + leave
+  encashment + gratuity + other − deductions) with maker-checker approval.
+
+### Try the payroll flow
+1. `payroll@` → **Payroll runs → New payroll run** (current month) → **Calculate**.
+   - Two new joiners have no IBAN: use the status menu to **Hold** them, then **Submit for approval**.
+   - As the maker you can't approve the run.
+2. `admin@` → open the run → **Approve**. Download the register, WPS SIF or bank CSV.
+3. `payroll@` → **Release payroll**.
+4. `employee@` → bell notification → **My payslips** → open the month → **Download PDF**.
+5. `payroll@` → **Employees → Bilal Chaudhry → Payroll** shows the leaver's final settlement draft.
+   - `admin@` approves it from **Final settlements**.
+   - **Salaries**, **Adjustments** and **Payroll settings** (components, WPS IDs, gratuity rules, PDF
+     password) are in the sidebar.
 
 ## Quick start
 
@@ -72,6 +120,12 @@ All demo users belong to **Falcon Gulf Trading LLC** (Dubai). Password for the f
 The seed creates 14 departments (6 top-level with sub-departments), 27 positions, 3 locations,
 43 employees across 4 reporting levels (incl. two joiners this month, one scheduled leaver and one
 terminated), UAE public holidays for 2026–27 and a few identity documents expiring soon.
+Leave data is generated relative to today: last year's leave and carry-forward, this year's accruals and
+taken leave, someone on leave today, upcoming leave, 3 requests in the Engineering manager's inbox,
+a Study Leave waiting for HR, a cancellation request, and rejected/cancelled history for `employee@`.
+Payroll data: salaries by grade with history, one-time adjustments, and **released payroll for every
+completed month of the year**. The current month is left for you to run. There is also a draft final
+settlement for the scheduled leaver.
 All other employees have accounts that are **not yet activated** (use "Send invitation").
 
 ## Environment variables
@@ -97,7 +151,7 @@ See [`.env.example`](.env.example) for the full list with comments.
 | Command | What it does |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js dev server / production build / production server |
-| `npm run worker` | Background job runner (pg-boss) |
+| `npm run worker` | Background job runner (pg-boss): accruals, year end, reminders, terminations, email retries. `-- --run-now` runs every job once |
 | `npm run lint` / `typecheck` / `format` | ESLint / `tsc --noEmit` / Prettier |
 | `npm test` | Unit tests (Vitest) — no database needed |
 | `npm run test:integration` | Service-level authorisation tests against the seeded DB |
@@ -105,14 +159,14 @@ See [`.env.example`](.env.example) for the full list with comments.
 | `npm run db:migrate` | Create/apply migrations in development |
 | `npm run db:deploy` | Apply migrations + sync the permission catalogue (production) |
 | `npm run db:seed` / `db:reset` | Reset & load demo data / drop, migrate and seed |
-| `npm run db:sync-permissions` | Upsert the permission catalogue; Super Admin always gets all permissions |
+| `npm run db:sync-permissions` | Upsert the permission catalogue (new permissions go to the matching system roles), create default leave types and current-year accruals for companies missing them. Safe on every deploy |
 
 ## Testing
 
 ```bash
-npm test                    # 60 unit tests: IBAN, masking, dates/timezones, tree cycles, permissions, validation, CSV import
-npm run db:seed && npm run test:integration   # 23 tests: server-side authorisation & data shaping in services
-npm run test:e2e            # 21 browser tests: login, throttling, forced password change, RBAC by URL, CRUD, import, org chart
+npm test                    # 107 unit tests: payroll engine (pro-rata, unpaid leave, adjustments, formulas), gratuity, SIF, leave rules, IBAN, masking, permissions, validation, CSV import
+npm run db:seed && npm run test:integration   # 50 tests: server-side authorisation, payslip isolation, maker-checker, run lifecycle, leave rules, approval chains, jobs
+npm run test:e2e            # 33 browser tests: login, RBAC by URL, CRUD, import, org chart, leave apply → approve → balance, payroll run → approve → release → payslip PDF, payslip isolation
 ```
 
 E2E uses the dev server on port 3000 (or starts one); in CI it runs against `npm run start`. The GitHub

@@ -10,7 +10,9 @@ export function useFormAction<T>(action: (prev: ActionResult<T> | null, fd: Form
   const [state, dispatch, pending] = useActionState(action, null);
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    // Include the clicked submit button's name/value (e.g. decision=APPROVED).
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const fd = new FormData(e.currentTarget, submitter && submitter.name ? submitter : undefined);
     startTransition(() => dispatch(fd));
   };
   return { state, onSubmit, pending };

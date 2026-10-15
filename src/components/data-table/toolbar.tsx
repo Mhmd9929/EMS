@@ -6,7 +6,7 @@ import { Input, NativeSelect } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PAGE_SIZES } from "@/lib/list-params";
 
-function useUpdateParams() {
+export function useUpdateParams() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -54,11 +54,12 @@ export function SearchInput({ placeholder = "Search…", param = "q" }: { placeh
   );
 }
 
-export function FilterSelect({ param, label, options }: { param: string; label: string; options: { value: string; label: string }[] }) {
+/** `defaultValue` (e.g. the current year) replaces the "All" option for filters that always apply. */
+export function FilterSelect({ param, label, options, defaultValue }: { param: string; label: string; options: { value: string; label: string }[]; defaultValue?: string }) {
   const { update, params } = useUpdateParams();
   return (
-    <NativeSelect aria-label={label} value={params.get(param) ?? ""} onChange={(e) => update({ [param]: e.target.value || undefined })} className="w-full sm:w-auto">
-      <option value="">{label}: All</option>
+    <NativeSelect aria-label={label} value={params.get(param) ?? defaultValue ?? ""} onChange={(e) => update({ [param]: e.target.value || undefined })} className="w-full sm:w-auto">
+      {defaultValue === undefined && <option value="">{label}: All</option>}
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}

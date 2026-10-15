@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
-import { assertCan, type AuthContext } from "@/server/auth/context";
+import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { findValidToken, issueToken, TOKEN_TTL_MINUTES } from "@/server/auth/tokens";
 import { writeAudit } from "@/server/audit";

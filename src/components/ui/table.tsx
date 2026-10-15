@@ -23,3 +23,6 @@ export function TableHead({ className, ...props }: React.ComponentProps<"th">) {
 export function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return <td className={cn("px-3 py-2.5 align-middle", className)} {...props} />;
 }
+export function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
+  return <tfoot className={cn("bg-muted/50 border-t font-medium [&>tr]:last:border-b-0", className)} {...props} />;
+}
