@@ -9,6 +9,7 @@
 import { PrismaClient } from "@prisma/client";
 import { DEFAULT_ROLES, PERMISSIONS, type SystemRoleKey } from "../src/server/rbac/catalogue";
 import { ensureDefaultLeaveTypes } from "./leave-defaults";
+import { ensureDefaultPayComponents } from "./payroll-defaults";
 import { syncAccruals } from "../src/server/services/leave/balance.service";
 
 export async function syncPermissions(db: PrismaClient) {
@@ -40,11 +41,12 @@ export async function syncPermissions(db: PrismaClient) {
   return added;
 }
 
-/** Idempotent per-company bootstrap for upgrades: default leave types and this year's accruals. */
+/** Idempotent per-company bootstrap for upgrades: default leave types, pay components and this year's accruals. */
 export async function bootstrapCompanies(db: PrismaClient) {
   const companies = await db.company.findMany({ select: { id: true, timezone: true } });
   for (const c of companies) {
     await ensureDefaultLeaveTypes(db, c.id);
+    await ensureDefaultPayComponents(db, c.id);
     const today = new Date(new Intl.DateTimeFormat("en-CA", { timeZone: c.timezone }).format(new Date()) + "T00:00:00Z");
     await syncAccruals(c.id, today.getUTCFullYear(), today);
   }

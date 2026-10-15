@@ -51,6 +51,7 @@ export const leaveTypeSchema = z
     countWeekends: checkbox,
     countHolidays: checkbox,
     approvalChain: z.preprocess(toArray, z.array(z.enum(["MANAGER", "HR"])).max(2)),
+    isEncashable: checkbox,
     isActive: checkbox,
   })
   .refine((v) => new Set(v.approvalChain).size === v.approvalChain.length, { path: ["approvalChain"], message: "Each step can appear once" });

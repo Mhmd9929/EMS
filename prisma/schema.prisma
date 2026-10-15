@@ -16,7 +16,7 @@ datasource db {
 // ─────────────────────────────── Company ───────────────────────────────
 
 model Company {
-  id                    String   @id @default(cuid())
+  id                    String  @id @default(cuid())
   name                  String
   legalName             String?
   logoPath              String?
@@ -24,25 +24,43 @@ model Company {
   addressLine2          String?
   city                  String?
   emirate               String?
-  country               String   @default("AE")
+  country               String  @default("AE")
   phone                 String?
   email                 String?
   website               String?
   tradeLicenseNumber    String?
-  currency              String   @default("AED")
-  timezone              String   @default("Asia/Dubai")
+  currency              String  @default("AED")
+  timezone              String  @default("Asia/Dubai")
   /// ISO weekdays that are working days (1 = Monday … 7 = Sunday)
-  workWeek              Int[]    @default([1, 2, 3, 4, 5])
+  workWeek              Int[]   @default([1, 2, 3, 4, 5])
   /// 1 = January
-  fiscalYearStartMonth  Int      @default(1)
-  locale                String   @default("en")
-  employeeNumberPrefix  String   @default("EMP-")
-  employeeNumberPadding Int      @default(4)
-  employeeNumberNextSeq Int      @default(1)
+  fiscalYearStartMonth  Int     @default(1)
+  locale                String  @default("en")
+  employeeNumberPrefix  String  @default("EMP-")
+  employeeNumberPadding Int     @default(4)
+  employeeNumberNextSeq Int     @default(1)
   /// remind approvers (and escalate to HR) when a leave approval waits this many days
-  leaveEscalationDays   Int      @default(3)
-  createdAt             DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
+  leaveEscalationDays   Int     @default(3)
+
+  // Payroll (Phase 3)
+  payrollProrationBasis   ProrationBasis @default(CALENDAR_DAYS)
+  /// WPS: MOHRE establishment (employer) ID, 13 digits
+  wpsEmployerId           String?
+  /// WPS: routing code (agent ID) of the employer's bank, 9 digits
+  wpsEmployerBankCode     String?
+  wpsFormat               String         @default("UAE_SIF_V1")
+  /// End-of-service gratuity formula (UAE defaults)
+  gratuityMinServiceYears Decimal        @default(1) @db.Decimal(4, 2)
+  gratuityDaysFirstYears  Decimal        @default(21) @db.Decimal(5, 2)
+  gratuityThresholdYears  Decimal        @default(5) @db.Decimal(4, 2)
+  gratuityDaysAfter       Decimal        @default(30) @db.Decimal(5, 2)
+  gratuityCapMonths       Decimal        @default(24) @db.Decimal(5, 2)
+  /// daily wage = basic / 30 (DIV30) or basic x 12 / 365 (DIV365)
+  gratuityDailyBasis      String         @default("DIV30")
+  /// leave encashment daily rate = basic / 30 (BASIC) or gross recurring / 30 (GROSS)
+  leaveEncashmentBasis    String         @default("BASIC")
+  createdAt               DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime       @updatedAt @db.Timestamptz(3)
 
   users          User[]
   roles          Role[]
@@ -56,6 +74,8 @@ model Company {
   leavePolicies  LeavePolicy[]
   leaveRequests  LeaveRequest[]
   notifications  Notification[]
+  payComponents  PayComponent[]
+  payrollRuns    PayrollRun[]
 }
 
 // ─────────────────────────────── Identity & RBAC ───────────────────────────────
@@ -292,6 +312,8 @@ model Employee {
   bankName        String?
   iban            String?
   bankAccountName String?
+  /// WPS agent/routing code of the employee's bank (9 digits)
+  bankRoutingCode String?
 
   // Termination
   lastWorkingDay    DateTime? @db.Date
@@ -303,17 +325,22 @@ model Employee {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  company           Company            @relation(fields: [companyId], references: [id])
-  user              User?              @relation(fields: [userId], references: [id])
-  department        Department?        @relation("EmployeeDepartment", fields: [departmentId], references: [id])
-  position          Position?          @relation(fields: [positionId], references: [id])
-  location          Location?          @relation(fields: [locationId], references: [id])
-  manager           Employee?          @relation("ReportingLine", fields: [managerId], references: [id])
-  directReports     Employee[]         @relation("ReportingLine")
-  headOfDepartments Department[]       @relation("DepartmentHead")
-  emergencyContacts EmergencyContact[]
-  leaveRequests     LeaveRequest[]
-  leaveLedger       LeaveLedgerEntry[]
+  company             Company              @relation(fields: [companyId], references: [id])
+  user                User?                @relation(fields: [userId], references: [id])
+  department          Department?          @relation("EmployeeDepartment", fields: [departmentId], references: [id])
+  position            Position?            @relation(fields: [positionId], references: [id])
+  location            Location?            @relation(fields: [locationId], references: [id])
+  manager             Employee?            @relation("ReportingLine", fields: [managerId], references: [id])
+  directReports       Employee[]           @relation("ReportingLine")
+  headOfDepartments   Department[]         @relation("DepartmentHead")
+  emergencyContacts   EmergencyContact[]
+  leaveRequests       LeaveRequest[]
+  leaveLedger         LeaveLedgerEntry[]
+  salaryStructures    SalaryStructure[]
+  payrollAdjustments  PayrollAdjustment[]
+  payrollRunEmployees PayrollRunEmployee[]
+  payslips            Payslip[]
+  finalSettlements    FinalSettlement[]
 
   @@unique([companyId, employeeNumber])
   @@unique([companyId, workEmail])
@@ -427,6 +454,8 @@ model LeaveType {
   /// approval steps in order, e.g. ["MANAGER","HR"]; empty = auto-approve
   approvalChain               String[]      @default(["MANAGER"])
   isActive                    Boolean       @default(true)
+  /// unused balance is paid out in the final settlement
+  isEncashable                Boolean       @default(false)
   /// seeded default — editable, flagged so HR knows its origin
   isSystemDefault             Boolean       @default(false)
   sortOrder                   Int           @default(0)
@@ -650,4 +679,288 @@ model Notification {
 
   @@index([userId, readAt])
   @@index([emailStatus, createdAt])
+}
+
+// ─────────────────────────────── Payroll (Phase 3) ───────────────────────────────
+// Money is stored as BigInt minor units (fils for AED) in the company currency.
+
+enum ProrationBasis {
+  /// monthly amount × days employed / days in the month
+  CALENDAR_DAYS
+  /// monthly amount / 30 × paid days, where a full month is always 30 days
+  THIRTY_DAYS
+}
+
+enum PayComponentKind {
+  EARNING
+  DEDUCTION
+}
+
+enum PayCalcType {
+  FIXED
+  FORMULA
+}
+
+model PayComponent {
+  id          String           @id @default(cuid())
+  companyId   String
+  /// variable name in formulas, e.g. BASIC, HOUSING
+  code        String
+  name        String
+  kind        PayComponentKind
+  calcType    PayCalcType      @default(FIXED)
+  /// e.g. "BASIC * 0.25" — evaluated with a safe parser, never eval()
+  formula     String?
+  /// recurring = part of the salary structure (pro-rated); one-time = monthly adjustments
+  isRecurring Boolean          @default(true)
+  isTaxable   Boolean          @default(false)
+  /// counts towards the WPS "fixed" amount (else "variable")
+  isFixedPay  Boolean          @default(true)
+  /// system components are referenced by the engine (BASIC, UNPAID_LEAVE)
+  isSystem    Boolean          @default(false)
+  isActive    Boolean          @default(true)
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+
+  company     Company               @relation(fields: [companyId], references: [id])
+  lines       SalaryStructureLine[]
+  adjustments PayrollAdjustment[]
+
+  @@unique([companyId, code])
+}
+
+/// An employee's salary from `effectiveFrom` until the next structure. Never edited once used by a run.
+model SalaryStructure {
+  id            String   @id @default(cuid())
+  companyId     String
+  employeeId    String
+  effectiveFrom DateTime @db.Date
+  reason        String?
+  createdById   String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  employee Employee              @relation(fields: [employeeId], references: [id])
+  lines    SalaryStructureLine[]
+
+  @@unique([employeeId, effectiveFrom])
+  @@index([companyId])
+}
+
+model SalaryStructureLine {
+  id          String  @id @default(cuid())
+  structureId String
+  componentId String
+  /// monthly amount for FIXED components; null for FORMULA components
+  amount      BigInt?
+
+  structure SalaryStructure @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  component PayComponent    @relation(fields: [componentId], references: [id])
+
+  @@unique([structureId, componentId])
+}
+
+/// One-time earning/deduction for a period (bonus, overtime, reimbursement, loan instalment …).
+model PayrollAdjustment {
+  id          String   @id @default(cuid())
+  companyId   String
+  employeeId  String
+  /// "YYYY-MM"
+  period      String
+  componentId String
+  amount      BigInt
+  description String
+  /// set when consumed by a released run
+  runId       String?
+  createdById String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  employee  Employee     @relation(fields: [employeeId], references: [id])
+  component PayComponent @relation(fields: [componentId], references: [id])
+  run       PayrollRun?  @relation(fields: [runId], references: [id])
+
+  @@index([companyId, period])
+  @@index([employeeId, period])
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  CALCULATED
+  UNDER_REVIEW
+  APPROVED
+  RELEASED
+  CANCELLED
+}
+
+enum PayrollScope {
+  ALL
+  DEPARTMENT
+  LOCATION
+}
+
+model PayrollRun {
+  id              String           @id @default(cuid())
+  companyId       String
+  /// "YYYY-MM"
+  period          String
+  periodStart     DateTime         @db.Date
+  periodEnd       DateTime         @db.Date
+  scope           PayrollScope     @default(ALL)
+  scopeId         String?
+  scopeLabel      String           @default("All employees")
+  status          PayrollRunStatus @default(DRAFT)
+  prorationBasis  ProrationBasis
+  currency        String
+  notes           String?
+  totalGross      BigInt           @default(0)
+  totalDeductions BigInt           @default(0)
+  totalNet        BigInt           @default(0)
+  employeeCount   Int              @default(0)
+
+  createdById    String?
+  calculatedById String?
+  calculatedAt   DateTime? @db.Timestamptz(3)
+  submittedById  String?
+  submittedAt    DateTime? @db.Timestamptz(3)
+  approvedById   String?
+  approvedAt     DateTime? @db.Timestamptz(3)
+  releasedById   String?
+  releasedAt     DateTime? @db.Timestamptz(3)
+  cancelledById  String?
+  cancelledAt    DateTime? @db.Timestamptz(3)
+  cancelReason   String?
+  reviewComment  String?
+  reopenCount    Int       @default(0)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  company     Company              @relation(fields: [companyId], references: [id])
+  employees   PayrollRunEmployee[]
+  adjustments PayrollAdjustment[]
+
+  @@index([companyId, period])
+  @@index([companyId, status])
+}
+
+enum PayrollEntryStatus {
+  INCLUDED
+  /// calculated but not paid in this run (e.g. dispute); excluded from WPS/bank files
+  HELD
+  /// removed from this run
+  EXCLUDED
+}
+
+/// One employee in a run: an immutable snapshot of who/what/how much once released.
+model PayrollRunEmployee {
+  id               String             @id @default(cuid())
+  runId            String
+  employeeId       String
+  status           PayrollEntryStatus @default(INCLUDED)
+  statusReason     String?
+  /// snapshot
+  employeeNumber   String
+  name             String
+  department       String?
+  position         String?
+  location         String?
+  joinDate         DateTime           @db.Date
+  lastWorkingDay   DateTime?          @db.Date
+  bankName         String?
+  iban             String?
+  bankRoutingCode  String?
+  labourCardNumber String?
+  /// calculation
+  calendarDays     Int
+  paidDays         Decimal            @db.Decimal(6, 2)
+  unpaidLeaveDays  Decimal            @db.Decimal(6, 2)
+  gross            BigInt
+  deductions       BigInt
+  net              BigInt
+  fixedPay         BigInt             @default(0)
+  variablePay      BigInt             @default(0)
+  previousNet      BigInt?
+  /// blocking problems (e.g. no salary structure, missing IBAN) and warnings
+  issues           Json               @default("[]")
+
+  run      PayrollRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employee Employee         @relation(fields: [employeeId], references: [id])
+  lines    PayrollRunLine[]
+  payslip  Payslip?
+
+  @@unique([runId, employeeId])
+  @@index([employeeId])
+}
+
+model PayrollRunLine {
+  id            String           @id @default(cuid())
+  runEmployeeId String
+  code          String
+  name          String
+  kind          PayComponentKind
+  amount        BigInt
+  /// e.g. "Pro-rated 17/31 days", "3 unpaid leave days"
+  note          String?
+  isRecurring   Boolean          @default(true)
+  isFixedPay    Boolean          @default(true)
+  sortOrder     Int              @default(0)
+
+  runEmployee PayrollRunEmployee @relation(fields: [runEmployeeId], references: [id], onDelete: Cascade)
+}
+
+/// Created when a run is released. Employees only ever see payslips that exist and are not voided.
+model Payslip {
+  id            String    @id @default(cuid())
+  companyId     String
+  employeeId    String
+  runEmployeeId String    @unique
+  period        String
+  number        String
+  net           BigInt
+  releasedAt    DateTime  @db.Timestamptz(3)
+  /// set when a Super Admin reopens the run
+  voidedAt      DateTime? @db.Timestamptz(3)
+
+  employee    Employee           @relation(fields: [employeeId], references: [id])
+  runEmployee PayrollRunEmployee @relation(fields: [runEmployeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, period])
+  @@index([companyId, period])
+}
+
+enum SettlementStatus {
+  DRAFT
+  APPROVED
+  CANCELLED
+}
+
+/// End-of-service settlement for a leaving employee.
+model FinalSettlement {
+  id               String           @id @default(cuid())
+  companyId        String
+  employeeId       String
+  lastWorkingDay   DateTime         @db.Date
+  status           SettlementStatus @default(DRAFT)
+  serviceYears     Decimal          @db.Decimal(6, 3)
+  basicSalary      BigInt
+  unpaidSalaryDays Decimal          @db.Decimal(6, 2)
+  unpaidSalary     BigInt
+  leaveDays        Decimal          @db.Decimal(6, 2)
+  leaveEncashment  BigInt
+  gratuity         BigInt
+  otherEarnings    BigInt           @default(0)
+  deductions       BigInt           @default(0)
+  total            BigInt
+  notes            String?
+  /// full calculation breakdown for the statement
+  breakdown        Json
+  createdById      String?
+  approvedById     String?
+  approvedAt       DateTime?        @db.Timestamptz(3)
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([companyId, status])
+  @@index([employeeId])
 }

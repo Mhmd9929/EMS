@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   Building2, Briefcase, FileUp, LayoutDashboard, MapPin, Network, ScrollText, Settings, ShieldCheck, UserCircle, Users, UsersRound, BookUser,
   Plane, CheckSquare, CalendarDays, ListChecks, Scale, BarChart3, SlidersHorizontal,
+  Receipt, Banknote, Wallet, PlusCircle, Handshake, Cog,
 } from "lucide-react";
 import type { NavIcon } from "./nav";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,12 @@ const ICONS: Record<NavIcon, React.ComponentType<{ className?: string }>> = {
   balances: Scale,
   reports: BarChart3,
   leaveSettings: SlidersHorizontal,
+  payslips: Receipt,
+  payrollRuns: Banknote,
+  salaries: Wallet,
+  adjustments: PlusCircle,
+  settlements: Handshake,
+  payrollSettings: Cog,
 };
 
 export type SidebarGroup = { label: string; items: { href: string; label: string; icon: NavIcon; badge?: number }[] };

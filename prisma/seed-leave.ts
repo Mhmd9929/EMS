@@ -94,6 +94,9 @@ export async function seedLeave(db: PrismaClient, companyId: string, today: Date
     if (start >= today) continue;
     await request(key, "AL", start, addDays(start, 3 + (i % 8)), "APPROVED", approved, { reason: "Family vacation" });
   }
+  // Approved unpaid leave last quarter → deducted by payroll
+  const ulStart = workday(Y(Math.max(1, today.getUTCMonth() - 1), 10));
+  if (ulStart < today) await request("log2", "UL", ulStart, addDays(ulStart, 1), "APPROVED", [{ role: "MANAGER", decision: "APPROVED" }, { role: "HR", decision: "APPROVED" }], { reason: "Family emergency abroad" });
   for (const [i, key] of ["acc2", "swe2", "sal2", "mkt2", "log1"].entries()) {
     const start = workday(Y(3 + i, 10 + i));
     if (start < today) await request(key, "SL", start, i === 1 ? start : addDays(start, 1), "APPROVED", approved, { reason: "Flu", halfDay: i === 1 ? "FIRST_HALF" : "NONE" });

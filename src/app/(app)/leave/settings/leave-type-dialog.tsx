@@ -16,7 +16,7 @@ type T = {
   id: string; name: string; code: string; description: string | null; color: string; isPaid: boolean; annualEntitlement: number;
   accrualMethod: string; accrualStartAfterMonths: number; prorateUpfront: boolean; carryForwardMax: number; carryForwardExpiryMonths: number | null;
   maxConsecutiveDays: number | null; requiresAttachmentAfterDays: number | null; minNoticeDays: number; allowHalfDay: boolean;
-  allowNegativeBalance: boolean; genderEligibility: string | null; countWeekends: boolean; countHolidays: boolean; approvalChain: string[]; isActive: boolean;
+  allowNegativeBalance: boolean; genderEligibility: string | null; countWeekends: boolean; countHolidays: boolean; approvalChain: string[]; isActive: boolean; isEncashable: boolean;
 };
 
 function Toggle({ name, label, defaultChecked, hint }: { name: string; label: string; defaultChecked: boolean; hint?: string }) {
@@ -135,6 +135,7 @@ function TypeForm({ type, onDone }: { type?: T; onDone: () => void }) {
             <Toggle name="allowNegativeBalance" label="Allow negative balance" defaultChecked={type?.allowNegativeBalance ?? false} />
             <Toggle name="countWeekends" label="Count weekends (calendar days)" defaultChecked={type?.countWeekends ?? false} />
             <Toggle name="countHolidays" label="Count public holidays" defaultChecked={type?.countHolidays ?? false} />
+            <Toggle name="isEncashable" label="Pay out unused balance in the final settlement" defaultChecked={type?.isEncashable ?? false} />
           </div>
         </fieldset>
 

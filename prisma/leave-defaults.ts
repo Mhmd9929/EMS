@@ -23,13 +23,14 @@ type Def = {
   countWeekends?: boolean;
   countHolidays?: boolean;
   approvalChain?: string[];
+  isEncashable?: boolean;
 };
 
 export const UAE_LEAVE_DEFAULTS: Def[] = [
   {
     code: "AL", name: "Annual Leave", color: "#0d9488", isPaid: true, annualEntitlement: 30, accrualMethod: "MONTHLY",
     description: "30 days a year, accruing 2.5 days per month after 6 months of service.",
-    accrualStartAfterMonths: 6, carryForwardMax: 10, carryForwardExpiryMonths: 3, minNoticeDays: 7,
+    accrualStartAfterMonths: 6, carryForwardMax: 10, carryForwardExpiryMonths: 3, minNoticeDays: 7, isEncashable: true,
   },
   {
     code: "SL", name: "Sick Leave", color: "#dc2626", isPaid: true, annualEntitlement: 15, accrualMethod: "UPFRONT",
@@ -90,6 +91,7 @@ export async function ensureDefaultLeaveTypes(db: PrismaClient, companyId: strin
       countWeekends: t.countWeekends ?? false,
       countHolidays: t.countHolidays ?? false,
       approvalChain: t.approvalChain ?? ["MANAGER"],
+      isEncashable: t.isEncashable ?? false,
       isSystemDefault: true,
       sortOrder: i,
     })),

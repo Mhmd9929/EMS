@@ -35,7 +35,14 @@
     "reports": "Reports",
     "leaveSettings": "Leave settings",
     "notifications": "Notifications",
-    "teamRequests": "Team requests"
+    "teamRequests": "Team requests",
+    "payroll": "Payroll",
+    "myPayslips": "My payslips",
+    "payrollRuns": "Payroll runs",
+    "salaries": "Salaries",
+    "adjustments": "Adjustments",
+    "settlements": "Final settlements",
+    "payrollSettings": "Payroll settings"
   },
   "auth": {
     "signInTitle": "Sign in",

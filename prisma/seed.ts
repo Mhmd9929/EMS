@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import { DEFAULT_ROLES, type SystemRoleKey } from "../src/server/rbac/catalogue";
 import { syncPermissions } from "./sync-permissions";
 import { seedLeave } from "./seed-leave";
+import { seedPayroll } from "./seed-payroll";
 
 const db = new PrismaClient();
 
@@ -411,6 +412,8 @@ async function main() {
 
   console.log("Seeding leave…");
   await seedLeave(db, company.id, today, employeeIds);
+  console.log("Seeding payroll…");
+  await seedPayroll(db, company.id, today);
 
   const adminUser = await db.user.findUniqueOrThrow({ where: { email: `admin@${DOMAIN}` } });
   await db.auditLog.create({

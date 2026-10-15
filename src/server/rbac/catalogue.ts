@@ -28,6 +28,16 @@ export const PERMISSIONS = [
   { key: "leave.approve.all", module: "Leave", description: "Act on any approval step, including HR steps" },
   { key: "leave.balance.adjust", module: "Leave", description: "Manually adjust leave balances (reason required, audited)" },
   { key: "leave.report.read", module: "Leave", description: "Run leave reports and export balances" },
+
+  { key: "payroll.settings.manage", module: "Payroll", description: "Manage pay components, proration, WPS and gratuity settings" },
+  { key: "payroll.salary.read", module: "Payroll", description: "View salaries and salary history" },
+  { key: "payroll.salary.manage", module: "Payroll", description: "Change salary structures and enter one-time adjustments" },
+  { key: "payroll.run.manage", module: "Payroll", description: "Create, calculate, review, release and cancel payroll runs" },
+  { key: "payroll.run.approve", module: "Payroll", description: "Approve payroll runs calculated by someone else (maker-checker)" },
+  { key: "payroll.run.reopen", module: "Payroll", description: "Reopen a released payroll run (reason required, audited)" },
+  { key: "payroll.export", module: "Payroll", description: "Export WPS SIF, bank transfer files and payroll registers" },
+  { key: "payslip.read.all", module: "Payroll", description: "View every employee's payslips" },
+  { key: "payroll.settlement.manage", module: "Payroll", description: "Calculate and approve end-of-service gratuity and final settlements" },
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number]["key"];
@@ -45,6 +55,7 @@ export const SYSTEM_ROLES = {
 export type SystemRoleKey = keyof typeof SYSTEM_ROLES;
 
 const everyone: PermissionKey[] = ["directory.read", "orgchart.read"];
+
 
 export const DEFAULT_ROLES: Record<SystemRoleKey, { name: string; description: string; permissions: PermissionKey[] }> = {
   SUPER_ADMIN: {
@@ -80,7 +91,21 @@ export const DEFAULT_ROLES: Record<SystemRoleKey, { name: string; description: s
   PAYROLL_ADMIN: {
     name: "Payroll Admin",
     description: "Salary structures, payroll runs, payslips, exports",
-    permissions: [...everyone, "employee.read.all", "employee.export", "employee.sensitive.read", "leave.report.read"],
+    permissions: [
+      ...everyone,
+      "employee.read.all",
+      "employee.export",
+      "employee.sensitive.read",
+      "leave.report.read",
+      "payroll.settings.manage",
+      "payroll.salary.read",
+      "payroll.salary.manage",
+      "payroll.run.manage",
+      "payroll.run.approve",
+      "payroll.export",
+      "payslip.read.all",
+      "payroll.settlement.manage",
+    ],
   },
   MANAGER: {
     name: "Manager",
