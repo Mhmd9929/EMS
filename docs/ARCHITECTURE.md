@@ -124,7 +124,7 @@ Key tables (see `prisma/schema.prisma` for every column):
 | `Employee` | HR record (see brief), self-referencing `managerId`, `status` (ACTIVE / ON_LEAVE / TERMINATED), UAE identity docs, bank/IBAN, termination fields. Never hard-deleted |
 | `EmergencyContact` | 0..n per employee |
 | `AuditLog` | actor, action, entity, entityId, `before`/`after` JSON, ip, user agent |
-| `PublicHoliday` | per company/year, optional location (management UI in Phase 2) |
+| `PublicHoliday` | per company/year, optional location; managed in Leave → Settings |
 
 Conventions:
 * Every business table carries `companyId` (indexed) — single company today, never hard-coded.
@@ -156,7 +156,12 @@ A user can hold several roles; effective permissions are the union.
 | `employee.sensitive.read` (IDs, passport, visa, IBAN unmasked) | ✅ | ✅ | ✅ | | |
 | `directory.read` / `orgchart.read` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `dashboard.hr` | ✅ | ✅ | | | |
-| *Phase 2:* `leave.policy.manage`, `leave.request.read.all`, `leave.approve.team`, `leave.balance.adjust` | ✅ | ✅ | | team only | |
+| `leave.config.manage` (leave types, policies, holidays, leave settings) | ✅ | ✅ | | | |
+| `leave.request.read.all` (all requests, company calendar) | ✅ | ✅ | | | |
+| `leave.approve.team` (approve direct + indirect reports) | ✅ | ✅ | | ✅ | |
+| `leave.approve.all` (act on any step, incl. HR steps) | ✅ | ✅ | | | |
+| `leave.balance.adjust` (manual adjustment, reason required) | ✅ | ✅ | | | |
+| `leave.report.read` (reports, balance exports) | ✅ | ✅ | ✅ | | |
 | *Phase 3:* `payroll.salary.manage`, `payroll.run.manage`, `payroll.run.approve`, `payroll.export`, `payslip.read.all` | ✅ | | ✅ | | |
 | *Self-service* (own profile, own leave, own payslips) | implicit for any user linked to an employee | | | | |
 
@@ -215,23 +220,98 @@ later — salary, leave approvals and payroll. Secrets (password hashes, token h
 
 ## 8. Background jobs (pg-boss)
 
-| Queue | Schedule | Phase |
-|---|---|---|
-| `employee.apply-terminations` | daily 00:15 company TZ | 1 |
-| `email.send` | on demand — Phase 1 sends synchronously (failures are logged, never block the flow); moved to the queue with Phase 2 notifications | 2 |
-| `leave.monthly-accrual`, `leave.year-end`, `leave.escalations` | cron | 2 |
-| `documents.expiry-alerts` | daily | 4 |
+All handlers are idempotent (ledger rows carry unique period keys), so a missed run is caught up by the next.
+Schedules are in `JOBS_TIMEZONE` (default Asia/Dubai). Registry: `src/server/jobs/index.ts`.
 
-## 9. Phase status
+| Queue | Schedule | What it does | Phase |
+|---|---|---|---|
+| `employee-apply-terminations` | daily 00:15 | flips due terminations to TERMINATED, disables login | 1 |
+| `leave-year-end` | 1 Jan 00:05 | closes last year: carry forward up to the cap (with expiry), lapse the rest | 2 |
+| `leave-monthly-accrual` | 1st of month 00:20 | credits monthly accruals / yearly entitlements | 2 |
+| `leave-daily` | daily 00:30 | expires unused carried-forward days, syncs ACTIVE ↔ ON_LEAVE, accrual catch-up | 2 |
+| `leave-escalations` | weekdays 08:00 | reminds approvers after N days; second reminder escalates manager steps to HR | 2 |
+| `notifications-email` | every 5 min | retries queued notification emails (outbox) | 2 |
+| `documents-expiry-alerts` | daily | 60/30/7-day alerts | 4 |
+
+## 9. Leave management (Phase 2)
+
+### Data model
+
+```mermaid
+erDiagram
+  LeaveType ||--o{ LeavePolicy : "overridden by"
+  LeaveType ||--o{ LeaveRequest : "type of"
+  LeaveType ||--o{ LeaveLedgerEntry : "credits"
+  Employee ||--o{ LeaveRequest : requests
+  Employee ||--o{ LeaveLedgerEntry : "balance entries"
+  LeaveRequest ||--o{ LeaveRequestDay : "counted days"
+  LeaveRequest ||--o{ LeaveApproval : "approval steps"
+  User ||--o{ ApprovalDelegation : "delegates to"
+  User ||--o{ Notification : receives
+```
+
+| Table | Purpose |
+|---|---|
+| `LeaveType` | every rule is data: entitlement, accrual method (UPFRONT / MONTHLY / NONE), eligibility after N months, pro-rating, carry-forward cap + expiry, max days per request, document threshold, notice, half days, negative balance, gender, weekends/holidays counted, approval chain (`["MANAGER","HR"]`), paid flag |
+| `LeavePolicy` | overrides entitlement/eligibility by department, position and/or employment type — most specific wins |
+| `LeaveLedgerEntry` | every credit/debit that is not leave taken: ENTITLEMENT, ACCRUAL, CARRY_FORWARD, CARRY_OUT, LAPSE, CARRY_FORWARD_EXPIRY, ADJUSTMENT. System entries have a unique `periodKey` (e.g. `acc-2026-03`) → idempotent jobs |
+| `LeaveRequest` | dates, half day (single-day only), status, current step, attachment, cancellation reason |
+| `LeaveRequestDay` | one row per counted day (1 or 0.5). The single source for balances per year, overlaps, calendars, reports and payroll's unpaid-leave deduction |
+| `LeaveApproval` | one row per step (REQUEST or CANCELLATION kind) with assignee, decision, actor, *on behalf of* (delegation), comment, reminder timestamps |
+| `ApprovalDelegation` | delegator → delegate for a date range |
+| `Notification` | in-app notification **and** email outbox (`emailStatus` PENDING → SENT/FAILED, retried by the worker) |
+
+### Rules engine (pure, unit-tested: `src/lib/leave/*`)
+
+* **Day counting** — a date counts if it is a working day (company work week) or the type counts weekends,
+  and it is not a public holiday (company-wide or the employee's location) or the type counts holidays.
+  Half days only for single-day requests. Cross-year requests are split per year.
+* **Balance** = accrued + carried forward + adjustments − expired − carried out − taken − pending, per
+  calendar year. Taken/pending come from request days, so cancelling a request releases the days instantly.
+* **Accrual** — MONTHLY credits entitlement/12 per month of eligible service (pro-rated by days for the month
+  eligibility starts or employment ends) once the month has ended. UPFRONT credits the year's entitlement on
+  1 Jan or on the eligibility date (optionally pro-rated). Months before eligibility do not accrue.
+* **Booking ahead** — the balance check includes credits that will have accrued by the leave date and, for
+  next year, the days that will carry forward (capped). Already-credited entries are never recomputed.
+* **Year end** — remaining ≤ cap carries forward with an expiry date; the rest lapses; negative balances
+  carry in full. Carried days are consumed first (FIFO) and anything unused lapses at expiry.
+
+### Workflow
+
+1. Submit → validate (eligibility, notice/backdating ≤ 30 days, overlaps, max days, document, balance) inside a
+   transaction guarded by a per-employee advisory lock; create day rows and one approval row per step.
+   A MANAGER step resolves to the line manager; with no manager it is skipped if an HR step follows, otherwise
+   HR handles it. No steps → auto-approved.
+2. Each decision uses an optimistic lock (`decision = PENDING`) so two approvers can't both act. Rejection
+   needs a comment. Requesters can never decide their own leave, even with `leave.approve.all`.
+3. Who can act: the assigned manager, an active delegate of that manager, or anyone with
+   `leave.approve.all`.
+4. Cancellation: pending → employee withdraws; approved & not yet ended → employee requests cancellation
+   (days stay booked) → manager/HR decides; HR can also cancel directly with a reason.
+5. Every step notifies the requester and the next approvers (in-app + email) and is audited.
+
+### Privacy
+
+The team calendar for employees shows colleagues only as "On leave" (no leave type); teammate warnings on
+the apply form show names and dates only. Managers see types for their reports; HR sees everything.
+
+## 10. Phase status
 
 | Phase | Status |
 |---|---|
 | 1 Foundation | ✅ Checkpoint 1 — see CHANGELOG |
-| 2 Leave | not started |
+| 2 Leave | ✅ Checkpoint 2 — see CHANGELOG |
 | 3 Payroll | not started |
 | 4 Extras | not started |
 
-## 10. Known limitations / follow-ups
+## 11. Known limitations / follow-ups
+
+* **Leave year = calendar year** (Jan–Dec) regardless of the company fiscal year.
+* **Half days** are only supported for single-day requests (not "half day at the start/end of a range").
+* **Policy or leave-type changes apply to future credits only**; already-credited ledger entries are not
+  recalculated (HR can adjust balances).
+* **"Once per employment" rules** (e.g. Hajj) are modelled as a yearly entitlement; HR should adjust if needed.
+* **Excel exports** use `exceljs`; PDF reports are not included.
 
 * **403 pages return HTTP 200.** The `(app)/loading.tsx` skeleton streams the shell before the page calls
   `forbidden()`, so the status code can no longer change. The 403 UI renders and no data is sent; APIs return

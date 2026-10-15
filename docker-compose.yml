@@ -40,8 +40,8 @@ services:
       SEED: ${SEED:-true}
     # Seeds demo data only when the database is empty (set SEED=false to skip entirely).
     command: >
-      sh -c "npx prisma migrate deploy && npx tsx prisma/sync-permissions.ts &&
-             if [ \"$$SEED\" = 'true' ]; then npx tsx prisma/seed.ts --if-empty; fi"
+      sh -c "npx prisma migrate deploy && npx tsx --conditions=react-server prisma/sync-permissions.ts &&
+             if [ \"$$SEED\" = 'true' ]; then npx tsx --conditions=react-server prisma/seed.ts --if-empty; fi"
     depends_on:
       db: { condition: service_healthy }
 

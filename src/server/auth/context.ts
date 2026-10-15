@@ -4,27 +4,12 @@ import { forbidden, redirect } from "next/navigation";
 import { auth } from "./index";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
-import { ForbiddenError } from "@/server/errors";
 import type { PermissionKey } from "@/server/rbac/catalogue";
+import type { AuthContext } from "./permissions";
 import { isEmploymentEnded } from "./status";
 
-export type AuthContext = {
-  userId: string;
-  email: string;
-  name: string;
-  companyId: string;
-  companyName: string;
-  companyLogo: string | null;
-  timezone: string;
-  currency: string;
-  workWeek: number[];
-  employeeId: string | null;
-  employeeName: string | null;
-  photoPath: string | null;
-  roles: { id: string; key: string; name: string }[];
-  permissions: ReadonlySet<string>;
-  mustChangePassword: boolean;
-};
+export type { AuthContext } from "./permissions";
+export { can, canAny, assertCan } from "./permissions";
 
 /**
  * Resolve the current user from the session cookie and the database. Memoised per request.
@@ -79,19 +64,8 @@ export async function requireAuth(opts: { allowPendingPasswordChange?: boolean }
   return ctx;
 }
 
-export function can(ctx: AuthContext, key: PermissionKey) {
-  return ctx.permissions.has(key);
-}
 
-export function canAny(ctx: AuthContext, keys: PermissionKey[]) {
-  return keys.some((k) => ctx.permissions.has(k));
-}
 
-/** Services / actions: throw a ForbiddenError (mapped to a friendly error by runAction). */
-export function assertCan(ctx: AuthContext, key: PermissionKey | PermissionKey[]) {
-  const keys = Array.isArray(key) ? key : [key];
-  if (!keys.some((k) => ctx.permissions.has(k))) throw new ForbiddenError();
-}
 
 /** Pages: render the 403 page. */
 export function requirePermission(ctx: AuthContext, key: PermissionKey | PermissionKey[]) {

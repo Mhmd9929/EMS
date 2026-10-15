@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
-import { assertCan, type AuthContext } from "@/server/auth/context";
+import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { writeAudit, diffSnapshots } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/server/errors";
 import { createsDepartmentCycle } from "@/server/hierarchy";

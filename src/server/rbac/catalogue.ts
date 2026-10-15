@@ -21,6 +21,13 @@ export const PERMISSIONS = [
   { key: "employee.import", module: "Employees", description: "Bulk import employees from CSV" },
   { key: "employee.export", module: "Employees", description: "Export employee lists" },
   { key: "employee.sensitive.read", module: "Employees", description: "View unmasked identity documents and bank details" },
+
+  { key: "leave.config.manage", module: "Leave", description: "Configure leave types, policies, public holidays and leave settings" },
+  { key: "leave.request.read.all", module: "Leave", description: "View every leave request and the company-wide leave calendar" },
+  { key: "leave.approve.team", module: "Leave", description: "Approve or reject leave for direct reports (or as a delegate)" },
+  { key: "leave.approve.all", module: "Leave", description: "Act on any approval step, including HR steps" },
+  { key: "leave.balance.adjust", module: "Leave", description: "Manually adjust leave balances (reason required, audited)" },
+  { key: "leave.report.read", module: "Leave", description: "Run leave reports and export balances" },
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number]["key"];
@@ -62,17 +69,23 @@ export const DEFAULT_ROLES: Record<SystemRoleKey, { name: string; description: s
       "employee.import",
       "employee.export",
       "employee.sensitive.read",
+      "leave.config.manage",
+      "leave.request.read.all",
+      "leave.approve.team",
+      "leave.approve.all",
+      "leave.balance.adjust",
+      "leave.report.read",
     ],
   },
   PAYROLL_ADMIN: {
     name: "Payroll Admin",
     description: "Salary structures, payroll runs, payslips, exports",
-    permissions: [...everyone, "employee.read.all", "employee.export", "employee.sensitive.read"],
+    permissions: [...everyone, "employee.read.all", "employee.export", "employee.sensitive.read", "leave.report.read"],
   },
   MANAGER: {
     name: "Manager",
     description: "View own team (direct and indirect reports), approve team leave",
-    permissions: [...everyone, "employee.read.team"],
+    permissions: [...everyone, "employee.read.team", "leave.approve.team"],
   },
   EMPLOYEE: {
     name: "Employee",

@@ -16,31 +16,33 @@ datasource db {
 // ─────────────────────────────── Company ───────────────────────────────
 
 model Company {
-  id                   String   @id @default(cuid())
-  name                 String
-  legalName            String?
-  logoPath             String?
-  addressLine1         String?
-  addressLine2         String?
-  city                 String?
-  emirate              String?
-  country              String   @default("AE")
-  phone                String?
-  email                String?
-  website              String?
-  tradeLicenseNumber   String?
-  currency             String   @default("AED")
-  timezone             String   @default("Asia/Dubai")
+  id                    String   @id @default(cuid())
+  name                  String
+  legalName             String?
+  logoPath              String?
+  addressLine1          String?
+  addressLine2          String?
+  city                  String?
+  emirate               String?
+  country               String   @default("AE")
+  phone                 String?
+  email                 String?
+  website               String?
+  tradeLicenseNumber    String?
+  currency              String   @default("AED")
+  timezone              String   @default("Asia/Dubai")
   /// ISO weekdays that are working days (1 = Monday … 7 = Sunday)
-  workWeek             Int[]    @default([1, 2, 3, 4, 5])
+  workWeek              Int[]    @default([1, 2, 3, 4, 5])
   /// 1 = January
-  fiscalYearStartMonth Int      @default(1)
-  locale               String   @default("en")
-  employeeNumberPrefix  String  @default("EMP-")
-  employeeNumberPadding Int     @default(4)
-  employeeNumberNextSeq Int     @default(1)
-  createdAt            DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+  fiscalYearStartMonth  Int      @default(1)
+  locale                String   @default("en")
+  employeeNumberPrefix  String   @default("EMP-")
+  employeeNumberPadding Int      @default(4)
+  employeeNumberNextSeq Int      @default(1)
+  /// remind approvers (and escalate to HR) when a leave approval waits this many days
+  leaveEscalationDays   Int      @default(3)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
 
   users          User[]
   roles          Role[]
@@ -50,6 +52,10 @@ model Company {
   employees      Employee[]
   auditLogs      AuditLog[]
   publicHolidays PublicHoliday[]
+  leaveTypes     LeaveType[]
+  leavePolicies  LeavePolicy[]
+  leaveRequests  LeaveRequest[]
+  notifications  Notification[]
 }
 
 // ─────────────────────────────── Identity & RBAC ───────────────────────────────
@@ -70,11 +76,16 @@ model User {
   createdAt          DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
 
-  company    Company     @relation(fields: [companyId], references: [id])
-  employee   Employee?
-  roles      UserRole[]
-  authTokens AuthToken[]
-  auditLogs  AuditLog[]  @relation("AuditActor")
+  company                Company              @relation(fields: [companyId], references: [id])
+  employee               Employee?
+  roles                  UserRole[]
+  authTokens             AuthToken[]
+  auditLogs              AuditLog[]           @relation("AuditActor")
+  notifications          Notification[]
+  delegationsGiven       ApprovalDelegation[] @relation("Delegator")
+  delegationsReceived    ApprovalDelegation[] @relation("Delegate")
+  leaveApprovalsAssigned LeaveApproval[]      @relation("ApprovalAssignee")
+  leaveApprovalsActed    LeaveApproval[]      @relation("ApprovalActor")
 
   @@index([companyId])
 }
@@ -88,16 +99,16 @@ model Permission {
 }
 
 model Role {
-  id          String           @id @default(cuid())
+  id          String   @id @default(cuid())
   companyId   String
   /// stable machine key, e.g. SUPER_ADMIN; custom roles get a generated key
   key         String
   name        String
   description String?
   /// system roles cannot be deleted; SUPER_ADMIN permissions are locked
-  isSystem    Boolean          @default(false)
-  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
   company     Company          @relation(fields: [companyId], references: [id])
   permissions RolePermission[]
@@ -171,11 +182,12 @@ model Department {
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @db.Timestamptz(3)
 
-  company   Company      @relation(fields: [companyId], references: [id])
-  parent    Department?  @relation("DepartmentTree", fields: [parentId], references: [id])
-  children  Department[] @relation("DepartmentTree")
-  head      Employee?    @relation("DepartmentHead", fields: [headId], references: [id])
-  employees Employee[]   @relation("EmployeeDepartment")
+  company       Company       @relation(fields: [companyId], references: [id])
+  leavePolicies LeavePolicy[]
+  parent        Department?   @relation("DepartmentTree", fields: [parentId], references: [id])
+  children      Department[]  @relation("DepartmentTree")
+  head          Employee?     @relation("DepartmentHead", fields: [headId], references: [id])
+  employees     Employee[]    @relation("EmployeeDepartment")
 
   @@unique([companyId, code])
   @@index([companyId, parentId])
@@ -193,8 +205,9 @@ model Position {
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
-  company   Company    @relation(fields: [companyId], references: [id])
-  employees Employee[]
+  company       Company       @relation(fields: [companyId], references: [id])
+  employees     Employee[]
+  leavePolicies LeavePolicy[]
 
   @@unique([companyId, code])
 }
@@ -239,9 +252,9 @@ enum Gender {
 }
 
 model Employee {
-  id             String         @id @default(cuid())
+  id             String    @id @default(cuid())
   companyId      String
-  userId         String?        @unique
+  userId         String?   @unique
   employeeNumber String
   firstName      String
   lastName       String
@@ -249,36 +262,36 @@ model Employee {
   workEmail      String
   personalEmail  String?
   phone          String?
-  dateOfBirth    DateTime?      @db.Date
+  dateOfBirth    DateTime? @db.Date
   gender         Gender?
   nationality    String?
   maritalStatus  String?
   address        String?
   photoPath      String?
 
-  joinDate        DateTime       @db.Date
-  probationEndDate DateTime?     @db.Date
-  employmentType  EmploymentType @default(FULL_TIME)
-  status          EmployeeStatus @default(ACTIVE)
-  departmentId    String?
-  positionId      String?
-  managerId       String?
-  locationId      String?
+  joinDate         DateTime       @db.Date
+  probationEndDate DateTime?      @db.Date
+  employmentType   EmploymentType @default(FULL_TIME)
+  status           EmployeeStatus @default(ACTIVE)
+  departmentId     String?
+  positionId       String?
+  managerId        String?
+  locationId       String?
 
   // UAE identity documents
-  emiratesIdNumber  String?
-  emiratesIdExpiry  DateTime? @db.Date
-  passportNumber    String?
-  passportExpiry    DateTime? @db.Date
-  visaNumber        String?
-  visaExpiry        DateTime? @db.Date
-  labourCardNumber  String?
-  labourCardExpiry  DateTime? @db.Date
+  emiratesIdNumber String?
+  emiratesIdExpiry DateTime? @db.Date
+  passportNumber   String?
+  passportExpiry   DateTime? @db.Date
+  visaNumber       String?
+  visaExpiry       DateTime? @db.Date
+  labourCardNumber String?
+  labourCardExpiry DateTime? @db.Date
 
   // Bank (WPS)
-  bankName          String?
-  iban              String?
-  bankAccountName   String?
+  bankName        String?
+  iban            String?
+  bankAccountName String?
 
   // Termination
   lastWorkingDay    DateTime? @db.Date
@@ -299,6 +312,8 @@ model Employee {
   directReports     Employee[]         @relation("ReportingLine")
   headOfDepartments Department[]       @relation("DepartmentHead")
   emergencyContacts EmergencyContact[]
+  leaveRequests     LeaveRequest[]
+  leaveLedger       LeaveLedgerEntry[]
 
   @@unique([companyId, employeeNumber])
   @@unique([companyId, workEmail])
@@ -365,4 +380,274 @@ model AuditLog {
   @@index([companyId, createdAt])
   @@index([companyId, entityType, entityId])
   @@index([companyId, actorUserId])
+}
+
+// ─────────────────────────────── Leave (Phase 2) ───────────────────────────────
+
+enum AccrualMethod {
+  /// full entitlement credited at the start of the leave year (or on becoming eligible)
+  UPFRONT
+  /// entitlement / 12 credited for each month of eligible service
+  MONTHLY
+  /// no balance tracking (e.g. unpaid leave)
+  NONE
+}
+
+model LeaveType {
+  id                          String        @id @default(cuid())
+  companyId                   String
+  name                        String
+  code                        String
+  description                 String?
+  /// hex colour used on calendars
+  color                       String        @default("#0d9488")
+  isPaid                      Boolean       @default(true)
+  annualEntitlement           Decimal       @default(0) @db.Decimal(6, 2)
+  accrualMethod               AccrualMethod @default(UPFRONT)
+  /// months of service before the employee accrues / may use this leave
+  accrualStartAfterMonths     Int           @default(0)
+  /// pro-rate UPFRONT entitlement for joiners in the year
+  prorateUpfront              Boolean       @default(false)
+  /// max days carried into the next year (0 = none)
+  carryForwardMax             Decimal       @default(0) @db.Decimal(6, 2)
+  /// carried days expire this many months into the new year (null = never)
+  carryForwardExpiryMonths    Int?
+  maxConsecutiveDays          Int?
+  /// attachment required when a request exceeds this many days (0 = always, null = never)
+  requiresAttachmentAfterDays Int?
+  minNoticeDays               Int           @default(0)
+  allowHalfDay                Boolean       @default(true)
+  allowNegativeBalance        Boolean       @default(false)
+  /// null = everyone
+  genderEligibility           Gender?
+  /// count weekends inside the range as leave days (e.g. maternity = calendar days)
+  countWeekends               Boolean       @default(false)
+  /// count public holidays inside the range as leave days
+  countHolidays               Boolean       @default(false)
+  /// approval steps in order, e.g. ["MANAGER","HR"]; empty = auto-approve
+  approvalChain               String[]      @default(["MANAGER"])
+  isActive                    Boolean       @default(true)
+  /// seeded default — editable, flagged so HR knows its origin
+  isSystemDefault             Boolean       @default(false)
+  sortOrder                   Int           @default(0)
+  createdAt                   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt                   DateTime      @updatedAt @db.Timestamptz(3)
+
+  company  Company            @relation(fields: [companyId], references: [id])
+  policies LeavePolicy[]
+  requests LeaveRequest[]
+  ledger   LeaveLedgerEntry[]
+
+  @@unique([companyId, code])
+}
+
+/// Overrides a leave type's entitlement/eligibility for a group. Most specific match wins.
+model LeavePolicy {
+  id                String          @id @default(cuid())
+  companyId         String
+  name              String
+  leaveTypeId       String
+  departmentId      String?
+  positionId        String?
+  employmentType    EmploymentType?
+  /// false = this group is not eligible for the leave type
+  isEligible        Boolean         @default(true)
+  /// null = use the leave type's default
+  annualEntitlement Decimal?        @db.Decimal(6, 2)
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @db.Timestamptz(3)
+
+  company    Company     @relation(fields: [companyId], references: [id])
+  leaveType  LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  position   Position?   @relation(fields: [positionId], references: [id])
+
+  @@index([companyId, leaveTypeId])
+}
+
+enum LeaveLedgerKind {
+  ENTITLEMENT
+  ACCRUAL
+  CARRY_FORWARD
+  CARRY_OUT
+  LAPSE
+  CARRY_FORWARD_EXPIRY
+  ADJUSTMENT
+}
+
+/// Every credit/debit to a balance other than leave taken (which comes from request days).
+model LeaveLedgerEntry {
+  id            String          @id @default(cuid())
+  companyId     String
+  employeeId    String
+  leaveTypeId   String
+  /// leave year the entry belongs to
+  year          Int
+  kind          LeaveLedgerKind
+  /// positive = credit, negative = debit
+  days          Decimal         @db.Decimal(7, 2)
+  effectiveDate DateTime        @db.Date
+  /// idempotency key for system entries, e.g. acc-2026-03, ent-2026, cf-2026; null for manual adjustments
+  periodKey     String?
+  /// carried-forward days expire on this date
+  expiresOn     DateTime?       @db.Date
+  reason        String?
+  createdById   String?
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, periodKey])
+  @@index([companyId, year])
+  @@index([employeeId, leaveTypeId, year])
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  /// approved leave the employee asked to cancel; days stay booked until decided
+  CANCELLATION_REQUESTED
+}
+
+enum HalfDayPeriod {
+  NONE
+  FIRST_HALF
+  SECOND_HALF
+}
+
+model LeaveRequest {
+  id                 String             @id @default(cuid())
+  companyId          String
+  employeeId         String
+  leaveTypeId        String
+  startDate          DateTime           @db.Date
+  endDate            DateTime           @db.Date
+  /// only for single-day requests
+  halfDay            HalfDayPeriod      @default(NONE)
+  days               Decimal            @db.Decimal(6, 2)
+  reason             String?
+  attachmentPath     String?
+  status             LeaveRequestStatus @default(PENDING)
+  /// index into approvalChain of the step currently waiting
+  currentStep        Int                @default(0)
+  cancellationReason String?
+  decidedAt          DateTime?          @db.Timestamptz(3)
+  createdById        String?
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
+
+  company   Company           @relation(fields: [companyId], references: [id])
+  employee  Employee          @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType         @relation(fields: [leaveTypeId], references: [id])
+  dayRows   LeaveRequestDay[]
+  approvals LeaveApproval[]
+
+  @@index([companyId, status])
+  @@index([employeeId, startDate])
+  @@index([companyId, startDate, endDate])
+}
+
+/// One row per counted day (0.5 or 1). Drives balances per year, overlaps, calendars and payroll.
+model LeaveRequestDay {
+  id        String   @id @default(cuid())
+  requestId String
+  date      DateTime @db.Date
+  amount    Decimal  @db.Decimal(3, 2)
+
+  request LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, date])
+  @@index([date])
+}
+
+enum ApprovalKind {
+  REQUEST
+  CANCELLATION
+}
+
+enum ApprovalDecision {
+  PENDING
+  APPROVED
+  REJECTED
+  SKIPPED
+}
+
+model LeaveApproval {
+  id             String           @id @default(cuid())
+  requestId      String
+  kind           ApprovalKind     @default(REQUEST)
+  step           Int
+  /// MANAGER or HR
+  approverRole   String
+  /// resolved manager for MANAGER steps (null = HR picks it up)
+  approverUserId String?
+  decision       ApprovalDecision @default(PENDING)
+  actedById      String?
+  /// set when the action was taken as someone's delegate
+  onBehalfOfId   String?
+  comment        String?
+  activatedAt    DateTime?        @db.Timestamptz(3)
+  lastReminderAt DateTime?        @db.Timestamptz(3)
+  actedAt        DateTime?        @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+
+  request  LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver User?        @relation("ApprovalAssignee", fields: [approverUserId], references: [id])
+  actedBy  User?        @relation("ApprovalActor", fields: [actedById], references: [id])
+
+  @@index([approverUserId, decision])
+  @@index([requestId])
+}
+
+model ApprovalDelegation {
+  id          String   @id @default(cuid())
+  companyId   String
+  delegatorId String
+  delegateId  String
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  reason      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  delegator User @relation("Delegator", fields: [delegatorId], references: [id])
+  delegate  User @relation("Delegate", fields: [delegateId], references: [id])
+
+  @@index([delegateId, startDate, endDate])
+  @@index([delegatorId])
+}
+
+// ─────────────────────────────── Notifications ───────────────────────────────
+
+enum EmailStatus {
+  NONE
+  PENDING
+  SENT
+  FAILED
+}
+
+/// In-app notification; doubles as the email outbox (worker retries PENDING emails).
+model Notification {
+  id            String      @id @default(cuid())
+  companyId     String
+  userId        String
+  type          String
+  title         String
+  body          String
+  link          String?
+  readAt        DateTime?   @db.Timestamptz(3)
+  emailStatus   EmailStatus @default(NONE)
+  emailAttempts Int         @default(0)
+  emailedAt     DateTime?   @db.Timestamptz(3)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@index([emailStatus, createdAt])
 }

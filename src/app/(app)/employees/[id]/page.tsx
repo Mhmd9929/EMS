@@ -20,6 +20,10 @@ import { TerminateDialog, CancelTerminationButton } from "@/components/employees
 import { EmergencyContacts } from "@/components/employees/emergency-contacts";
 import { AccountActions } from "@/components/employees/account-actions";
 import { PhotoUpload } from "@/components/employees/photo-upload";
+import { getEmployeeBalances } from "@/server/services/leave/balance.service";
+import { recentRequestsFor } from "@/server/services/leave/request.service";
+import { BalanceCards } from "@/components/leave/balance-cards";
+import { LeaveStatusBadge, LeaveTypeLabel } from "@/components/leave/leave-badges";
 
 export const metadata: Metadata = { title: "Employee" };
 
@@ -47,6 +51,43 @@ function ExpiryBadge({ date, today }: { date: Date | null; today: Date }) {
   );
 }
 
+async function LeaveSection({ ctx, employeeId, year }: { ctx: Awaited<ReturnType<typeof requireAuth>>; employeeId: string; year: number }) {
+  const [balances, requests] = await Promise.all([getEmployeeBalances(ctx, employeeId, year), recentRequestsFor(ctx, employeeId).catch(() => null)]);
+  return (
+    <div className="space-y-4">
+      <h2 className="text-base font-semibold">Balances {year}</h2>
+      <BalanceCards balances={balances} />
+      {requests && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent requests</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {requests.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No leave requests yet.</p>
+            ) : (
+              <ul className="divide-y text-sm">
+                {requests.map((r) => (
+                  <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                    <Link href={`/leave/requests/${r.id}`} className="hover:underline">
+                      <LeaveTypeLabel name={r.leaveType.name} color={r.leaveType.color} />
+                    </Link>
+                    <span className="text-muted-foreground">
+                      {formatDate(r.startDate)}
+                      {r.endDate.getTime() !== r.startDate.getTime() && ` – ${formatDate(r.endDate)}`} · {r.days}d
+                    </span>
+                    <LeaveStatusBadge status={r.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default async function EmployeeDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
   const { id } = await params;
@@ -70,6 +111,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const requested = first(sp.tab) ?? "overview";
   const tab = tabs.some((t) => t.key === requested) ? requested : "overview";
   const name = `${e.preferredName || e.firstName} ${e.lastName}`;
+  const LeaveTab = () => <LeaveSection ctx={ctx} employeeId={e.id} year={today.getUTCFullYear()} />;
   const serviceYears = yearsBetween(e.joinDate, e.lastWorkingDay && e.lastWorkingDay < today ? e.lastWorkingDay : today);
 
   return (
@@ -295,13 +337,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
         </Card>
       )}
 
-      {tab === "leave" && (
-        <Card>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">Leave balances and requests will appear here once the Leave module (Phase 2) is enabled.</p>
-          </CardContent>
-        </Card>
-      )}
+      {tab === "leave" && <LeaveTab />}
 
       {tab === "payroll" && (
         <Card>

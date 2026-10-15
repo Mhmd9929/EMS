@@ -35,7 +35,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npx prisma migrate deploy
-      - run: npx tsx prisma/seed.ts
+      - run: npx tsx --conditions=react-server prisma/seed.ts
       - run: npm run test:integration
       - run: npm run build
       - run: npx playwright install --with-deps chromium

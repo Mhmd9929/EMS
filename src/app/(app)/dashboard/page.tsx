@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, FileWarning, Hourglass, Mail, UserMinus, UserPlus, Users, Wallet, Plane } from "lucide-react";
+import { CalendarDays, FileWarning, Mail, UserMinus, UserPlus, Users, Wallet, Plane } from "lucide-react";
 import { requireAuth, can } from "@/server/auth/context";
 import { getEmployeeDashboard, getHrDashboard, getManagerDashboard, getRecentActivity } from "@/server/services/dashboard.service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,10 @@ import { Avatar } from "@/components/ui/avatar";
 import { daysBetween, formatDate, formatDateTime } from "@/lib/dates";
 import { labelOf, EMPLOYMENT_TYPES } from "@/lib/constants";
 import { EmptyState } from "@/components/empty-state";
+import { getEmployeeBalances } from "@/server/services/leave/balance.service";
+import { approvalInbox, whoIsOff } from "@/server/services/leave/request.service";
+import { LeaveTypeLabel } from "@/components/leave/leave-badges";
+import { CheckSquare } from "lucide-react";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -39,6 +43,13 @@ export default async function DashboardPage() {
     can(ctx, "audit.read") ? getRecentActivity(ctx) : null,
   ]);
   const firstName = (ctx.employeeName ?? ctx.name).split(" ")[0];
+  const canApprove = can(ctx, "leave.approve.team") || can(ctx, "leave.approve.all");
+  const [balances, inbox, offToday] = await Promise.all([
+    ctx.employeeId ? getEmployeeBalances(ctx, ctx.employeeId, me.today.getUTCFullYear()) : null,
+    canApprove ? approvalInbox(ctx, "mine") : null,
+    isHr || isManager ? whoIsOff(ctx, me.today) : null,
+  ]);
+  const shownBalances = (balances ?? []).filter((b) => b.eligible && b.tracked && b.accrued + b.carriedForward + b.adjustments > 0).slice(0, 3);
 
   return (
     <div className="space-y-8">
@@ -62,7 +73,28 @@ export default async function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground text-sm">Leave management arrives in Phase 2. Your balances will appear here.</p>
+              {shownBalances.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No leave balance yet.</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {shownBalances.map((b) => (
+                    <li key={b.leaveType.id} className="flex justify-between gap-2">
+                      <LeaveTypeLabel name={b.leaveType.name} color={b.leaveType.color} />
+                      <span className="tabular-nums">
+                        <strong>{b.available}</strong> <span className="text-muted-foreground">days{b.pending ? ` · ${b.pending} pending` : ""}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-3 flex gap-3 text-sm">
+                <Link href="/leave/apply" className="text-primary hover:underline">
+                  Apply for leave
+                </Link>
+                <Link href="/leave" className="text-primary hover:underline">
+                  All balances
+                </Link>
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -125,7 +157,7 @@ export default async function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <Stat label="Direct reports" value={mgr.direct.length} icon={Users} />
             <Stat label="Whole team (incl. indirect)" value={mgr.totalTeam} icon={Users} />
-            <Stat label="Probation ending ≤ 30 days" value={mgr.probation.length} icon={Hourglass} />
+            <Stat label="Leave approvals waiting" value={inbox?.length ?? 0} icon={CheckSquare} href="/leave/approvals" hint={`${mgr.probation.length} probation(s) ending in 30 days`} />
           </div>
           <Card>
             <CardContent>
@@ -149,6 +181,35 @@ export default async function DashboardPage() {
         </section>
       )}
 
+      {offToday && offToday.length > 0 && (
+        <section aria-labelledby="off-heading" className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 id="off-heading" className="text-lg font-semibold">
+              Off today
+            </h2>
+            <Link href="/leave/calendar" className="text-primary text-sm hover:underline">
+              Leave calendar
+            </Link>
+          </div>
+          <Card>
+            <CardContent>
+              <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                {offToday.map((r) => (
+                  <li key={r.id} className="flex items-center justify-between gap-2">
+                    <Link href={`/leave/requests/${r.id}`} className="hover:underline">
+                      {r.employee.preferredName || r.employee.firstName} {r.employee.lastName}
+                    </Link>
+                    <span className="text-muted-foreground text-xs">
+                      <LeaveTypeLabel name={r.leaveType.name} color={r.leaveType.color} /> · back {formatDate(new Date(r.endDate.getTime() + 86_400_000))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
       {/* ── HR ── */}
       {hr && (
         <section aria-labelledby="hr-heading" className="space-y-3">
@@ -159,7 +220,7 @@ export default async function DashboardPage() {
             <Stat label="Headcount" value={hr.headcount} icon={Users} hint={`${hr.onLeave} on leave`} href="/employees" />
             <Stat label="Joiners this month" value={hr.joiners.length} icon={UserPlus} />
             <Stat label="Leavers this month" value={hr.leavers.length} icon={UserMinus} hint={`${hr.scheduledTerminations} scheduled terminations`} />
-            <Stat label="Pending invitations" value={hr.pendingInvites} icon={Mail} hint="Accounts not yet activated" href="/admin/users?state=pending" />
+            <Stat label="Pending invitations" value={hr.pendingInvites} icon={Mail} hint={`Accounts not yet activated · ${offToday?.length ?? 0} off today`} href="/admin/users?state=pending" />
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-1">

@@ -1,7 +1,7 @@
 import "server-only";
 import { Prisma, type EmployeeStatus, type EmploymentType } from "@prisma/client";
 import { db, type DbClient } from "@/server/db";
-import { assertCan, type AuthContext } from "@/server/auth/context";
+import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { getEmployeeAccess, getVisibleEmployeeScope, type EmployeeAccess } from "@/server/rbac/scope";
 import { writeAudit, diffSnapshots } from "@/server/audit";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";

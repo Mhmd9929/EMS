@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Building2, Briefcase, FileUp, LayoutDashboard, MapPin, Network, ScrollText, Settings, ShieldCheck, UserCircle, Users, UsersRound, BookUser,
+  Plane, CheckSquare, CalendarDays, ListChecks, Scale, BarChart3, SlidersHorizontal,
 } from "lucide-react";
 import type { NavIcon } from "./nav";
 import { cn } from "@/lib/utils";
@@ -21,9 +22,16 @@ const ICONS: Record<NavIcon, React.ComponentType<{ className?: string }>> = {
   roles: ShieldCheck,
   audit: ScrollText,
   settings: Settings,
+  leave: Plane,
+  approvals: CheckSquare,
+  calendar: CalendarDays,
+  requests: ListChecks,
+  balances: Scale,
+  reports: BarChart3,
+  leaveSettings: SlidersHorizontal,
 };
 
-export type SidebarGroup = { label: string; items: { href: string; label: string; icon: NavIcon }[] };
+export type SidebarGroup = { label: string; items: { href: string; label: string; icon: NavIcon; badge?: number }[] };
 
 export function SidebarNav({ groups, onNavigate }: { groups: SidebarGroup[]; onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -53,6 +61,11 @@ export function SidebarNav({ groups, onNavigate }: { groups: SidebarGroup[]; onN
               >
                 <Icon className="size-4" aria-hidden />
                 {item.label}
+                {!!item.badge && (
+                  <span className="bg-primary text-primary-foreground ml-auto rounded-full px-1.5 text-[11px] leading-5 font-semibold tabular-nums" aria-label={`${item.badge} waiting`}>
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

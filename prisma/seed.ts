@@ -7,6 +7,7 @@ import { PrismaClient, type EmploymentType, type Gender } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DEFAULT_ROLES, type SystemRoleKey } from "../src/server/rbac/catalogue";
 import { syncPermissions } from "./sync-permissions";
+import { seedLeave } from "./seed-leave";
 
 const db = new PrismaClient();
 
@@ -407,6 +408,9 @@ async function main() {
   await db.publicHoliday.createMany({
     data: HOLIDAYS.map(([date, name]) => ({ companyId: company.id, name, date: d(date), year: Number(date.slice(0, 4)) })),
   });
+
+  console.log("Seeding leave…");
+  await seedLeave(db, company.id, today, employeeIds);
 
   const adminUser = await db.user.findUniqueOrThrow({ where: { email: `admin@${DOMAIN}` } });
   await db.auditLog.create({

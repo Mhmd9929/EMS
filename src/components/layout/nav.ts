@@ -2,9 +2,10 @@ import type { PermissionKey } from "@/server/rbac/catalogue";
 
 export type NavIcon =
   | "dashboard" | "directory" | "orgchart" | "profile" | "employees" | "import"
-  | "departments" | "positions" | "locations" | "users" | "roles" | "audit" | "settings";
+  | "departments" | "positions" | "locations" | "users" | "roles" | "audit" | "settings"
+  | "leave" | "approvals" | "calendar" | "requests" | "balances" | "reports" | "leaveSettings";
 
-export type NavItem = { href: string; labelKey: string; icon: NavIcon; anyOf?: PermissionKey[]; requiresEmployee?: boolean };
+export type NavItem = { href: string; labelKey: string; icon: NavIcon; anyOf?: PermissionKey[]; requiresEmployee?: boolean; badge?: "approvals" };
 export type NavGroup = { labelKey: string; items: NavItem[] };
 
 export const NAV: NavGroup[] = [
@@ -15,6 +16,18 @@ export const NAV: NavGroup[] = [
       { href: "/profile", labelKey: "profile", icon: "profile", requiresEmployee: true },
       { href: "/directory", labelKey: "directory", icon: "directory", anyOf: ["directory.read"] },
       { href: "/org-chart", labelKey: "orgChart", icon: "orgchart", anyOf: ["orgchart.read"] },
+    ],
+  },
+  {
+    labelKey: "leave",
+    items: [
+      { href: "/leave", labelKey: "myLeave", icon: "leave", requiresEmployee: true },
+      { href: "/leave/approvals", labelKey: "approvals", icon: "approvals", anyOf: ["leave.approve.team", "leave.approve.all"], badge: "approvals" },
+      { href: "/leave/calendar", labelKey: "leaveCalendar", icon: "calendar" },
+      { href: "/leave/requests", labelKey: "allRequests", icon: "requests", anyOf: ["leave.request.read.all", "leave.approve.team"] },
+      { href: "/leave/balances", labelKey: "balances", icon: "balances", anyOf: ["leave.balance.adjust", "leave.report.read"] },
+      { href: "/leave/reports", labelKey: "reports", icon: "reports", anyOf: ["leave.report.read"] },
+      { href: "/leave/settings", labelKey: "leaveSettings", icon: "leaveSettings", anyOf: ["leave.config.manage"] },
     ],
   },
   {

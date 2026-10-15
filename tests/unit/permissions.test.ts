@@ -55,7 +55,7 @@ describe("navigation visibility", () => {
   const hrefs = (perms: string[], hasEmployee = true) => visibleNav(new Set(perms), hasEmployee).flatMap((g) => g.items.map((i) => i.href));
 
   it("shows an employee only self-service pages", () => {
-    expect(hrefs(DEFAULT_ROLES.EMPLOYEE.permissions)).toEqual(["/dashboard", "/profile", "/directory", "/org-chart"]);
+    expect(hrefs(DEFAULT_ROLES.EMPLOYEE.permissions)).toEqual(["/dashboard", "/profile", "/directory", "/org-chart", "/leave", "/leave/calendar"]);
   });
 
   it("shows admin pages to Super Admin", () => {
