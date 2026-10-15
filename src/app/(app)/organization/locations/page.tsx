@@ -44,7 +44,7 @@ export default async function LocationsPage({ searchParams }: { searchParams: Pr
                 <TableHead className="hidden md:table-cell">Emirate</TableHead>
                 <TableHead>People</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">
+                <TableHead className="text-end">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -61,7 +61,7 @@ export default async function LocationsPage({ searchParams }: { searchParams: Pr
                   <TableCell className="hidden md:table-cell">{l.emirate ?? "—"}</TableCell>
                   <TableCell className="tabular-nums">{l._count.employees}</TableCell>
                   <TableCell>{l.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     <LocationDialog location={{ id: l.id, name: l.name, code: l.code, address: l.address, city: l.city, emirate: l.emirate, country: l.country, isActive: l.isActive }} />
                   </TableCell>
                 </TableRow>

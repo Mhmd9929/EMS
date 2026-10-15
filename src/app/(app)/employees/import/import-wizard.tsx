@@ -59,7 +59,7 @@ export function ImportWizard() {
               type="file"
               accept=".csv,text/csv"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:mr-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
+              className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:me-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
             />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -84,7 +84,7 @@ export function ImportWizard() {
                 <Badge variant="secondary">{result.total} rows</Badge>
                 <Badge variant="success">{rows.length - result.errorCount} valid</Badge>
                 <Badge variant={result.errorCount ? "destructive" : "secondary"}>{result.errorCount} with errors</Badge>
-                <label className="ml-auto flex items-center gap-2">
+                <label className="ms-auto flex items-center gap-2">
                   <Checkbox checked={showValid} onChange={(e) => setShowValid(e.target.checked)} /> Show valid rows
                 </label>
               </div>

@@ -95,7 +95,7 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
                 <TableRow>
                   <TableHead>From</TableHead>
                   <TableHead>Components</TableHead>
-                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-end">Gross</TableHead>
                   <TableHead className="hidden md:table-cell">Reason</TableHead>
                   <TableHead className="sr-only">Actions</TableHead>
                 </TableRow>
@@ -106,12 +106,12 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
                     <TableCell className="whitespace-nowrap">
                       {formatDate(h.effectiveFrom)}
                       {h.status === "current" && (
-                        <Badge variant="success" className="ml-2">
+                        <Badge variant="success" className="ms-2">
                           Current
                         </Badge>
                       )}
                       {h.status === "scheduled" && (
-                        <Badge variant="warning" className="ml-2">
+                        <Badge variant="warning" className="ms-2">
                           Scheduled
                         </Badge>
                       )}
@@ -119,11 +119,11 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
                     <TableCell className="text-xs">
                       {h.error ? <span className="text-destructive">{h.error}</span> : h.lines.map((l) => `${l.name} ${formatMoney(l.amount, cur)}`).join(" · ")}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="text-end font-medium">
                       <Money minor={h.gross} currency={cur} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{h.reason}</TableCell>
-                    <TableCell className="text-right">{canManage && h.status === "scheduled" && <DeleteSalaryButton structureId={h.id} employeeId={e.id} label={formatDate(h.effectiveFrom)} />}</TableCell>
+                    <TableCell className="text-end">{canManage && h.status === "scheduled" && <DeleteSalaryButton structureId={h.id} employeeId={e.id} label={formatDate(h.effectiveFrom)} />}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -230,7 +230,7 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Payslips</CardTitle>
           {self && (
-            <Link href="/payslips" className="text-primary text-sm hover:underline">
+            <Link href="/payslips" className="text-link text-sm hover:underline">
               All my payslips
             </Link>
           )}

@@ -75,7 +75,7 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
       <form onSubmit={onSubmit} className="grid gap-4 lg:col-span-3" encType="multipart/form-data">
         <FormError state={state} />
         {state && !state.ok && state.fieldErrors?._form && state.fieldErrors._form.length > 1 && (
-          <ul className="text-destructive list-disc pl-5 text-sm">
+          <ul className="text-destructive list-disc ps-5 text-sm">
             {state.fieldErrors._form.slice(1).map((e) => (
               <li key={e}>{e}</li>
             ))}
@@ -136,7 +136,7 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
                 name="attachment"
                 type="file"
                 accept="application/pdf,image/png,image/jpeg,image/webp"
-                className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:mr-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
+                className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:me-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
               />
               <p className="text-muted-foreground text-xs">PDF, PNG, JPG or WebP up to 5 MB{preview?.attachmentRequired ? " — required for this request" : ""}.</p>
             </div>
@@ -183,17 +183,17 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
                 <p className="text-muted-foreground mb-1 text-xs font-medium uppercase">Balance {b.year}</p>
                 <dl className="grid grid-cols-2 gap-y-1 tabular-nums">
                   <dt>Available now</dt>
-                  <dd className="text-right">{b.available}</dd>
+                  <dd className="text-end">{b.available}</dd>
                   {b.projected > 0 && (
                     <>
                       <dt>Accrues / carries over by then</dt>
-                      <dd className="text-right">+{b.projected}</dd>
+                      <dd className="text-end">+{b.projected}</dd>
                     </>
                   )}
                   <dt>This request</dt>
-                  <dd className="text-right">−{b.requested}</dd>
+                  <dd className="text-end">−{b.requested}</dd>
                   <dt className="font-medium">Remaining after</dt>
-                  <dd className={`text-right font-semibold ${b.after < 0 ? "text-destructive" : ""}`}>{b.after}</dd>
+                  <dd className={`text-end font-semibold ${b.after < 0 ? "text-destructive" : ""}`}>{b.after}</dd>
                 </dl>
               </div>
             ))}
@@ -204,7 +204,7 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
               </p>
             ))}
             {preview?.warnings.map((w) => (
-              <p key={w} className="flex gap-2 text-amber-700 dark:text-amber-400">
+              <p key={w} className="flex gap-2 text-warning">
                 <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
                 {w}
               </p>
@@ -229,7 +229,7 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
                 Approval:{" "}
                 {preview.approvalSteps.length ? (
                   preview.approvalSteps.map((s, i) => (
-                    <Badge key={s} variant="outline" className="mr-1">
+                    <Badge key={s} variant="outline" className="me-1">
                       {i + 1}. {s === "MANAGER" ? "Manager" : "HR"}
                     </Badge>
                   ))

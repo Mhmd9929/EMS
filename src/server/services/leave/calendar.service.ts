@@ -1,4 +1,5 @@
 import "server-only";
+import { brand } from "@/theme/brand";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { assertCan, type AuthContext } from "@/server/auth/permissions";
@@ -60,7 +61,7 @@ export async function leaveCalendar(ctx: AuthContext, input: { year: number; mon
     row[toDateInput(d.date)] = {
       requestId: own || input.scope !== "mine" ? d.request.id : null,
       label: own ? d.request.leaveType.name : "On leave",
-      color: own ? d.request.leaveType.color : "#64748b",
+      color: own ? d.request.leaveType.color : brand.neutralLeaveColor,
       status: d.request.status === "PENDING" ? "PENDING" : "APPROVED",
       amount: num(d.amount),
     };

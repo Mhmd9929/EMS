@@ -11,6 +11,7 @@ import { Field } from "@/components/forms/field";
 import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Checkbox, Input, NativeSelect, Textarea } from "@/components/ui/input";
+import { brand } from "@/theme/brand";
 
 type T = {
   id: string; name: string; code: string; description: string | null; color: string; isPaid: boolean; annualEntitlement: number;
@@ -79,7 +80,7 @@ function TypeForm({ type, onDone }: { type?: T; onDone: () => void }) {
             <Input defaultValue={type?.code} className="uppercase" maxLength={10} />
           </Field>
           <Field label="Colour" name="color" error={err("color")}>
-            <Input type="color" defaultValue={type?.color ?? "#0d9488"} className="h-9 p-1" />
+            <Input type="color" defaultValue={type?.color ?? brand.defaultLeaveTypeColor} className="h-9 p-1" />
           </Field>
           <Field label="Description" name="description" error={err("description")} className="sm:col-span-4">
             <Textarea rows={2} defaultValue={type?.description ?? ""} />

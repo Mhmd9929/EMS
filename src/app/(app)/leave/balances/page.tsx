@@ -66,14 +66,14 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
           <TableHeader>
             <TableRow>
               <SortHeader label="Employee" sortKey="name" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-              <TableHead className="text-right">Entitled</TableHead>
-              <TableHead className="text-right">Accrued</TableHead>
-              <TableHead className="hidden text-right md:table-cell">Carried fwd</TableHead>
-              <TableHead className="hidden text-right md:table-cell">Adjusted</TableHead>
-              <TableHead className="hidden text-right lg:table-cell">Expired</TableHead>
-              <TableHead className="text-right">Taken</TableHead>
-              <TableHead className="text-right">Pending</TableHead>
-              <SortHeader label="Available" sortKey="available" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="text-right" />
+              <TableHead className="text-end">Entitled</TableHead>
+              <TableHead className="text-end">Accrued</TableHead>
+              <TableHead className="hidden text-end md:table-cell">Carried fwd</TableHead>
+              <TableHead className="hidden text-end md:table-cell">Adjusted</TableHead>
+              <TableHead className="hidden text-end lg:table-cell">Expired</TableHead>
+              <TableHead className="text-end">Taken</TableHead>
+              <TableHead className="text-end">Pending</TableHead>
+              <SortHeader label="Available" sortKey="available" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="text-end" />
               {canAdjust && (
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -92,16 +92,16 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
                     {e.employeeNumber} · {e.department?.name ?? "—"}
                   </p>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{b.eligible ? b.entitled : <span className="text-muted-foreground text-xs">not eligible</span>}</TableCell>
-                <TableCell className="text-right tabular-nums">{n(b.accrued)}</TableCell>
-                <TableCell className="hidden text-right tabular-nums md:table-cell">{n(b.carriedForward)}</TableCell>
-                <TableCell className="hidden text-right tabular-nums md:table-cell">{n(b.adjustments)}</TableCell>
-                <TableCell className="hidden text-right tabular-nums lg:table-cell">{n(b.expired)}</TableCell>
-                <TableCell className="text-right tabular-nums">{n(b.taken)}</TableCell>
-                <TableCell className="text-right tabular-nums">{n(b.pending)}</TableCell>
-                <TableCell className={`text-right font-semibold tabular-nums ${b.available < 0 ? "text-destructive" : ""}`}>{b.available}</TableCell>
+                <TableCell className="text-end tabular-nums">{b.eligible ? b.entitled : <span className="text-muted-foreground text-xs">not eligible</span>}</TableCell>
+                <TableCell className="text-end tabular-nums">{n(b.accrued)}</TableCell>
+                <TableCell className="hidden text-end tabular-nums md:table-cell">{n(b.carriedForward)}</TableCell>
+                <TableCell className="hidden text-end tabular-nums md:table-cell">{n(b.adjustments)}</TableCell>
+                <TableCell className="hidden text-end tabular-nums lg:table-cell">{n(b.expired)}</TableCell>
+                <TableCell className="text-end tabular-nums">{n(b.taken)}</TableCell>
+                <TableCell className="text-end tabular-nums">{n(b.pending)}</TableCell>
+                <TableCell className={`text-end font-semibold tabular-nums ${b.available < 0 ? "text-destructive" : ""}`}>{b.available}</TableCell>
                 {canAdjust && (
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     {e.id !== ctx.employeeId && <AdjustBalanceDialog employeeId={e.id} employeeName={`${e.preferredName || e.firstName} ${e.lastName}`} leaveTypeId={typeId} leaveTypeName={result.type.name} year={year} />}
                   </TableCell>
                 )}

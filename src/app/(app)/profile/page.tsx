@@ -73,7 +73,7 @@ export default async function ProfilePage() {
                 {rows.map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-3">
                     <dt className="text-muted-foreground shrink-0">{k}</dt>
-                    <dd className="truncate text-right">{v ?? "—"}</dd>
+                    <dd className="truncate text-end">{v ?? "—"}</dd>
                   </div>
                 ))}
               </dl>

@@ -69,7 +69,7 @@ function SalaryForm({ employeeId, components, defaultDate, currency, onDone }: {
               {c.calcType === "FORMULA" ? (
                 <span className="text-muted-foreground font-mono text-xs">{c.formula}</span>
               ) : (
-                <Input name={included[c.id] ? "amounts" : undefined} aria-label={`${c.name} amount`} defaultValue={c.current ?? ""} inputMode="decimal" placeholder="0.00" disabled={!included[c.id]} className="text-right" />
+                <Input name={included[c.id] ? "amounts" : undefined} aria-label={`${c.name} amount`} defaultValue={c.current ?? ""} inputMode="decimal" placeholder="0.00" disabled={!included[c.id]} className="text-end" />
               )}
               {included[c.id] && c.calcType === "FORMULA" && <input type="hidden" name="amounts" value="" />}
             </div>

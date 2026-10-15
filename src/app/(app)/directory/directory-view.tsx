@@ -43,7 +43,7 @@ export function DirectoryView({ people, view, sp, sort, dir }: { people: PersonC
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {people.map((p) => (
             <li key={p.id}>
-              <button onClick={() => setSelected(p)} className="bg-card hover:bg-accent/50 flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors">
+              <button onClick={() => setSelected(p)} className="bg-card hover:bg-accent/50 flex w-full items-center gap-3 rounded-xl border p-4 text-start transition-colors">
                 <Avatar employeeId={p.id} hasPhoto={p.hasPhoto} firstName={p.firstName} lastName={p.lastName} size={48} />
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{p.name}</span>
@@ -70,7 +70,7 @@ export function DirectoryView({ people, view, sp, sort, dir }: { people: PersonC
               {people.map((p) => (
                 <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelected(p)}>
                   <TableCell>
-                    <button className="flex items-center gap-2 text-left font-medium hover:underline" onClick={() => setSelected(p)}>
+                    <button className="flex items-center gap-2 text-start font-medium hover:underline" onClick={() => setSelected(p)}>
                       <Avatar employeeId={p.id} hasPhoto={p.hasPhoto} firstName={p.firstName} lastName={p.lastName} size={28} />
                       {p.name}
                     </button>

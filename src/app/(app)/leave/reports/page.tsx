@@ -83,11 +83,11 @@ export default async function LeaveReportsPage({ searchParams }: { searchParams:
                 <TableRow>
                   <TableHead>Department</TableHead>
                   {report.types.map((t) => (
-                    <TableHead key={t.name} className="text-right">
+                    <TableHead key={t.name} className="text-end">
                       {t.name}
                     </TableHead>
                   ))}
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-end">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -95,21 +95,21 @@ export default async function LeaveReportsPage({ searchParams }: { searchParams:
                   <TableRow key={d}>
                     <TableCell className="font-medium">{d}</TableCell>
                     {report.types.map((t) => (
-                      <TableCell key={t.name} className="text-right tabular-nums">
+                      <TableCell key={t.name} className="text-end tabular-nums">
                         {report.rows.find((r) => r.department === d && r.leaveType === t.name)?.days ?? <span className="text-muted-foreground">–</span>}
                       </TableCell>
                     ))}
-                    <TableCell className="text-right font-semibold tabular-nums">{report.totalsByDept[d]}</TableCell>
+                    <TableCell className="text-end font-semibold tabular-nums">{report.totalsByDept[d]}</TableCell>
                   </TableRow>
                 ))}
                 <TableRow className="bg-muted/40 font-semibold">
                   <TableCell>Total</TableCell>
                   {report.types.map((t) => (
-                    <TableCell key={t.name} className="text-right tabular-nums">
+                    <TableCell key={t.name} className="text-end tabular-nums">
                       {report.totalsByType[t.name]}
                     </TableCell>
                   ))}
-                  <TableCell className="text-right tabular-nums">{report.grandTotal}</TableCell>
+                  <TableCell className="text-end tabular-nums">{report.grandTotal}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>

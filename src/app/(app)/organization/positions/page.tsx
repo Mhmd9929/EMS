@@ -47,7 +47,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                 {sort("Level", "level", "hidden sm:table-cell")}
                 <TableHead>People</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">
+                <TableHead className="text-end">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -61,7 +61,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                   <TableCell className="hidden tabular-nums sm:table-cell">{p.level ?? "—"}</TableCell>
                   <TableCell className="tabular-nums">{p._count.employees}</TableCell>
                   <TableCell>{p.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     <PositionDialog position={{ id: p.id, title: p.title, code: p.code, grade: p.grade, level: p.level, description: p.description, isActive: p.isActive }} />
                   </TableCell>
                 </TableRow>

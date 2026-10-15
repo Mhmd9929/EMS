@@ -57,7 +57,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                 <TableHead>Roles</TableHead>
                 <TableHead>State</TableHead>
                 <SortHeader label="Last sign-in" sortKey="lastLogin" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden lg:table-cell" />
-                <TableHead className="text-right">
+                <TableHead className="text-end">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -90,7 +90,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                     {!u.isActive ? <Badge variant="destructive">Disabled</Badge> : u.activated ? <Badge variant="success">Active</Badge> : <Badge variant="warning">Pending</Badge>}
                   </TableCell>
                   <TableCell className="hidden text-sm lg:table-cell">{formatDateTime(u.lastLoginAt, ctx.timezone)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     <UserRowActions user={{ id: u.id, name: u.name, isActive: u.isActive, activated: u.activated, roleIds: u.roles.map((r) => r.id) }} roles={roleOptions} isSelf={u.id === ctx.userId} />
                   </TableCell>
                 </TableRow>

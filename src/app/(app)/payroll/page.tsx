@@ -47,9 +47,9 @@ export default async function PayrollRunsPage({ searchParams }: { searchParams: 
                 <TableHead>Period</TableHead>
                 <TableHead>Scope</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Employees</TableHead>
-                <TableHead className="hidden text-right md:table-cell">Gross</TableHead>
-                <TableHead className="text-right">Net</TableHead>
+                <TableHead className="text-end">Employees</TableHead>
+                <TableHead className="hidden text-end md:table-cell">Gross</TableHead>
+                <TableHead className="text-end">Net</TableHead>
                 <TableHead className="hidden lg:table-cell">Last change</TableHead>
               </TableRow>
             </TableHeader>
@@ -60,15 +60,15 @@ export default async function PayrollRunsPage({ searchParams }: { searchParams: 
                     <Link href={`/payroll/runs/${r.id}`} className="font-medium hover:underline">
                       {periodLabel(r.period)}
                     </Link>
-                    {r.reopenCount > 0 && <span className="text-muted-foreground ml-2 text-xs">reopened ×{r.reopenCount}</span>}
+                    {r.reopenCount > 0 && <span className="text-muted-foreground ms-2 text-xs">reopened ×{r.reopenCount}</span>}
                   </TableCell>
                   <TableCell className="text-sm">{r.scopeLabel}</TableCell>
                   <TableCell>
                     <RunStatusBadge status={r.status} />
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{r.status === "DRAFT" ? "—" : r.employeeCount}</TableCell>
-                  <TableCell className="hidden text-right md:table-cell">{r.status === "DRAFT" ? "—" : <Money minor={r.totalGross} currency={r.currency} />}</TableCell>
-                  <TableCell className="text-right font-medium">{r.status === "DRAFT" ? "—" : <Money minor={r.totalNet} currency={r.currency} showCode />}</TableCell>
+                  <TableCell className="text-end tabular-nums">{r.status === "DRAFT" ? "—" : r.employeeCount}</TableCell>
+                  <TableCell className="hidden text-end md:table-cell">{r.status === "DRAFT" ? "—" : <Money minor={r.totalGross} currency={r.currency} />}</TableCell>
+                  <TableCell className="text-end font-medium">{r.status === "DRAFT" ? "—" : <Money minor={r.totalNet} currency={r.currency} showCode />}</TableCell>
                   <TableCell className="text-muted-foreground hidden text-xs lg:table-cell">{formatDateTime(r.updatedAt, ctx.timezone)}</TableCell>
                 </TableRow>
               ))}

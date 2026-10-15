@@ -23,7 +23,7 @@ export function UserMenu({
   const [first, ...rest] = name.split(" ");
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="hover:bg-accent flex items-center gap-2 rounded-full p-0.5 pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Account menu">
+      <DropdownMenuTrigger className="hover:bg-accent flex items-center gap-2 rounded-full p-0.5 pe-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Account menu">
         <Avatar employeeId={employeeId} hasPhoto={!!photoPath} version={photoPath} firstName={first} lastName={rest.at(-1)} size={32} />
         <span className="hidden max-w-36 truncate text-sm font-medium sm:inline">{name}</span>
       </DropdownMenuTrigger>

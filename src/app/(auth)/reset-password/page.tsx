@@ -24,7 +24,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
       ) : (
         <>
           <Alert variant="error">{t("invalidLink")}</Alert>
-          <Link href="/forgot-password" className="text-primary text-sm hover:underline">
+          <Link href="/forgot-password" className="text-link text-sm hover:underline">
             {t("forgotTitle")}
           </Link>
         </>

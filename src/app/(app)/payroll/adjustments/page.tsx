@@ -50,7 +50,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
                 <TableHead>Employee</TableHead>
                 <TableHead>Component</TableHead>
                 <TableHead className="hidden md:table-cell">Description</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-end">Amount</TableHead>
                 <TableHead className="hidden lg:table-cell">Added</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="sr-only">Actions</TableHead>
@@ -69,13 +69,13 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
                   <TableCell className="hidden max-w-xs truncate md:table-cell" title={a.description}>
                     {a.description}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     {a.component.kind === "DEDUCTION" ? "−" : "+"}
                     <Money minor={a.amount} currency={ctx.currency} />
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">{formatDate(a.createdAt)}</TableCell>
                   <TableCell>{a.run ? <Badge variant="success">Paid</Badge> : <Badge variant="secondary">Pending</Badge>}</TableCell>
-                  <TableCell className="text-right">{!a.run && <DeleteAdjustmentButton id={a.id} label={`${a.component.name} for ${a.employee.firstName} ${a.employee.lastName}`} />}</TableCell>
+                  <TableCell className="text-end">{!a.run && <DeleteAdjustmentButton id={a.id} label={`${a.component.name} for ${a.employee.firstName} ${a.employee.lastName}`} />}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

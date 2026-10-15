@@ -25,42 +25,42 @@ export function BalanceCards({ balances, compact }: { balances: TypeBalance[]; c
               {b.tracked ? (
                 <p>
                   <span data-field="available" className={`text-3xl font-semibold tabular-nums ${b.available < 0 ? "text-destructive" : ""}`}>{fmt(b.available)}</span>
-                  <span className="text-muted-foreground ml-1 text-sm">days available</span>
+                  <span className="text-muted-foreground ms-1 text-sm">days available</span>
                 </p>
               ) : (
                 <p>
                   <span className="text-3xl font-semibold tabular-nums">{fmt(b.taken)}</span>
-                  <span className="text-muted-foreground ml-1 text-sm">days taken</span>
+                  <span className="text-muted-foreground ms-1 text-sm">days taken</span>
                 </p>
               )}
               {!compact && b.tracked && (
                 <dl className="text-muted-foreground grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                   <dt>Entitlement / year</dt>
-                  <dd className="text-right tabular-nums">{fmt(b.entitled)}</dd>
+                  <dd className="text-end tabular-nums">{fmt(b.entitled)}</dd>
                   <dt>{b.leaveType.accrualMethod === "MONTHLY" ? "Accrued so far" : "Granted"}</dt>
-                  <dd className="text-right tabular-nums">{fmt(b.accrued)}</dd>
+                  <dd className="text-end tabular-nums">{fmt(b.accrued)}</dd>
                   {b.carriedForward !== 0 && (
                     <>
                       <dt>Carried forward</dt>
-                      <dd className="text-right tabular-nums">{fmt(b.carriedForward)}</dd>
+                      <dd className="text-end tabular-nums">{fmt(b.carriedForward)}</dd>
                     </>
                   )}
                   {b.adjustments !== 0 && (
                     <>
                       <dt>Adjustments</dt>
-                      <dd className="text-right tabular-nums">{b.adjustments > 0 ? "+" : ""}{fmt(b.adjustments)}</dd>
+                      <dd className="text-end tabular-nums">{b.adjustments > 0 ? "+" : ""}{fmt(b.adjustments)}</dd>
                     </>
                   )}
                   {b.expired !== 0 && (
                     <>
                       <dt>Expired</dt>
-                      <dd className="text-right tabular-nums">{minus(b.expired)}</dd>
+                      <dd className="text-end tabular-nums">{minus(b.expired)}</dd>
                     </>
                   )}
                   <dt>Taken</dt>
-                  <dd data-field="taken" className="text-right tabular-nums">{minus(b.taken)}</dd>
+                  <dd data-field="taken" className="text-end tabular-nums">{minus(b.taken)}</dd>
                   <dt>Pending</dt>
-                  <dd data-field="pending" className="text-right tabular-nums">{minus(b.pending)}</dd>
+                  <dd data-field="pending" className="text-end tabular-nums">{minus(b.pending)}</dd>
                 </dl>
               )}
               {!compact && !b.tracked && b.pending > 0 && <p className="text-muted-foreground text-xs">{fmt(b.pending)} days pending</p>}

@@ -42,7 +42,7 @@ export function CalendarGrid({
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-muted/50">
-              <th scope="col" className="bg-muted/50 sticky left-0 z-10 min-w-44 border-r px-3 py-2 text-left font-medium">
+              <th scope="col" className="bg-muted/50 sticky start-0 z-10 min-w-44 border-e px-3 py-2 text-start font-medium">
                 Employee
               </th>
               {days.map((d) => (
@@ -50,13 +50,13 @@ export function CalendarGrid({
                   key={d.date}
                   scope="col"
                   title={d.holiday?.name}
-                  className={cn("w-8 min-w-8 px-0 py-1 text-center font-medium", (d.weekend || d.holiday) && "bg-muted text-muted-foreground", d.date === today && "text-primary")}
+                  className={cn("w-8 min-w-8 px-0 py-1 text-center font-medium", (d.weekend || d.holiday) && "bg-muted text-muted-foreground", d.date === today && "text-link")}
                 >
                   <div className="text-[10px] font-normal">{DOW[d.dow - 1]}</div>
                   <div className={cn(d.date === today && "bg-primary text-primary-foreground mx-auto w-5 rounded-full")}>{d.day}</div>
                 </th>
               ))}
-              <th scope="col" className="px-2 text-right font-medium">
+              <th scope="col" className="px-2 text-end font-medium">
                 Days
               </th>
             </tr>
@@ -64,14 +64,14 @@ export function CalendarGrid({
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-t">
-                <th scope="row" className="bg-background sticky left-0 z-10 border-r px-3 py-1.5 text-left font-normal">
+                <th scope="row" className="bg-background sticky start-0 z-10 border-e px-3 py-1.5 text-start font-normal">
                   <span className="block truncate font-medium">{r.name}</span>
                   {r.department && <span className="text-muted-foreground block truncate text-[10px]">{r.department}</span>}
                 </th>
                 {days.map((d) => {
                   const c = r.cells[d.date];
                   const shade = d.weekend || d.holiday ? "bg-muted/60" : "";
-                  if (!c) return <td key={d.date} className={cn("h-9 border-l border-border/40", shade)} />;
+                  if (!c) return <td key={d.date} className={cn("h-9 border-s border-border/40", shade)} />;
                   const style =
                     c.status === "PENDING"
                       ? { backgroundImage: `repeating-linear-gradient(45deg, ${c.color}55 0 4px, transparent 4px 8px)`, border: `1px solid ${c.color}` }
@@ -79,7 +79,7 @@ export function CalendarGrid({
                   const title = `${r.name}: ${c.label}${c.status === "PENDING" ? " (pending)" : ""}${c.amount < 1 ? " — half day" : ""}`;
                   const block = <span className={cn("block h-6 rounded-sm", c.amount < 1 && "h-3")} style={style} title={title} />;
                   return (
-                    <td key={d.date} className={cn("h-9 border-l border-border/40 px-0.5", shade)}>
+                    <td key={d.date} className={cn("h-9 border-s border-border/40 px-0.5", shade)}>
                       {linkable && c.requestId ? (
                         <Link href={`/leave/requests/${c.requestId}`} aria-label={title}>
                           {block}
@@ -90,7 +90,7 @@ export function CalendarGrid({
                     </td>
                   );
                 })}
-                <td className="px-2 text-right tabular-nums">{r.total || ""}</td>
+                <td className="px-2 text-end tabular-nums">{r.total || ""}</td>
               </tr>
             ))}
           </tbody>
@@ -104,7 +104,7 @@ export function CalendarGrid({
           </span>
         ))}
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-3 rounded-sm border border-slate-500" style={{ backgroundImage: "repeating-linear-gradient(45deg, #64748b55 0 3px, transparent 3px 6px)" }} aria-hidden /> Pending
+          <span className="border-muted-foreground size-3 rounded-sm border" style={{ backgroundImage: "repeating-linear-gradient(45deg, color-mix(in srgb, var(--muted-foreground) 35%, transparent) 0 3px, transparent 3px 6px)" }} aria-hidden /> Pending
         </span>
         {holidays.length > 0 && <span>Holidays: {holidays.map((h) => `${Number(h.date.slice(8))} ${h.name}`).join(", ")}</span>}
       </div>

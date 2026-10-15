@@ -7,26 +7,34 @@ import { formatMoney } from "@/lib/payroll/money";
 import { amountInWords } from "@/lib/payroll/words";
 import { periodLabel } from "@/lib/payroll/calc";
 import { formatDate } from "@/lib/dates";
+import { readBrandAsset } from "@/server/brand-assets";
+import { brand, palette } from "@/theme/brand";
 
+const P = palette;
 const s = StyleSheet.create({
-  page: { padding: 36, fontSize: 9, fontFamily: "Helvetica", color: "#18181b" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2pt solid #0f766e", paddingBottom: 10, marginBottom: 14 },
-  logo: { width: 48, height: 48, objectFit: "contain", marginRight: 10 },
-  company: { fontSize: 13, fontFamily: "Helvetica-Bold" },
-  muted: { color: "#71717a" },
-  title: { fontSize: 15, fontFamily: "Helvetica-Bold", color: "#0f766e", textAlign: "right" },
-  grid: { flexDirection: "row", flexWrap: "wrap", marginBottom: 12, border: "1pt solid #e4e4e7", borderRadius: 4, padding: 8 },
+  page: { padding: 36, paddingTop: 0, fontSize: 9, fontFamily: "Helvetica", color: P.black },
+  band: { marginHorizontal: -36, paddingHorizontal: 36, paddingVertical: 16, backgroundColor: P.black, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  brandLogo: { height: 40, maxWidth: 220, objectFit: "contain" },
+  brandText: { fontSize: 14, fontFamily: "Helvetica-Bold", color: P.gold },
+  accent: { marginHorizontal: -36, height: 3, backgroundColor: P.gold, marginBottom: 12 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: 10, marginBottom: 12, borderBottom: `1pt solid ${P.gray200}` },
+  logo: { width: 40, height: 40, objectFit: "contain", marginRight: 10 },
+  company: { fontSize: 12, fontFamily: "Helvetica-Bold" },
+  muted: { color: P.gray600 },
+  title: { fontSize: 16, fontFamily: "Helvetica-Bold", color: P.gold, textAlign: "right", letterSpacing: 2 },
+  bandText: { color: P.gray300, textAlign: "right" },
+  grid: { flexDirection: "row", flexWrap: "wrap", marginBottom: 12, border: `1pt solid ${P.gray200}`, borderRadius: 4, padding: 8 },
   cell: { width: "33.33%", paddingVertical: 3 },
-  label: { fontSize: 7, color: "#71717a", textTransform: "uppercase", marginBottom: 1 },
+  label: { fontSize: 7, color: P.gray600, textTransform: "uppercase", marginBottom: 1 },
   tables: { flexDirection: "row", gap: 12 },
-  table: { flex: 1, border: "1pt solid #e4e4e7", borderRadius: 4 },
-  th: { flexDirection: "row", backgroundColor: "#f4f4f5", padding: 6, fontFamily: "Helvetica-Bold" },
-  tr: { flexDirection: "row", paddingHorizontal: 6, paddingVertical: 4, borderTop: "1pt solid #f4f4f5" },
-  total: { flexDirection: "row", padding: 6, borderTop: "1pt solid #e4e4e7", fontFamily: "Helvetica-Bold" },
+  table: { flex: 1, border: `1pt solid ${P.gray200}`, borderRadius: 4 },
+  th: { flexDirection: "row", backgroundColor: P.black, color: P.gold, padding: 6, fontFamily: "Helvetica-Bold" },
+  tr: { flexDirection: "row", paddingHorizontal: 6, paddingVertical: 4, borderTop: `1pt solid ${P.gray100}` },
+  total: { flexDirection: "row", padding: 6, borderTop: `1pt solid ${P.gray200}`, backgroundColor: P.gray50, fontFamily: "Helvetica-Bold" },
   amount: { width: 80, textAlign: "right" },
-  net: { marginTop: 14, padding: 10, backgroundColor: "#f0fdfa", border: "1pt solid #99f6e4", borderRadius: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  netValue: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#0f766e" },
-  footer: { position: "absolute", bottom: 24, left: 36, right: 36, fontSize: 7, color: "#a1a1aa", textAlign: "center" },
+  net: { marginTop: 14, padding: 10, backgroundColor: P.goldTint, borderLeft: `3pt solid ${P.gold}`, borderRadius: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  netValue: { fontSize: 16, fontFamily: "Helvetica-Bold", color: P.goldDark },
+  footer: { position: "absolute", bottom: 24, left: 36, right: 36, fontSize: 7, color: P.gray500, textAlign: "center", borderTop: `1pt solid ${P.gold}`, paddingTop: 6 },
 });
 
 function Rows({ title, rows, total, currency }: { title: string; rows: { name: string; amount: number; note: string | null }[]; total: number; currency: string }) {
@@ -59,6 +67,7 @@ function Rows({ title, rows, total, currency }: { title: string; rows: { name: s
 }
 
 export async function renderPayslipPdf(p: PayslipData): Promise<Buffer> {
+  const brandLogo = await readBrandAsset("full");
   let logo: Buffer | null = null;
   if (p.company.logoPath && /\.(png|jpg)$/.test(p.company.logoPath)) logo = (await storage.get(p.company.logoPath))?.data ?? null;
   const c = p.company;
@@ -72,6 +81,16 @@ export async function renderPayslipPdf(p: PayslipData): Promise<Buffer> {
   const doc = (
     <Document title={`Payslip ${p.number}`} author={c.legalName ?? c.name} subject={`Payslip ${periodLabel(p.period)}`}>
       <Page size="A4" style={s.page}>
+        <View style={s.band}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          {brandLogo ? <Image src={brandLogo} style={s.brandLogo} /> : <Text style={s.brandText}>{brand.company}</Text>}
+          <View>
+            <Text style={s.title}>PAYSLIP</Text>
+            <Text style={s.bandText}>{periodLabel(p.period)}</Text>
+            <Text style={s.bandText}>{p.number}</Text>
+          </View>
+        </View>
+        <View style={s.accent} />
         <View style={s.header}>
           <View style={{ flexDirection: "row" }}>
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -81,11 +100,6 @@ export async function renderPayslipPdf(p: PayslipData): Promise<Buffer> {
               {address && <Text style={s.muted}>{address}</Text>}
               <Text style={s.muted}>{[c.phone, c.email, c.tradeLicenseNumber && `TL ${c.tradeLicenseNumber}`].filter(Boolean).join(" · ")}</Text>
             </View>
-          </View>
-          <View>
-            <Text style={s.title}>PAYSLIP</Text>
-            <Text style={{ textAlign: "right" }}>{periodLabel(p.period)}</Text>
-            <Text style={[s.muted, { textAlign: "right" }]}>{p.number}</Text>
           </View>
         </View>
 

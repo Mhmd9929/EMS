@@ -50,8 +50,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                 {sort("Employee", "name")}
                 <TableHead className="hidden md:table-cell">Department</TableHead>
                 <TableHead className="hidden lg:table-cell">Grade</TableHead>
-                <TableHead className="hidden text-right sm:table-cell">Basic</TableHead>
-                {sort("Gross / month", "gross", "text-right")}
+                <TableHead className="hidden text-end sm:table-cell">Basic</TableHead>
+                {sort("Gross / month", "gross", "text-end")}
                 <TableHead className="hidden md:table-cell">Since</TableHead>
               </TableRow>
             </TableHeader>
@@ -68,12 +68,12 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{e.department?.name ?? "—"}</TableCell>
                   <TableCell className="hidden lg:table-cell">{e.position?.grade ?? "—"}</TableCell>
-                  <TableCell className="hidden text-right sm:table-cell">{r.effectiveFrom ? <Money minor={r.basic} currency={ctx.currency} /> : "—"}</TableCell>
-                  <TableCell className="text-right font-medium">{r.effectiveFrom ? <Money minor={r.gross} currency={ctx.currency} /> : <Badge variant="destructive">No salary</Badge>}</TableCell>
+                  <TableCell className="hidden text-end sm:table-cell">{r.effectiveFrom ? <Money minor={r.basic} currency={ctx.currency} /> : "—"}</TableCell>
+                  <TableCell className="text-end font-medium">{r.effectiveFrom ? <Money minor={r.gross} currency={ctx.currency} /> : <Badge variant="destructive">No salary</Badge>}</TableCell>
                   <TableCell className="hidden md:table-cell">
                     {r.effectiveFrom ? formatDate(r.effectiveFrom) : "—"}
                     {r.scheduled > 0 && (
-                      <Badge variant="warning" className="ml-2">
+                      <Badge variant="warning" className="ms-2">
                         change scheduled
                       </Badge>
                     )}

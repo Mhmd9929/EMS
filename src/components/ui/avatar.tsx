@@ -36,7 +36,7 @@ export function Avatar({
     <span
       aria-hidden
       style={style}
-      className={cn("bg-primary/15 text-primary inline-flex shrink-0 items-center justify-center rounded-full font-semibold", className)}
+      className={cn("bg-primary text-primary-foreground inline-flex shrink-0 items-center justify-center rounded-full font-semibold", className)}
     >
       {initials(firstName, lastName)}
     </span>

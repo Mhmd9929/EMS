@@ -1,6 +1,7 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "@/server/env";
+import { readBrandAsset } from "@/server/brand-assets";
 
 export type MailMessage = { to: string; subject: string; html: string; text: string };
 
@@ -28,7 +29,13 @@ export async function sendMail(message: MailMessage): Promise<boolean> {
     return true;
   }
   try {
-    await transport.sendMail({ from: env.EMAIL_FROM, ...message });
+    // Inline brand logo referenced by the templates as cid:hsa-logo (skipped if the file isn't installed).
+    const logo = message.html.includes("cid:hsa-logo") ? await readBrandAsset("full") : null;
+    await transport.sendMail({
+      from: env.EMAIL_FROM,
+      ...message,
+      attachments: logo ? [{ filename: "hsa-logo.png", content: logo, cid: "hsa-logo", contentDisposition: "inline" }] : undefined,
+    });
     return true;
   } catch (error) {
     console.error("[mail] failed to send", message.to, message.subject, error);

@@ -103,7 +103,7 @@ export default async function LeaveRequestPage({ params, searchParams }: { param
                   <div>
                     <dt className="text-muted-foreground text-xs">Attachment</dt>
                     <dd>
-                      <a href={`/api/files/leave/${r.id}`} target="_blank" rel="noopener" className="text-primary inline-flex items-center gap-1 hover:underline">
+                      <a href={`/api/files/leave/${r.id}`} target="_blank" rel="noopener" className="text-link inline-flex items-center gap-1 hover:underline">
                         <FileText className="size-4" aria-hidden /> View document
                       </a>
                     </dd>
@@ -137,7 +137,7 @@ export default async function LeaveRequestPage({ params, searchParams }: { param
           <CardContent>
             <ol className="space-y-4">
               <li className="flex gap-3">
-                <Circle className="text-primary mt-0.5 size-4 shrink-0" aria-hidden />
+                <Circle className="text-link mt-0.5 size-4 shrink-0" aria-hidden />
                 <div className="text-sm">
                   <p className="font-medium">Submitted</p>
                   <p className="text-muted-foreground text-xs">{formatDateTime(r.createdAt, ctx.timezone)}</p>
@@ -149,14 +149,14 @@ export default async function LeaveRequestPage({ params, searchParams }: { param
                 return (
                   <li key={a.id} className="flex gap-3">
                     <Icon
-                      className={`mt-0.5 size-4 shrink-0 ${a.decision === "APPROVED" ? "text-success" : a.decision === "REJECTED" ? "text-destructive" : waiting ? "text-amber-600" : "text-muted-foreground"}`}
+                      className={`mt-0.5 size-4 shrink-0 ${a.decision === "APPROVED" ? "text-success" : a.decision === "REJECTED" ? "text-destructive" : waiting ? "text-warning" : "text-muted-foreground"}`}
                       aria-hidden
                     />
                     <div className="min-w-0 text-sm">
                       <p className="font-medium">
                         {a.kind === "CANCELLATION" ? "Cancellation · " : ""}
                         {a.approverRole === "HR" ? "HR approval" : "Manager approval"}
-                        <Badge variant="outline" className="ml-2 align-middle">
+                        <Badge variant="outline" className="ms-2 align-middle">
                           {a.decision === "PENDING" ? (waiting ? "Waiting" : "Not started") : a.decision.toLowerCase()}
                         </Badge>
                       </p>

@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "HR Portal",
-    "tagline": "Employee Management Portal"
+    "name": "HSA Employee Portal",
+    "tagline": "Hayel Saeed Anam & Co."
   },
   "nav": {
     "main": "Main",
@@ -42,7 +42,11 @@
     "salaries": "Salaries",
     "adjustments": "Adjustments",
     "settlements": "Final settlements",
-    "payrollSettings": "Payroll settings"
+    "payrollSettings": "Payroll settings",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "skipToContent": "Skip to content",
+    "portal": "Employee Portal"
   },
   "auth": {
     "signInTitle": "Sign in",

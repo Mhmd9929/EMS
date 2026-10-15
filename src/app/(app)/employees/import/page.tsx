@@ -36,7 +36,7 @@ export default async function ImportPage() {
               {IMPORT_COLUMNS.map((c) => (
                 <li key={c.key}>
                   <code className="bg-muted rounded px-1 text-xs">{c.key}</code>
-                  {c.required && <span className="text-destructive ml-1 text-xs">required</span>}
+                  {c.required && <span className="text-destructive ms-1 text-xs">required</span>}
                   {"help" in c && c.help && <span className="text-muted-foreground block text-xs">{c.help}</span>}
                 </li>
               ))}

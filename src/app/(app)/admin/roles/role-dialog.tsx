@@ -62,7 +62,7 @@ function RoleForm({ catalogue, role, onDone }: { catalogue: Perm[]; role?: RoleV
             <Input defaultValue={role?.description ?? ""} />
           </Field>
         </div>
-        <div className="grid max-h-[50vh] gap-4 overflow-y-auto pr-1">
+        <div className="grid max-h-[50vh] gap-4 overflow-y-auto pe-1">
           {modules.map((m) => (
             <fieldset key={m} className="grid gap-1.5">
               <legend className="mb-1 text-sm font-semibold">{m}</legend>

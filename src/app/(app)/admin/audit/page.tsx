@@ -24,13 +24,13 @@ function Changes({ before, after }: { before: unknown; after: unknown }) {
   const show = (v: unknown) => (v === null || v === undefined ? "∅" : typeof v === "object" ? JSON.stringify(v) : String(v));
   return (
     <details className="text-xs">
-      <summary className="text-primary cursor-pointer select-none">{keys.length} field{keys.length === 1 ? "" : "s"}</summary>
+      <summary className="text-link cursor-pointer select-none">{keys.length} field{keys.length === 1 ? "" : "s"}</summary>
       <table className="mt-2 w-full">
         <tbody>
           {keys.map((k) => (
             <tr key={k} className="border-t align-top">
-              <td className="py-1 pr-2 font-mono">{k}</td>
-              <td className="text-destructive py-1 pr-2 break-all line-through decoration-1">{k in b ? show(b[k]) : ""}</td>
+              <td className="py-1 pe-2 font-mono">{k}</td>
+              <td className="text-destructive py-1 pe-2 break-all line-through decoration-1">{k in b ? show(b[k]) : ""}</td>
               <td className="text-success py-1 break-all">{k in a ? show(a[k]) : ""}</td>
             </tr>
           ))}

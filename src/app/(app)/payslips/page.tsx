@@ -39,9 +39,9 @@ export default async function MyPayslipsPage({ searchParams }: { searchParams: P
               <TableRow>
                 <TableHead>Month</TableHead>
                 <TableHead className="hidden sm:table-cell">Released</TableHead>
-                <TableHead className="hidden text-right md:table-cell">Gross</TableHead>
-                <TableHead className="hidden text-right md:table-cell">Deductions</TableHead>
-                <TableHead className="text-right">Net pay</TableHead>
+                <TableHead className="hidden text-end md:table-cell">Gross</TableHead>
+                <TableHead className="hidden text-end md:table-cell">Deductions</TableHead>
+                <TableHead className="text-end">Net pay</TableHead>
                 <TableHead className="sr-only">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -55,16 +55,16 @@ export default async function MyPayslipsPage({ searchParams }: { searchParams: P
                     <p className="text-muted-foreground text-xs">{p.number}</p>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">{formatDate(p.releasedAt)}</TableCell>
-                  <TableCell className="hidden text-right md:table-cell">
+                  <TableCell className="hidden text-end md:table-cell">
                     <Money minor={p.gross} currency={p.currency} />
                   </TableCell>
-                  <TableCell className="hidden text-right md:table-cell">
+                  <TableCell className="hidden text-end md:table-cell">
                     <Money minor={p.deductions} currency={p.currency} />
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-end font-medium">
                     <Money minor={p.net} currency={p.currency} showCode />
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     <a href={`/api/payslips/${p.id}/pdf?download=1`} className={buttonVariants({ variant: "ghost", size: "sm" })} aria-label={`Download ${periodLabel(p.period)} payslip PDF`}>
                       <Download aria-hidden /> PDF
                     </a>

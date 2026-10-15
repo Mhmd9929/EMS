@@ -1,4 +1,6 @@
-# HRMS — Employee Management Portal
+# HSA Employee Portal
+
+Employee portal for **Hayel Saeed Anam & Co. (HSA)**.
 
 A multi-tenant-ready HR portal for UAE companies: employees, org structure, role-based access, audit
 trail, leave management and payroll with WPS.
@@ -71,6 +73,25 @@ for the design and [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what's in each c
    - `admin@` approves it from **Final settlements**.
    - **Salaries**, **Adjustments** and **Payroll settings** (components, WPS IDs, gratuity rules, PDF
      password) are in the sidebar.
+
+## Branding
+
+All brand values live in **`src/theme/brand.ts`**: palette, light/dark tokens, header style, names, logo
+paths and fonts. The web UI, the payslip PDF and the email templates all read from it, so a change there is one
+edit. `tests/unit/brand-contrast.test.ts` checks every text/background pair against WCAG AA (4.5:1).
+
+- **Logos**: put the files in `public/brand/` and commit them:
+  - `logo-icon.png`: square mark, used in the sidebar, on mobile and when the sidebar is collapsed.
+  - `logo-full.png`: wide logo, used on the login page, in the header on wide screens, in the payslip PDF
+    and in emails (as an inline image).
+  - `favicon.ico`.
+
+  If a file is missing, the UI shows an "HSA" text mark instead of a broken image.
+- **Header**: `HEADER_STYLE = "dark"` (black bar) or `"light"` (white with a thin gold bottom border).
+- **Gold usage**: `#D9B300` is used for text only on dark surfaces. On white, gold text uses `#8A6F00`
+  (the `text-link` utility). Primary buttons are gold with black text, `#FCC917` on hover.
+- **Fonts**: Inter (Latin) and IBM Plex Sans Arabic, self-hosted via `@fontsource`, so there are no calls to
+  Google Fonts.
 
 ## Quick start
 

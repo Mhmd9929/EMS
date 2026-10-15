@@ -91,7 +91,7 @@ export default async function RunPage({ params, searchParams }: { params: Promis
             ["Employees paid", `${counts.included}`, counts.held ? `${counts.held} held / excluded` : "none held"],
             ["Gross", <Money key="g" minor={run.totalGross} currency={run.currency} showCode />, null],
             ["Deductions", <Money key="d" minor={run.totalDeductions} currency={run.currency} showCode />, null],
-            ["Net pay", <Money key="n" minor={run.totalNet} currency={run.currency} showCode className="text-primary" />, "to be transferred"],
+            ["Net pay", <Money key="n" minor={run.totalNet} currency={run.currency} showCode className="text-link" />, "to be transferred"],
           ].map(([label, value, hint]) => (
             <Card key={label as string} className="gap-1 py-4">
               <CardHeader>
@@ -152,12 +152,12 @@ export default async function RunPage({ params, searchParams }: { params: Promis
                 <TableHeader>
                   <TableRow>
                     <TableHead>Employee</TableHead>
-                    <TableHead className="hidden text-right md:table-cell">Paid days</TableHead>
-                    <TableHead className="hidden text-right lg:table-cell">Gross</TableHead>
-                    <TableHead className="hidden text-right lg:table-cell">Deductions</TableHead>
-                    <TableHead className="text-right">Net</TableHead>
-                    <TableHead className="hidden text-right md:table-cell">Last month</TableHead>
-                    <TableHead className="text-right">Change</TableHead>
+                    <TableHead className="hidden text-end md:table-cell">Paid days</TableHead>
+                    <TableHead className="hidden text-end lg:table-cell">Gross</TableHead>
+                    <TableHead className="hidden text-end lg:table-cell">Deductions</TableHead>
+                    <TableHead className="text-end">Net</TableHead>
+                    <TableHead className="hidden text-end md:table-cell">Last month</TableHead>
+                    <TableHead className="text-end">Change</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -176,31 +176,31 @@ export default async function RunPage({ params, searchParams }: { params: Promis
                             {e.employeeNumber} · {e.department ?? "—"}
                           </p>
                           {[...errors, ...warnings].slice(0, 2).map((i) => (
-                            <p key={i.message} className={cn("flex items-center gap-1 text-xs", i.level === "error" ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+                            <p key={i.message} className={cn("flex items-center gap-1 text-xs", i.level === "error" ? "text-destructive" : "text-warning")}>
                               {i.level === "error" ? <CircleAlert className="size-3" aria-hidden /> : <AlertTriangle className="size-3" aria-hidden />}
                               {i.message}
                             </p>
                           ))}
                         </TableCell>
-                        <TableCell className="hidden text-right tabular-nums md:table-cell">
+                        <TableCell className="hidden text-end tabular-nums md:table-cell">
                           {Number(e.paidDays)}
                           {Number(e.unpaidLeaveDays) > 0 && <span className="text-destructive block text-xs">−{Number(e.unpaidLeaveDays)} unpaid</span>}
                         </TableCell>
-                        <TableCell className="hidden text-right lg:table-cell">
+                        <TableCell className="hidden text-end lg:table-cell">
                           <Money minor={e.gross} currency={run.currency} />
                         </TableCell>
-                        <TableCell className="hidden text-right lg:table-cell">
+                        <TableCell className="hidden text-end lg:table-cell">
                           <Money minor={e.deductions} currency={run.currency} />
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-end font-medium">
                           <Money minor={e.net} currency={run.currency} />
                         </TableCell>
-                        <TableCell className="text-muted-foreground hidden text-right md:table-cell">{e.previousNet === null ? "—" : <Money minor={e.previousNet} currency={run.currency} />}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-muted-foreground hidden text-end md:table-cell">{e.previousNet === null ? "—" : <Money minor={e.previousNet} currency={run.currency} />}</TableCell>
+                        <TableCell className="text-end">
                           {e.variance === null ? (
                             <Badge variant="secondary">new</Badge>
                           ) : (
-                            <span className={cn("tabular-nums text-sm", big ? "font-semibold text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
+                            <span className={cn("tabular-nums text-sm", big ? "font-semibold text-warning" : "text-muted-foreground")}>
                               {e.variance > 0 ? "+" : ""}
                               {e.variance}%
                             </span>

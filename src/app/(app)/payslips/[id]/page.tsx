@@ -105,7 +105,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
             <p className="text-muted-foreground text-sm">Net pay</p>
             <p className="text-muted-foreground text-xs">{amountInWords(p.net, cur)}</p>
           </div>
-          <p className="text-primary text-2xl font-semibold">
+          <p className="text-link text-2xl font-semibold">
             <Money minor={p.net} currency={cur} showCode />
           </p>
         </CardContent>

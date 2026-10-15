@@ -50,7 +50,7 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
             {!c.isActive && <Badge variant="secondary">Inactive</Badge>}
           </div>
         </TableCell>
-        <TableCell className="text-right">
+        <TableCell className="text-end">
           <ComponentDialog component={{ id: c.id, code: c.code, name: c.name, kind: c.kind, calcType: c.calcType, formula: c.formula, isRecurring: c.isRecurring, isTaxable: c.isTaxable, isFixedPay: c.isFixedPay, isActive: c.isActive, isSystem: c.isSystem }} codes={codes} />
         </TableCell>
       </TableRow>

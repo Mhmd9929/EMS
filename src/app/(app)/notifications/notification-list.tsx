@@ -23,7 +23,7 @@ export function NotificationList({ items, unread }: { items: Item[]; unread: num
         {items.map((n) => (
           <li key={n.id}>
             <button
-              className={cn("hover:bg-accent/50 flex w-full gap-3 p-4 text-left", !n.read && "bg-primary/5")}
+              className={cn("hover:bg-accent/50 flex w-full gap-3 p-4 text-start", !n.read && "bg-primary/5")}
               onClick={() =>
                 start(async () => {
                   await markNotificationReadAction(n.id);

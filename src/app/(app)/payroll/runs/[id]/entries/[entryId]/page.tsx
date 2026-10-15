@@ -52,7 +52,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
         <TableHeader>
           <TableRow>
             <TableHead>{title}</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
+            <TableHead className="text-end">Amount</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -69,7 +69,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
                   {l.name} {!l.isRecurring && <Badge variant="secondary">one-time</Badge>}
                   {l.note && <p className="text-muted-foreground text-xs">{l.note}</p>}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-end">
                   <Money minor={l.amount} currency={cur} />
                 </TableCell>
               </TableRow>
@@ -79,7 +79,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
         <TableFooter>
           <TableRow>
             <TableCell>Total</TableCell>
-            <TableCell className="text-right">
+            <TableCell className="text-end">
               <Money minor={total} currency={cur} />
             </TableCell>
           </TableRow>
@@ -124,7 +124,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
       {e.issues.length > 0 && (
         <ul className="space-y-1">
           {e.issues.map((i) => (
-            <li key={i.message} className={cn("flex items-center gap-2 text-sm", i.level === "error" ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+            <li key={i.message} className={cn("flex items-center gap-2 text-sm", i.level === "error" ? "text-destructive" : "text-warning")}>
               {i.level === "error" ? <CircleAlert className="size-4" aria-hidden /> : <AlertTriangle className="size-4" aria-hidden />}
               {i.message}
             </li>

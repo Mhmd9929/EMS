@@ -73,9 +73,9 @@ export default async function SettlementsPage({ searchParams }: { searchParams: 
               <TableRow>
                 <TableHead>Employee</TableHead>
                 <TableHead className="hidden md:table-cell">Last day</TableHead>
-                <TableHead className="hidden text-right lg:table-cell">Gratuity</TableHead>
-                <TableHead className="hidden text-right lg:table-cell">Leave encashment</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="hidden text-end lg:table-cell">Gratuity</TableHead>
+                <TableHead className="hidden text-end lg:table-cell">Leave encashment</TableHead>
+                <TableHead className="text-end">Total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="sr-only">Actions</TableHead>
               </TableRow>
@@ -92,19 +92,19 @@ export default async function SettlementsPage({ searchParams }: { searchParams: 
                     </p>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{formatDate(s.lastWorkingDay)}</TableCell>
-                  <TableCell className="hidden text-right lg:table-cell">
+                  <TableCell className="hidden text-end lg:table-cell">
                     <Money minor={s.gratuity} currency={ctx.currency} />
                   </TableCell>
-                  <TableCell className="hidden text-right lg:table-cell">
+                  <TableCell className="hidden text-end lg:table-cell">
                     <Money minor={s.leaveEncashment} currency={ctx.currency} />
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-end font-medium">
                     <Money minor={s.total} currency={ctx.currency} showCode />
                   </TableCell>
                   <TableCell>
                     <Badge variant={s.status === "APPROVED" ? "success" : s.status === "DRAFT" ? "warning" : "secondary"}>{STATUSES.find((x) => x.value === s.status)?.label}</Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     {s.status === "DRAFT" && s.createdById !== ctx.userId && (
                       <ApproveSettlementButton settlementId={s.id} employeeId={s.employee.id} name={`${s.employee.firstName} ${s.employee.lastName}`} total={formatMoney(s.total, ctx.currency, { withCode: true })} />
                     )}

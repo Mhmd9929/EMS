@@ -25,7 +25,7 @@ export function PhotoUpload({ employeeId, hasPhoto }: { employeeId: string; hasP
           name="photo"
           type="file"
           accept="image/png,image/jpeg,image/webp"
-          className="text-muted-foreground file:bg-secondary file:text-foreground max-w-full text-sm file:mr-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
+          className="text-muted-foreground file:bg-secondary file:text-foreground max-w-full text-sm file:me-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
           onChange={() => formRef.current?.requestSubmit()}
           disabled={pending}
         />

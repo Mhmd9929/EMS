@@ -34,7 +34,7 @@ export function RunStepper({ status }: { status: string }) {
             aria-current={i === idx ? "step" : undefined}
             className={cn(
               "rounded-full border px-2.5 py-1",
-              status === "CANCELLED" ? "text-muted-foreground" : i < idx ? "bg-primary/10 border-primary/30 text-primary" : i === idx ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground",
+              status === "CANCELLED" ? "text-muted-foreground" : i < idx ? "bg-accent border-primary text-link" : i === idx ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground",
             )}
           >
             {RUN[s].label}

@@ -15,7 +15,7 @@ export function ForgotForm({ labels }: { labels: { email: string; send: string; 
     return (
       <div className="space-y-4">
         <Alert variant="success">{state.message}</Alert>
-        <Link href="/login" className="text-primary text-sm hover:underline">
+        <Link href="/login" className="text-link text-sm hover:underline">
           {labels.back}
         </Link>
       </div>
@@ -28,7 +28,7 @@ export function ForgotForm({ labels }: { labels: { email: string; send: string; 
         <Input type="email" autoComplete="username" autoFocus />
       </Field>
       <SubmitButton className="w-full">{labels.send}</SubmitButton>
-      <Link href="/login" className="text-primary text-center text-sm hover:underline">
+      <Link href="/login" className="text-link text-center text-sm hover:underline">
         {labels.back}
       </Link>
     </form>

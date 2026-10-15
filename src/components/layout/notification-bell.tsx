@@ -33,7 +33,7 @@ export function NotificationBell({ unread, items, label }: { unread: number; ite
         <Button variant="ghost" size="icon" className="relative" aria-label={unread ? `${label} (${unread} unread)` : label}>
           <Bell aria-hidden />
           {unread > 0 && (
-            <span className="bg-destructive absolute top-1 right-1 min-w-4 rounded-full px-1 text-[10px] leading-4 font-semibold text-white tabular-nums">{unread > 9 ? "9+" : unread}</span>
+            <span className="bg-destructive absolute top-1 end-1 min-w-4 rounded-full px-1 text-[10px] leading-4 font-semibold text-destructive-foreground tabular-nums">{unread > 9 ? "9+" : unread}</span>
           )}
         </Button>
       </DropdownMenuTrigger>
@@ -41,7 +41,7 @@ export function NotificationBell({ unread, items, label }: { unread: number; ite
         <div className="flex items-center justify-between">
           <DropdownMenuLabel>{label}</DropdownMenuLabel>
           {unread > 0 && (
-            <button className="text-primary px-2 text-xs hover:underline" onClick={() => start(async () => void (await markAllNotificationsReadAction(), router.refresh()))}>
+            <button className="text-link px-2 text-xs hover:underline" onClick={() => start(async () => void (await markAllNotificationsReadAction(), router.refresh()))}>
               Mark all read
             </button>
           )}

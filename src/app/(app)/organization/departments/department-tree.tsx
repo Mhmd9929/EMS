@@ -21,7 +21,7 @@ export function DepartmentTree({ tree, options }: { tree: TreeNode<Node>[]; opti
       return next;
     });
   const render = (nodes: TreeNode<Node>[], depth: number): React.ReactNode => (
-    <ul className={depth ? "ml-5 border-l pl-3" : ""}>
+    <ul className={depth ? "ms-5 border-s ps-3" : ""}>
       {nodes.map((n) => (
         <li key={n.id} className="py-1">
           <div className="hover:bg-accent/50 flex items-center gap-2 rounded-md px-2 py-1.5">
@@ -35,7 +35,7 @@ export function DepartmentTree({ tree, options }: { tree: TreeNode<Node>[]; opti
             <span className="font-medium">{n.name}</span>
             <span className="text-muted-foreground font-mono text-xs">{n.code}</span>
             {!n.isActive && <Badge variant="secondary">Inactive</Badge>}
-            <span className="text-muted-foreground ml-auto hidden text-xs sm:inline">
+            <span className="text-muted-foreground ms-auto hidden text-xs sm:inline">
               {n.head ? `Head: ${n.head.preferredName || n.head.firstName} ${n.head.lastName}` : "No head"}
             </span>
             <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">

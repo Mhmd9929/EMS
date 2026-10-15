@@ -12,7 +12,7 @@ export function LinkTabs({ tabs, active, baseHref }: { tabs: { key: string; labe
           aria-current={t.key === active ? "page" : undefined}
           className={cn(
             "-mb-px border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
-            t.key === active ? "border-primary text-foreground" : "text-muted-foreground hover:text-foreground border-transparent",
+            t.key === active ? "border-primary text-foreground font-semibold" : "text-muted-foreground hover:text-foreground border-transparent",
           )}
         >
           {t.label}

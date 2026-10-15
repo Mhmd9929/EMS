@@ -36,6 +36,13 @@ stack, structure, data model and access model. It is updated at every checkpoint
 * **Next.js 15 / Prisma 6** are pinned rather than the newest majors, which were still RC or had breaking
   configuration changes at the time of writing.
 
+### Theming
+`src/theme/brand.ts` holds the palette and the light/dark semantic tokens. The root layout injects them as CSS
+variables (`brandCss()`), and `globals.css` maps them to Tailwind utilities (`bg-primary`, `text-link`,
+`bg-sidebar` …). The PDF and email renderers import the same values. Dark surfaces inside the light theme
+(the sidebar, the dark header and the login panel) use the `.dark` class, so their components pick up the
+dark tokens. `tests/unit/brand-contrast.test.ts` enforces WCAG AA on every token pair.
+
 ## 2. Folder structure
 
 ```

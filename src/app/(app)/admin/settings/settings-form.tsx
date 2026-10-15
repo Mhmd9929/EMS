@@ -141,7 +141,7 @@ export function LogoUpload({ hasLogo }: { hasLogo: boolean }) {
         accept="image/png,image/jpeg,image/webp"
         disabled={pending}
         onChange={() => ref.current?.requestSubmit()}
-        className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:mr-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
+        className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:me-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
       />
       <FormError state={state} />
     </form>

@@ -1,5 +1,6 @@
 import "server-only";
 import ExcelJS from "exceljs";
+import { brand } from "@/theme/brand";
 import Papa from "papaparse";
 
 /** Neutralise spreadsheet formula injection in user-controlled text. */
@@ -9,7 +10,7 @@ export type Sheet = { name: string; columns: { header: string; key: string; widt
 
 export async function xlsxResponse(filename: string, sheets: Sheet[]) {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "HR Portal";
+  wb.creator = brand.name;
   wb.created = new Date();
   for (const s of sheets) {
     const ws = wb.addWorksheet(s.name.slice(0, 31));

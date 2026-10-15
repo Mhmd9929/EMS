@@ -69,7 +69,7 @@ export default async function DepartmentsPage({ searchParams }: { searchParams: 
                     <TableHead className="hidden lg:table-cell">Cost centre</TableHead>
                     <SortHeader label="People" sortKey="headcount" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">
+                    <TableHead className="text-end">
                       <span className="sr-only">Actions</span>
                     </TableHead>
                   </TableRow>
@@ -84,7 +84,7 @@ export default async function DepartmentsPage({ searchParams }: { searchParams: 
                       <TableCell className="hidden font-mono text-xs lg:table-cell">{d.costCenterCode ?? "—"}</TableCell>
                       <TableCell className="tabular-nums">{d._count.employees}</TableCell>
                       <TableCell>{d.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">
                         <DepartmentDialog options={options} department={{ id: d.id, name: d.name, code: d.code, costCenterCode: d.costCenterCode, description: d.description, parentId: d.parentId, headId: d.headId, isActive: d.isActive }} />
                       </TableCell>
                     </TableRow>

@@ -181,7 +181,7 @@ export function OrgChart({
             onClick={() => setDeptOpen(node)}
             className={cn("bg-card hover:border-primary flex w-52 flex-col items-center gap-1 rounded-xl border p-3 text-center shadow-xs", highlight === node.id && "ring-primary border-primary ring-2")}
           >
-            <Building2 className="text-primary size-5" aria-hidden />
+            <Building2 className="text-link size-5" aria-hidden />
             <span className="w-full truncate text-sm font-medium">{node.name}</span>
             <span className="text-muted-foreground w-full truncate text-xs">{head ? `Head: ${head.name}` : "No head"}</span>
             <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
@@ -219,8 +219,8 @@ export function OrgChart({
             </button>
           ))}
         </div>
-        <div className="relative sm:ml-2 sm:w-72">
-          <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" aria-hidden />
+        <div className="relative sm:ms-2 sm:w-72">
+          <Search className="text-muted-foreground absolute top-2.5 start-2.5 size-4" aria-hidden />
           <Input
             type="search"
             value={query}
@@ -228,13 +228,13 @@ export function OrgChart({
             onKeyDown={(e) => e.key === "Enter" && matches[0] && focus(matches[0].id)}
             placeholder={mode === "reporting" ? "Find a person…" : "Find a department…"}
             aria-label="Search the org chart"
-            className="pl-8"
+            className="ps-8"
           />
           {matches.length > 0 && (
             <ul className="bg-popover absolute top-full z-20 mt-1 w-full overflow-hidden rounded-md border shadow-md" role="listbox">
               {matches.map((m) => (
                 <li key={m.id}>
-                  <button className="hover:bg-accent w-full px-3 py-2 text-left text-sm" onClick={() => focus(m.id)}>
+                  <button className="hover:bg-accent w-full px-3 py-2 text-start text-sm" onClick={() => focus(m.id)}>
                     {m.label} <span className="text-muted-foreground text-xs">· {m.sub}</span>
                   </button>
                 </li>
@@ -242,7 +242,7 @@ export function OrgChart({
             </ul>
           )}
         </div>
-        <div className="flex gap-1 sm:ml-auto">
+        <div className="flex gap-1 sm:ms-auto">
           <Button variant="outline" size="icon" onClick={() => zoomRef.current?.zoomIn()} aria-label="Zoom in">
             <ZoomIn aria-hidden />
           </Button>
@@ -286,7 +286,7 @@ export function OrgChart({
                   return (
                     <li key={p.id}>
                       <button
-                        className="hover:bg-accent flex w-full items-center gap-3 rounded-md p-2 text-left"
+                        className="hover:bg-accent flex w-full items-center gap-3 rounded-md p-2 text-start"
                         onClick={() => {
                           setDeptOpen(null);
                           openPerson(p);
@@ -295,7 +295,7 @@ export function OrgChart({
                         <Avatar employeeId={p.id} hasPhoto={p.photo} firstName={f} lastName={r.at(-1)} size={32} />
                         <span>
                           <span className="block text-sm font-medium">
-                            {p.name} {deptOpen.headId === p.id && <span className="text-primary text-xs">(Head)</span>}
+                            {p.name} {deptOpen.headId === p.id && <span className="text-link text-xs">(Head)</span>}
                           </span>
                           <span className="text-muted-foreground block text-xs">{p.title ?? "—"}</span>
                         </span>

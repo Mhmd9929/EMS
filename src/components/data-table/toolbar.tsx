@@ -38,9 +38,9 @@ export function SearchInput({ placeholder = "Search…", param = "q" }: { placeh
   return (
     <div className="relative w-full sm:max-w-xs">
       {pending ? (
-        <Loader2 className="text-muted-foreground absolute top-2.5 left-2.5 size-4 animate-spin" aria-hidden />
+        <Loader2 className="text-muted-foreground absolute top-2.5 start-2.5 size-4 animate-spin" aria-hidden />
       ) : (
-        <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" aria-hidden />
+        <Search className="text-muted-foreground absolute top-2.5 start-2.5 size-4" aria-hidden />
       )}
       <Input
         type="search"
@@ -48,7 +48,7 @@ export function SearchInput({ placeholder = "Search…", param = "q" }: { placeh
         placeholder={placeholder}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="pl-8"
+        className="ps-8"
       />
     </div>
   );

@@ -97,10 +97,10 @@ export default async function DashboardPage() {
                 </ul>
               )}
               <div className="mt-3 flex gap-3 text-sm">
-                <Link href="/leave/apply" className="text-primary hover:underline">
+                <Link href="/leave/apply" className="text-link hover:underline">
                   Apply for leave
                 </Link>
-                <Link href="/leave" className="text-primary hover:underline">
+                <Link href="/leave" className="text-link hover:underline">
                   All balances
                 </Link>
               </div>
@@ -120,10 +120,10 @@ export default async function DashboardPage() {
                     <Money minor={latestPayslip.net} currency={latestPayslip.currency} showCode />
                   </p>
                   <div className="mt-3 flex gap-3 text-sm">
-                    <Link href={`/payslips/${latestPayslip.id}`} className="text-primary hover:underline">
+                    <Link href={`/payslips/${latestPayslip.id}`} className="text-link hover:underline">
                       View payslip
                     </Link>
-                    <Link href="/payslips" className="text-primary hover:underline">
+                    <Link href="/payslips" className="text-link hover:underline">
                       All payslips
                     </Link>
                   </div>
@@ -176,7 +176,7 @@ export default async function DashboardPage() {
             <h2 id="payroll-heading" className="text-lg font-semibold">
               Payroll — {periodLabel(period)}
             </h2>
-            <Link href="/payroll" className="text-primary text-sm hover:underline">
+            <Link href="/payroll" className="text-link text-sm hover:underline">
               All runs
             </Link>
           </div>
@@ -217,7 +217,7 @@ export default async function DashboardPage() {
             <h2 id="team-heading" className="text-lg font-semibold">
               My team
             </h2>
-            <Link href="/employees" className="text-primary text-sm hover:underline">
+            <Link href="/employees" className="text-link text-sm hover:underline">
               View all
             </Link>
           </div>
@@ -254,7 +254,7 @@ export default async function DashboardPage() {
             <h2 id="off-heading" className="text-lg font-semibold">
               Off today
             </h2>
-            <Link href="/leave/calendar" className="text-primary text-sm hover:underline">
+            <Link href="/leave/calendar" className="text-link text-sm hover:underline">
               Leave calendar
             </Link>
           </div>
@@ -361,7 +361,7 @@ export default async function DashboardPage() {
             <h2 id="activity-heading" className="text-lg font-semibold">
               Recent activity
             </h2>
-            <Link href="/admin/audit" className="text-primary text-sm hover:underline">
+            <Link href="/admin/audit" className="text-link text-sm hover:underline">
               Audit log
             </Link>
           </div>

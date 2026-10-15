@@ -91,7 +91,7 @@ export function InboxTable({ items, readOnly }: { items: Item[]; readOnly?: bool
                       {i.employee.name}
                     </Link>
                     {i.kind === "CANCELLATION" && (
-                      <Badge variant="outline" className="ml-2">
+                      <Badge variant="outline" className="ms-2">
                         Cancellation request
                       </Badge>
                     )}
@@ -111,13 +111,13 @@ export function InboxTable({ items, readOnly }: { items: Item[]; readOnly?: bool
                   <p className="text-muted-foreground line-clamp-1 text-xs">“{i.kind === "CANCELLATION" ? i.cancellationReason : i.reason}”</p>
                 )}
               </div>
-              <div className="text-muted-foreground text-xs sm:w-40 sm:text-right">
+              <div className="text-muted-foreground text-xs sm:w-40 sm:text-end">
                 <p>
                   {i.stepLabel} step{i.onBehalfOf && ` · for ${i.onBehalfOf}`}
                 </p>
                 <p>waiting {timeAgo(i.waitingSince)}</p>
               </div>
-              <Link href={`/leave/requests/${i.id}`} className="text-primary text-sm hover:underline sm:w-16 sm:text-right">
+              <Link href={`/leave/requests/${i.id}`} className="text-link text-sm hover:underline sm:w-16 sm:text-end">
                 Review
               </Link>
             </div>

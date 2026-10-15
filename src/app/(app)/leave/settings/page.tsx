@@ -109,7 +109,7 @@ export default async function LeaveSettingsPage({ searchParams }: { searchParams
                       .join(" · ") || "—"}
                   </TableCell>
                   <TableCell className="text-sm">{t.approvalChain.length ? t.approvalChain.map((s) => (s === "HR" ? "HR" : "Manager")).join(" → ") : "Automatic"}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     <LeaveTypeDialog type={t} />
                   </TableCell>
                 </TableRow>
@@ -161,7 +161,7 @@ export default async function LeaveSettingsPage({ searchParams }: { searchParams
                     <TableCell className="text-sm">
                       {!p.isEligible ? <Badge variant="destructive">Not eligible</Badge> : p.annualEntitlement !== null ? `${p.annualEntitlement} days (default ${p.leaveType.annualEntitlement})` : "Default"}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-end">
                       <PolicyDialog options={options} policy={{ id: p.id, name: p.name, leaveTypeId: p.leaveTypeId, departmentId: p.departmentId, positionId: p.positionId, employmentType: p.employmentType, isEligible: p.isEligible, annualEntitlement: p.annualEntitlement, isActive: p.isActive }} />
                     </TableCell>
                   </TableRow>
@@ -212,7 +212,7 @@ export default async function LeaveSettingsPage({ searchParams }: { searchParams
                     <TableCell className="whitespace-nowrap tabular-nums">{formatDate(h.date)}</TableCell>
                     <TableCell className="font-medium">{h.name}</TableCell>
                     <TableCell>{h.location?.name ?? "All locations"}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell className="text-end whitespace-nowrap">
                       <HolidayDialog locations={locations} holiday={{ id: h.id, name: h.name, date: toDateInput(h.date), locationId: h.locationId }} />
                       <DeleteHolidayButton id={h.id} name={h.name} />
                     </TableCell>

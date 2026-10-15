@@ -3,10 +3,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Colours come from src/theme/brand.ts (the single brand source), injected as CSS variables by the
+ * root layout. This block only maps them to Tailwind utilities: bg-primary, text-link, bg-sidebar …
+ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Arabic", sans-serif;
+  --font-sans: var(--font-brand-latin), var(--font-brand-arabic), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -14,22 +18,39 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-link: var(--link);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-ring-inner: var(--ring-inner);
+  --color-overlay: var(--overlay);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-active: var(--sidebar-active);
   --color-sidebar-border: var(--sidebar-border);
+  --color-header-dark: var(--header-dark);
+  --color-header-dark-foreground: var(--header-dark-foreground);
+  --color-header-light: var(--header-light);
+  --color-header-light-foreground: var(--header-light-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -37,58 +58,13 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.42 0.11 175);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.96 0.01 175);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.55 0.22 27);
-  --success: oklch(0.55 0.14 150);
-  --warning: oklch(0.68 0.16 70);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.88 0 0);
-  --ring: oklch(0.55 0.11 175);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-accent: oklch(0.95 0.015 175);
-  --sidebar-border: oklch(0.922 0 0);
+  --radius: 0.5rem;
 }
 
-.dark {
-  --background: oklch(0.16 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.72 0.12 175);
-  --primary-foreground: oklch(0.16 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.72 0 0);
-  --accent: oklch(0.3 0.03 175);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.7 0.19 22);
-  --success: oklch(0.72 0.15 150);
-  --warning: oklch(0.8 0.15 75);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.6 0.1 175);
-  --sidebar: oklch(0.19 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.28 0.02 175);
-  --sidebar-border: oklch(1 0 0 / 10%);
+/* Arabic text prefers the Arabic face (Latin digits/words still fall back to Inter). */
+:lang(ar) {
+  --font-sans: var(--font-brand-arabic), var(--font-brand-latin), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 @layer base {
@@ -98,9 +74,29 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Two-tone focus ring: gold-bright outline plus an inner dark ring, so it is visible on white too. */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-ring;
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--ring-inner);
   }
+  /* Native checkboxes, radios, range and progress bars in brand gold. */
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"],
+  progress {
+    accent-color: var(--primary);
+  }
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+}
+
+/* Page headings: a gold accent bar at the start (heading text stays high-contrast). */
+#main h1 {
+  border-inline-start: 4px solid var(--primary);
+  padding-inline-start: 0.75rem;
 }
 
 /* ── Org chart connectors (top-down tree from nested <ul>/<li>) ── */
