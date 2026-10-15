@@ -4,6 +4,10 @@ import { CalendarDays, FileWarning, Mail, UserMinus, UserPlus, Users, Wallet, Pl
 import { requireAuth, can } from "@/server/auth/context";
 import { getEmployeeDashboard, getHrDashboard, getManagerDashboard, getRecentActivity } from "@/server/services/dashboard.service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { listPayslips } from "@/server/services/payroll/payslip.service";
+import { currentRunSummary } from "@/server/services/payroll/run.service";
+import { periodLabel } from "@/lib/payroll/calc";
+import { Money, RunStatusBadge } from "@/components/payroll/badges";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { daysBetween, formatDate, formatDateTime } from "@/lib/dates";
@@ -48,6 +52,11 @@ export default async function DashboardPage() {
     ctx.employeeId ? getEmployeeBalances(ctx, ctx.employeeId, me.today.getUTCFullYear()) : null,
     canApprove ? approvalInbox(ctx, "mine") : null,
     isHr || isManager ? whoIsOff(ctx, me.today) : null,
+  ]);
+  const period = `${me.today.getUTCFullYear()}-${String(me.today.getUTCMonth() + 1).padStart(2, "0")}`;
+  const [latestPayslip, payrollRuns] = await Promise.all([
+    ctx.employeeId ? listPayslips(ctx, ctx.employeeId).then((p) => p[0] ?? null) : null,
+    currentRunSummary(ctx, period),
   ]);
   const shownBalances = (balances ?? []).filter((b) => b.eligible && b.tracked && b.accrued + b.carriedForward + b.adjustments > 0).slice(0, 3);
 
@@ -104,7 +113,24 @@ export default async function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground text-sm">Payroll arrives in Phase 3. Released payslips will appear here.</p>
+              {latestPayslip ? (
+                <>
+                  <p className="text-muted-foreground text-sm">{periodLabel(latestPayslip.period)} · net pay</p>
+                  <p className="text-2xl font-semibold">
+                    <Money minor={latestPayslip.net} currency={latestPayslip.currency} showCode />
+                  </p>
+                  <div className="mt-3 flex gap-3 text-sm">
+                    <Link href={`/payslips/${latestPayslip.id}`} className="text-primary hover:underline">
+                      View payslip
+                    </Link>
+                    <Link href="/payslips" className="text-primary hover:underline">
+                      All payslips
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <p className="text-muted-foreground text-sm">No payslips yet. They appear here once payroll is released.</p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -142,6 +168,47 @@ export default async function DashboardPage() {
           </p>
         )}
       </section>
+
+      {/* ── Payroll ── */}
+      {payrollRuns && (
+        <section aria-labelledby="payroll-heading" className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 id="payroll-heading" className="text-lg font-semibold">
+              Payroll — {periodLabel(period)}
+            </h2>
+            <Link href="/payroll" className="text-primary text-sm hover:underline">
+              All runs
+            </Link>
+          </div>
+          {payrollRuns.length === 0 ? (
+            <Card>
+              <CardContent className="text-muted-foreground text-sm">No payroll run for this month yet.</CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {payrollRuns.map((r) => (
+                <Link key={r.id} href={`/payroll/runs/${r.id}`}>
+                  <Card className="hover:bg-accent/40 h-full gap-2 transition-colors">
+                    <CardHeader>
+                      <CardDescription className="flex items-center justify-between gap-2">
+                        {r.scopeLabel} <RunStatusBadge status={r.status} />
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-semibold">
+                        <Money minor={r.totalNet} currency={r.currency} showCode />
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {r.employeeCount} employees · {r.status === "UNDER_REVIEW" ? "waiting for approval" : r.status === "APPROVED" ? "ready to release" : r.status === "RELEASED" ? "payslips issued" : "in preparation"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ── Manager ── */}
       {mgr && (mgr.direct.length > 0 || mgr.totalTeam > 0) && (

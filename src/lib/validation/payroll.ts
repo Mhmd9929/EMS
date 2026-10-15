@@ -37,6 +37,7 @@ export const payrollSettingsSchema = z.object({
   gratuityCapMonths: z.coerce.number().min(0).max(120),
   gratuityDailyBasis: z.enum(["DIV30", "DIV365"]),
   leaveEncashmentBasis: z.enum(["BASIC", "GROSS"]),
+  payslipPdfPassword: checkbox,
 });
 
 export const salaryStructureSchema = z.object({

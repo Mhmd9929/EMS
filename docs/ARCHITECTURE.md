@@ -162,7 +162,14 @@ A user can hold several roles; effective permissions are the union.
 | `leave.approve.all` (act on any step, incl. HR steps) | ✅ | ✅ | | | |
 | `leave.balance.adjust` (manual adjustment, reason required) | ✅ | ✅ | | | |
 | `leave.report.read` (reports, balance exports) | ✅ | ✅ | ✅ | | |
-| *Phase 3:* `payroll.salary.manage`, `payroll.run.manage`, `payroll.run.approve`, `payroll.export`, `payslip.read.all` | ✅ | | ✅ | | |
+| `payroll.settings.manage` (pay components, proration, WPS, gratuity rules) | ✅ | | ✅ | | |
+| `payroll.salary.read` / `payroll.salary.manage` (salary structures, adjustments) | ✅ | | ✅ | | |
+| `payroll.run.manage` (create, calculate, hold, submit, release, cancel) | ✅ | | ✅ | | |
+| `payroll.run.approve` (checker — never the run's maker) | ✅ | | ✅ | | |
+| `payroll.run.reopen` (unlock a released run, reason required) | ✅ | | | | |
+| `payroll.export` (register, WPS SIF, bank file) | ✅ | | ✅ | | |
+| `payslip.read.all` | ✅ | | ✅ | | |
+| `payroll.settlement.manage` (final settlements; approver ≠ preparer) | ✅ | | ✅ | | |
 | *Self-service* (own profile, own leave, own payslips) | implicit for any user linked to an employee | | | | |
 
 Rules on role assignment (`user.manage`): only a Super Admin can grant/revoke Super Admin or
@@ -233,6 +240,9 @@ Schedules are in `JOBS_TIMEZONE` (default Asia/Dubai). Registry: `src/server/job
 | `notifications-email` | every 5 min | retries queued notification emails (outbox) | 2 |
 | `documents-expiry-alerts` | daily | 60/30/7-day alerts | 4 |
 
+Payroll has no scheduled job: runs are started by people. Release sends payslip notifications through the
+same email outbox.
+
 ## 9. Leave management (Phase 2)
 
 ### Data model
@@ -295,16 +305,94 @@ erDiagram
 The team calendar for employees shows colleagues only as "On leave" (no leave type); teammate warnings on
 the apply form show names and dates only. Managers see types for their reports; HR sees everything.
 
-## 10. Phase status
+## 10. Payroll (Phase 3)
+
+### Data model
+* `PayComponent`: code, earning/deduction, fixed or **formula** (e.g. `BASIC * 0.5`), monthly or one-time,
+  taxable flag, WPS fixed/variable flag, system flag. Defaults: Basic, Housing (= 50% of basic), Transport,
+  Other allowance, Overtime, Bonus, Reimbursement; Unpaid leave, Loan/advance, Other deduction.
+* `SalaryStructure` + lines: **effective-dated and append-only** (`@@unique(employeeId, effectiveFrom)`);
+  only future-dated structures can be deleted. Formula lines store no amount.
+* `PayrollAdjustment`: one-time amount for a month; `runId` is set when a released run paid it.
+* `PayrollRun` → `PayrollRunEmployee` (an employee **snapshot**: name, department, bank, IBAN, routing
+  code, labour card, days, totals, variance base, issues) → `PayrollRunLine` (one per component).
+  Payslips and exports read the snapshot, so later HR edits never change history.
+* `Payslip` (one per included entry once released; `voidedAt` when a run is reopened).
+* `FinalSettlement` with a JSON breakdown; DRAFT → APPROVED (or CANCELLED when replaced).
+* Money: `BigInt` minor units (fils), currency from the company (2 or 3 decimals).
+
+### Calculation engine (pure, unit-tested: `src/lib/payroll/*`)
+1. Employment window in the month = [max(month start, join date), min(month end, last working day)].
+2. The window is split by salary-structure effective dates (mid-month raises are pro-rated per segment).
+3. Each monthly component (fixed or formula) is pro-rated. **Calendar basis**: × days ÷ days in month.
+   **30-day basis**: a full month is 30 days; a partial month pays the calendar days worked (max 30).
+4. Unpaid leave: (monthly recurring earnings ÷ basis days) × approved unpaid leave working days from the
+   leave module (`unpaidLeaveDays()`), capped at the earnings paid.
+5. One-time adjustments are added as they are. Net = gross − deductions. A negative net is a blocking issue.
+6. WPS split: recurring fixed-pay earnings less unpaid leave = fixed; the rest (adjustments) = variable.
+Formulas use a small recursive-descent parser (numbers, component codes, `+ − * /`, brackets,
+`min/max/round/floor/ceil/abs`). There is no `eval`, and cycles and unknown names are rejected when saved.
+
+### Run lifecycle
+`DRAFT → CALCULATED → UNDER_REVIEW → APPROVED → RELEASED` (+ `CANCELLED`).
+* Scope: all employees, one department or one location. An employee is in one live run per month.
+* Calculate/recalculate (any time before submit). Issues are flagged per employee: no salary, no IBAN or
+  negative net (blocking); missing routing code or labour card, joiner, leaver, ≥ 20% change vs last month
+  (warnings). Hold/exclude needs a reason and survives recalculation.
+* Submit is blocked while included employees have blocking issues.
+* **Maker-checker**: the approver must differ from whoever calculated and submitted. It is enforced in
+  the service (`ForbiddenError`) and tested. A reviewer can send the run back with a comment.
+* **Release** (optimistic lock) locks the run, creates payslips for included employees, marks the
+  month's adjustments as paid and notifies employees. Adjustments for a released month are rejected.
+* **Reopen**: Super Admin only, reason required, audited. It voids the payslips (hidden from employees)
+  and frees the adjustments. The run returns to CALCULATED.
+
+### Payslips and privacy
+`getPayslip()` returns a payslip only when the run is RELEASED, the payslip is not voided, and the viewer
+is the employee or holds `payslip.read.all`. Everything else is a 404, so ids can't be probed. This is
+covered by integration and e2e tests. Salary figures render only in server components behind
+`payroll.salary.read`; HR and managers never receive them. The PDF (`@react-pdf/renderer`) contains the
+logo, company details, employee details, period, earnings, deductions, net in figures and words, YTD
+(fiscal year) and a masked IBAN. It can be AES-256 encrypted (`@cantoo/pdf-lib`), with the date of birth as
+DDMMYYYY (or the employee number) as the password.
+
+### Exports
+Payroll register (Excel: one column per component plus a department summary), bank transfer CSV, and
+**WPS SIF** (`src/lib/payroll/sif.ts`, format registry, `UAE_SIF_V1`: EDR lines with 14-digit labour card id,
+routing code, IBAN, period, days, fixed and variable pay, leave days; SCR trailer with employer id, bank code,
+date/time, month, count, total and currency; CRLF). Missing data returns HTTP 422 listing the problems
+rather than a file the bank would reject (`?force=1` overrides).
+
+### End of service
+`computeSettlement()` returns:
+* **gratuity**: 21 days' basic per year for the first 5 years, 30 after, capped at 24 months, nothing under
+  1 year, unpaid leave excluded from service. Every number is a company setting.
+* **leave encashment**: available balance of encashable leave types × basic (or gross) ÷ 30.
+* **unpaid salary**: from the day after the last released payslip to the last day, using the same engine.
+* plus other earnings, minus deductions.
+
+The employee page shows an estimate for current staff and a save/approve flow for leavers (maker-checker).
+
+## 11. Phase status
 
 | Phase | Status |
 |---|---|
 | 1 Foundation | ✅ Checkpoint 1 — see CHANGELOG |
 | 2 Leave | ✅ Checkpoint 2 — see CHANGELOG |
-| 3 Payroll | not started |
+| 3 Payroll | ✅ Checkpoint 3 — see CHANGELOG |
 | 4 Extras | not started |
 
-## 11. Known limitations / follow-ups
+## 12. Known limitations / follow-ups
+
+* **WPS SIF**: one format (`UAE_SIF_V1`) is implemented. Banks differ in details (header fields, file
+  naming), so new formats are added to the registry in `src/lib/payroll/sif.ts`. Demo routing codes are
+  placeholders; verify the agent IDs with your bank.
+* **Payroll arrears**: backdating a salary over released months is allowed with a warning. The difference
+  is paid via a one-time adjustment rather than calculated automatically.
+* **Final settlement** is not paid through a payroll run or WPS file; it is an approved statement for
+  finance. Unpaid leave days for gratuity come from approved Unpaid Leave requests only.
+* **Overtime** is entered as an amount (adjustment); there is no timesheet/rate calculation.
+* **Payslip PDF password** uses one company-wide rule (date of birth); there are no per-employee passwords.
 
 * **Leave year = calendar year** (Jan–Dec) regardless of the company fiscal year.
 * **Half days** are only supported for single-day requests (not "half day at the start/end of a range").

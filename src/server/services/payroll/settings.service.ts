@@ -66,7 +66,7 @@ export async function getPayrollSettings(ctx: AuthContext) {
     select: {
       currency: true, payrollProrationBasis: true, wpsEmployerId: true, wpsEmployerBankCode: true, wpsFormat: true,
       gratuityMinServiceYears: true, gratuityDaysFirstYears: true, gratuityThresholdYears: true, gratuityDaysAfter: true,
-      gratuityCapMonths: true, gratuityDailyBasis: true, leaveEncashmentBasis: true,
+      gratuityCapMonths: true, gratuityDailyBasis: true, leaveEncashmentBasis: true, payslipPdfPassword: true,
     },
   });
 }

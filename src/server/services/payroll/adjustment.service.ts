@@ -66,3 +66,20 @@ export async function deleteAdjustment(ctx: AuthContext, id: string) {
     await writeAudit(ctx, { action: "payroll.adjustment.delete", entityType: "PayrollAdjustment", entityId: id, summary: `Deleted ${a.component.name} (${a.period})`, before: a }, tx);
   });
 }
+
+/** Employee + one-time component options for the adjustment form. */
+export async function adjustmentFormOptions(ctx: AuthContext) {
+  assertCan(ctx, "payroll.salary.manage");
+  const [employees, components] = await Promise.all([
+    db.employee.findMany({
+      where: { companyId: ctx.companyId, status: { not: "TERMINATED" } },
+      select: { id: true, firstName: true, lastName: true, preferredName: true, employeeNumber: true },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+    }),
+    db.payComponent.findMany({ where: { companyId: ctx.companyId, isRecurring: false, isSystem: false, isActive: true }, orderBy: [{ kind: "asc" }, { sortOrder: "asc" }] }),
+  ]);
+  return {
+    employees: employees.map((e) => ({ value: e.id, label: `${e.preferredName || e.firstName} ${e.lastName} (${e.employeeNumber})` })),
+    components: components.map((c) => ({ value: c.id, label: `${c.name} (${c.kind === "EARNING" ? "+" : "−"})` })),
+  };
+}

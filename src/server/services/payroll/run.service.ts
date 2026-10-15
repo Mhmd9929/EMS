@@ -263,8 +263,11 @@ export async function releaseRun(ctx: AuthContext, runId: string, opts: { notify
       const entries = await tx.payrollRunEmployee.findMany({ where: { runId, status: "INCLUDED" }, include: { employee: { select: { userId: true } } } });
       const now = new Date();
       for (const e of entries) {
-        await tx.payslip.create({
-          data: { companyId: ctx.companyId, employeeId: e.employeeId, runEmployeeId: e.id, period: run.period, number: `PS-${run.period.replace("-", "")}-${e.employeeNumber}`, net: e.net, releasedAt: now },
+        // A reopened run released again without recalculating reuses (un-voids) its payslips.
+        await tx.payslip.upsert({
+          where: { runEmployeeId: e.id },
+          create: { companyId: ctx.companyId, employeeId: e.employeeId, runEmployeeId: e.id, period: run.period, number: `PS-${run.period.replace("-", "")}-${e.employeeNumber}`, net: e.net, releasedAt: now },
+          update: { net: e.net, releasedAt: now, voidedAt: null },
         });
       }
       await tx.payrollAdjustment.updateMany({ where: { companyId: ctx.companyId, period: run.period, runId: null, employeeId: { in: entries.map((e) => e.employeeId) } }, data: { runId } });

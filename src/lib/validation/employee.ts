@@ -52,6 +52,7 @@ export const employeeBaseSchema = z.object({
   bankName: nullableString(120),
   iban,
   bankAccountName: nullableString(120),
+  bankRoutingCode: z.preprocess((v) => (typeof v === "string" ? v.trim() : v) || null, z.string().regex(/^\d{9}$/, "9 digits").nullable().optional()).transform((v) => v ?? null),
 });
 
 const refineDates = <T extends z.infer<typeof employeeBaseSchema>>(v: T, ctx: z.RefinementCtx) => {

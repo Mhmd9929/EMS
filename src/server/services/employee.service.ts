@@ -401,6 +401,7 @@ function employeeData(input: Omit<EmployeeCreateInput, "employeeNumber" | "sendI
     bankName: input.bankName,
     iban: input.iban,
     bankAccountName: input.bankAccountName,
+    bankRoutingCode: input.bankRoutingCode,
   };
 }
 

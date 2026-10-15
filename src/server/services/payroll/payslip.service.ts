@@ -87,3 +87,16 @@ export async function listPayslips(ctx: AuthContext, employeeId: string, year?: 
   });
   return rows.map((r) => ({ id: r.id, number: r.number, period: r.period, releasedAt: r.releasedAt, currency: r.runEmployee.run.currency, gross: n(r.runEmployee.gross), deductions: n(r.runEmployee.deductions), net: n(r.runEmployee.net) }));
 }
+
+/**
+ * Password for an encrypted payslip PDF, or null when the company does not protect payslips.
+ * Date of birth as DDMMYYYY, falling back to the employee number. Only call after getPayslip authorised access.
+ */
+export async function payslipPdfPassword(companyId: string, employeeId: string) {
+  const company = await db.company.findUniqueOrThrow({ where: { id: companyId }, select: { payslipPdfPassword: true } });
+  if (!company.payslipPdfPassword) return null;
+  const e = await db.employee.findUniqueOrThrow({ where: { id: employeeId }, select: { dateOfBirth: true, employeeNumber: true } });
+  if (!e.dateOfBirth) return e.employeeNumber;
+  const d = e.dateOfBirth.toISOString().slice(0, 10).split("-");
+  return `${d[2]}${d[1]}${d[0]}`;
+}

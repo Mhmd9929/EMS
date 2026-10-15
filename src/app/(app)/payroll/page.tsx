@@ -34,7 +34,7 @@ export default async function PayrollRunsPage({ searchParams }: { searchParams: 
         actions={can(ctx, "payroll.run.manage") && <NewRunDialog defaultPeriod={defaultPeriod} departments={departments} locations={locations} />}
       />
       <Toolbar>
-        <FilterSelect param="year" label="Year" options={[0, 1, 2].map((d) => String(today.getUTCFullYear() - d)).map((y) => ({ value: y, label: y }))} />
+        <FilterSelect param="year" label="Year" defaultValue={String(year)} options={[0, 1, 2].map((d) => String(today.getUTCFullYear() - d)).map((y) => ({ value: y, label: `Year ${y}` }))} />
         <FilterSelect param="status" label="Status" options={RUN_STATUSES} />
       </Toolbar>
       {runs.length === 0 ? (

@@ -103,7 +103,10 @@ export function formulaVariables(src: string): string[] {
   const walk = (n: Node) => {
     if (n.t === "var") out.add(n.name);
     else if (n.t === "neg") walk(n.e);
-    else if (n.t === "bin") (walk(n.l), walk(n.r));
+    else if (n.t === "bin") {
+      walk(n.l);
+      walk(n.r);
+    }
     else if (n.t === "call") n.args.forEach(walk);
   };
   walk(parseFormula(src));

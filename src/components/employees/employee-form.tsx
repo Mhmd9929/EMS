@@ -169,8 +169,11 @@ export function EmployeeForm({
         <Field label="Account holder name" name="bankAccountName" error={err("bankAccountName")}>
           <Input defaultValue={v("bankAccountName")} />
         </Field>
-        <Field label="IBAN" name="iban" error={err("iban")} hint="UAE IBANs are 23 characters, e.g. AE07 0331 2345 6789 0123 456" className="sm:col-span-2">
+        <Field label="IBAN" name="iban" error={err("iban")} hint="UAE IBANs are 23 characters, e.g. AE07 0331 2345 6789 0123 456">
           <Input defaultValue={employee?.iban ? formatIban(employee.iban) : ""} autoComplete="off" spellCheck={false} />
+        </Field>
+        <Field label="Bank routing code (WPS agent ID)" name="bankRoutingCode" error={err("bankRoutingCode")} hint="9 digits, from the employee's bank — needed for the WPS SIF file">
+          <Input defaultValue={v("bankRoutingCode")} inputMode="numeric" maxLength={9} autoComplete="off" />
         </Field>
       </FormSection>
 

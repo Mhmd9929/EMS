@@ -8,7 +8,6 @@ import { ForbiddenError, NotFoundError } from "@/server/errors";
 import { first, type SearchParams } from "@/lib/list-params";
 import { daysBetween, formatDate, formatDateTime, todayInTimeZone, yearsBetween } from "@/lib/dates";
 import { EMPLOYMENT_TYPES, GENDERS, labelOf } from "@/lib/constants";
-import { formatIban } from "@/lib/iban";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import { getEmployeeBalances } from "@/server/services/leave/balance.service";
 import { recentRequestsFor } from "@/server/services/leave/request.service";
 import { BalanceCards } from "@/components/leave/balance-cards";
 import { LeaveStatusBadge, LeaveTypeLabel } from "@/components/leave/leave-badges";
+import { PayrollSection } from "./payroll-section";
 
 export const metadata: Metadata = { title: "Employee" };
 
@@ -106,7 +106,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
     { key: "job", label: "Job" },
     ...(e.access !== "team" ? [{ key: "documents", label: "Documents" }] : []),
     { key: "leave", label: "Leave" },
-    ...(e.access === "self" || (e.access === "all" && can(ctx, "employee.sensitive.read")) ? [{ key: "payroll", label: "Payroll" }] : []),
+    ...(e.access === "self" || (e.access === "all" && (can(ctx, "employee.sensitive.read") || can(ctx, "payroll.salary.read"))) ? [{ key: "payroll", label: "Payroll" }] : []),
   ];
   const requested = first(sp.tab) ?? "overview";
   const tab = tabs.some((t) => t.key === requested) ? requested : "overview";
@@ -339,23 +339,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
 
       {tab === "leave" && <LeaveTab />}
 
-      {tab === "payroll" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Bank details (WPS)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <DL
-              items={[
-                ["Bank", e.bankName],
-                ["Account holder", e.bankAccountName],
-                ["IBAN", <span key="iban" className="font-mono">{e.iban ? (e.canSeeSensitive ? formatIban(e.iban) : e.iban) : "—"}</span>],
-              ]}
-            />
-            <p className="text-muted-foreground text-xs">Salary structure and payslips arrive in Phase 3.</p>
-          </CardContent>
-        </Card>
-      )}
+      {tab === "payroll" && <PayrollSection ctx={ctx} e={e} today={today} />}
     </div>
   );
 }

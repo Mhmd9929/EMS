@@ -59,6 +59,8 @@ model Company {
   gratuityDailyBasis      String         @default("DIV30")
   /// leave encashment daily rate = basic / 30 (BASIC) or gross recurring / 30 (GROSS)
   leaveEncashmentBasis    String         @default("BASIC")
+  /// Payslip PDFs are encrypted; the password is the employee's date of birth (DDMMYYYY), or the employee number if none.
+  payslipPdfPassword      Boolean        @default(false)
   createdAt               DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime       @updatedAt @db.Timestamptz(3)
 

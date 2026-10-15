@@ -1,7 +1,7 @@
 # HRMS — Employee Management Portal
 
 A multi-tenant-ready HR portal for UAE companies: employees, org structure, role-based access, audit
-trail and leave management — with Payroll/WPS (Phase 3) to follow.
+trail, leave management and payroll with WPS.
 
 Built with Next.js 15 (App Router, TypeScript strict), PostgreSQL + Prisma, Auth.js, Tailwind CSS +
 shadcn/ui, Zod, pg-boss, Nodemailer, Vitest and Playwright. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
@@ -43,6 +43,34 @@ for the design and [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what's in each c
 4. `hr@` → **Approvals → All pending** (a Study Leave waits for the HR step), **Leave calendar → Company**,
    **Balances** (adjust with a reason), **Reports**, **Leave settings**.
 5. Run `npm run worker` (or the `worker` container) for accruals, reminders and email retries.
+
+## Features (Phase 3 — Payroll)
+
+- **Pay components** (fixed or formula such as `BASIC * 0.5`) and **effective-dated salary structures**
+  with full history; one-time monthly **adjustments**.
+- **Payroll runs**: Draft → Calculated → Under review → Approved → Released (+ Cancelled), for all employees,
+  a department or a location.
+  - Pro-rating on a calendar-day or 30-day basis, and automatic unpaid-leave deduction.
+  - A review screen with issues and variance vs last month, and hold/exclude with a reason.
+  - **Maker-checker** approval; release locks the run, issues payslips and notifies employees.
+  - Reopen is Super Admin only.
+- **Payslips**: *My payslips*, in-browser view, PDF (net in words, YTD, masked IBAN, optional password).
+  Employees only ever see their own released payslips.
+- **Exports**: payroll register (Excel), bank transfer CSV, **WPS SIF**.
+- **End of service**: gratuity calculator on the employee page and final settlement (unpaid salary + leave
+  encashment + gratuity + other − deductions) with maker-checker approval.
+
+### Try the payroll flow
+1. `payroll@` → **Payroll runs → New payroll run** (current month) → **Calculate**.
+   - Two new joiners have no IBAN: use the status menu to **Hold** them, then **Submit for approval**.
+   - As the maker you can't approve the run.
+2. `admin@` → open the run → **Approve**. Download the register, WPS SIF or bank CSV.
+3. `payroll@` → **Release payroll**.
+4. `employee@` → bell notification → **My payslips** → open the month → **Download PDF**.
+5. `payroll@` → **Employees → Bilal Chaudhry → Payroll** shows the leaver's final settlement draft.
+   - `admin@` approves it from **Final settlements**.
+   - **Salaries**, **Adjustments** and **Payroll settings** (components, WPS IDs, gratuity rules, PDF
+     password) are in the sidebar.
 
 ## Quick start
 
@@ -95,6 +123,9 @@ terminated), UAE public holidays for 2026–27 and a few identity documents expi
 Leave data is generated relative to today: last year's leave and carry-forward, this year's accruals and
 taken leave, someone on leave today, upcoming leave, 3 requests in the Engineering manager's inbox,
 a Study Leave waiting for HR, a cancellation request, and rejected/cancelled history for `employee@`.
+Payroll data: salaries by grade with history, one-time adjustments, and **released payroll for every
+completed month of the year**. The current month is left for you to run. There is also a draft final
+settlement for the scheduled leaver.
 All other employees have accounts that are **not yet activated** (use "Send invitation").
 
 ## Environment variables
@@ -133,9 +164,9 @@ See [`.env.example`](.env.example) for the full list with comments.
 ## Testing
 
 ```bash
-npm test                    # 86 unit tests: leave day counting/accruals/carry-forward/policies, IBAN, masking, dates, tree cycles, permissions, validation, CSV import
-npm run db:seed && npm run test:integration   # 36 tests: server-side authorisation, leave rules, approval chains, delegation, jobs
-npm run test:e2e            # 29 browser tests: login, RBAC by URL, CRUD, import, org chart, apply → approve → balance updated, bulk approve, delegation
+npm test                    # 107 unit tests: payroll engine (pro-rata, unpaid leave, adjustments, formulas), gratuity, SIF, leave rules, IBAN, masking, permissions, validation, CSV import
+npm run db:seed && npm run test:integration   # 50 tests: server-side authorisation, payslip isolation, maker-checker, run lifecycle, leave rules, approval chains, jobs
+npm run test:e2e            # 33 browser tests: login, RBAC by URL, CRUD, import, org chart, leave apply → approve → balance, payroll run → approve → release → payslip PDF, payslip isolation
 ```
 
 E2E uses the dev server on port 3000 (or starts one); in CI it runs against `npm run start`. The GitHub

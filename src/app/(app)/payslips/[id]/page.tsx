@@ -1,0 +1,139 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Download, ExternalLink } from "lucide-react";
+import { requireAuth } from "@/server/auth/context";
+import { getPayslip } from "@/server/services/payroll/payslip.service";
+import { periodLabel } from "@/lib/payroll/calc";
+import { formatDate } from "@/lib/dates";
+import { amountInWords } from "@/lib/payroll/words";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { Money } from "@/components/payroll/badges";
+
+export const metadata: Metadata = { title: "Payslip" };
+
+export default async function PayslipPage({ params }: { params: Promise<{ id: string }> }) {
+  const ctx = await requireAuth();
+  const { id } = await params;
+  // getPayslip throws NotFound for anything the user may not see (another employee's, unreleased, voided).
+  const p = await getPayslip(ctx, id).catch(() => notFound());
+  const cur = p.currency;
+  const own = p.employee.id === ctx.employeeId;
+  const facts: [string, React.ReactNode][] = [
+    ["Employee no.", p.employee.number],
+    ["Department", p.employee.department ?? "—"],
+    ["Position", p.employee.position ?? "—"],
+    ["Joined", formatDate(p.employee.joinDate)],
+    ["Pay period", `${formatDate(p.periodStart)} – ${formatDate(p.periodEnd)}`],
+    ["Paid days", `${p.paidDays}${p.unpaidLeaveDays ? ` (${p.unpaidLeaveDays} unpaid leave)` : ""}`],
+    ["Bank", p.employee.bankName ?? "—"],
+    ["IBAN", p.employee.ibanMasked || "—"],
+  ];
+  const Lines = ({ title, lines, total }: { title: string; lines: { name: string; amount: number; note: string | null }[]; total: number }) => (
+    <Card className="gap-0 py-0">
+      <CardHeader className="border-b py-3">
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="px-0">
+        <ul className="divide-y text-sm">
+          {lines.length === 0 && <li className="text-muted-foreground px-6 py-2">None</li>}
+          {lines.map((l, i) => (
+            <li key={i} className="flex justify-between gap-4 px-6 py-2">
+              <span>
+                {l.name}
+                {l.note && <span className="text-muted-foreground block text-xs">{l.note}</span>}
+              </span>
+              <Money minor={l.amount} currency={cur} />
+            </li>
+          ))}
+          <li className="bg-muted/50 flex justify-between px-6 py-2 font-medium">
+            <span>Total {title.toLowerCase()}</span>
+            <Money minor={total} currency={cur} />
+          </li>
+        </ul>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <p className="text-muted-foreground text-sm">
+            <Link href={own ? "/payslips" : `/employees/${p.employee.id}?tab=payroll`} className="hover:underline">
+              {own ? "My payslips" : p.employee.name}
+            </Link>{" "}
+            / {p.number}
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">Payslip — {periodLabel(p.period)}</h1>
+          <p className="text-muted-foreground text-sm">
+            {p.employee.name} · {p.company.legalName ?? p.company.name} · released {formatDate(p.releasedAt)}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <a href={`/api/payslips/${p.id}/pdf`} target="_blank" rel="noopener" className={buttonVariants({ variant: "outline" })}>
+            <ExternalLink aria-hidden /> Open PDF
+          </a>
+          <a href={`/api/payslips/${p.id}/pdf?download=1`} className={buttonVariants()}>
+            <Download aria-hidden /> Download PDF
+          </a>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent>
+          <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            {facts.map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-muted-foreground text-xs">{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Lines title="Earnings" lines={p.earnings} total={p.gross} />
+        <Lines title="Deductions" lines={p.deductions} total={p.totalDeductions} />
+      </div>
+
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-muted-foreground text-sm">Net pay</p>
+            <p className="text-muted-foreground text-xs">{amountInWords(p.net, cur)}</p>
+          </div>
+          <p className="text-primary text-2xl font-semibold">
+            <Money minor={p.net} currency={cur} showCode />
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Year to date (from {periodLabel(p.ytd.from)})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid gap-4 text-sm sm:grid-cols-3">
+            {(
+              [
+                ["Gross", p.ytd.gross],
+                ["Deductions", p.ytd.deductions],
+                ["Net", p.ytd.net],
+              ] as const
+            ).map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-muted-foreground text-xs">{k}</dt>
+                <dd className="font-medium">
+                  <Money minor={v} currency={cur} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

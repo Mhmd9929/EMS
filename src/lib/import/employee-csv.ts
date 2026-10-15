@@ -34,6 +34,7 @@ export const IMPORT_COLUMNS = [
   { key: "bankName", required: false, example: "Emirates NBD" },
   { key: "iban", required: false, example: "AE070331234567890123456" },
   { key: "bankAccountName", required: false, example: "" },
+  { key: "bankRoutingCode", required: false, example: "302620122" },
 ] as const;
 
 export const MAX_IMPORT_ROWS = 2000;
@@ -151,6 +152,7 @@ export function validateImport(records: Record<string, string>[], headers: strin
       bankName: get(rec, "bankName"),
       iban: get(rec, "iban"),
       bankAccountName: get(rec, "bankAccountName"),
+      bankRoutingCode: get(rec, "bankRoutingCode"),
       sendInvite: "false",
     });
     if (!parsed.success) {

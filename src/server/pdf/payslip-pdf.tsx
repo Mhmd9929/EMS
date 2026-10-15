@@ -1,4 +1,5 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
 import { Document, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import { storage } from "@/server/storage";
 import type { PayslipData } from "@/server/services/payroll/payslip.service";
@@ -114,7 +115,7 @@ export async function renderPayslipPdf(p: PayslipData): Promise<Buffer> {
         </View>
 
         <View style={[s.grid, { marginTop: 12 }]}>
-          {field(`Year to date (from ${p.ytd.from})`, "")}
+          <Text style={[s.label, { width: "100%", marginBottom: 4, fontFamily: "Helvetica-Bold" }]}>Year to date (from {periodLabel(p.ytd.from)})</Text>
           {field("Gross YTD", formatMoney(p.ytd.gross, p.currency))}
           {field("Deductions YTD", formatMoney(p.ytd.deductions, p.currency))}
           {field("Net YTD", formatMoney(p.ytd.net, p.currency))}
@@ -127,4 +128,12 @@ export async function renderPayslipPdf(p: PayslipData): Promise<Buffer> {
     </Document>
   );
   return renderToBuffer(doc);
+}
+
+/** AES-256 encrypt a PDF so it opens only with `password` (printing allowed, editing not). */
+export async function encryptPdf(pdf: Buffer | Uint8Array, password: string): Promise<Uint8Array> {
+  const { PDFDocument } = await import("@cantoo/pdf-lib");
+  const doc = await PDFDocument.load(pdf);
+  doc.encrypt({ userPassword: password, ownerPassword: randomBytes(24).toString("hex"), permissions: { printing: "highResolution", modifying: false, copying: false, annotating: false } });
+  return doc.save({ useObjectStreams: false });
 }

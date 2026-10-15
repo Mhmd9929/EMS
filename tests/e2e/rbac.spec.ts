@@ -3,6 +3,7 @@ import { forbidden, login, users } from "./helpers";
 
 test.describe("role-based access (server enforced)", () => {
   test("an employee cannot reach HR or admin pages, even by URL", async ({ page }) => {
+    test.slow(); // many routes: the dev server compiles each on first visit
     await login(page, users.employee);
     const nav = page.getByRole("navigation", { name: "Main" });
     await expect(nav.getByRole("link", { name: "Employees" })).toHaveCount(0);
