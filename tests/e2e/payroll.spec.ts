@@ -36,6 +36,7 @@ test.describe.serial("payroll", () => {
     // Hold everyone with a blocking issue (the seeded joiners, plus any employee other specs created without an IBAN).
     await page.goto(`${runUrl}?view=issues`);
     const blocked = page.getByRole("row").filter({ hasText: "No IBAN" }).filter({ has: page.getByRole("button", { name: /Change status of/ }).filter({ hasText: "Included" }) });
+    await expect(blocked.first()).toBeVisible(); // allInnerTexts() does not wait for the view to render
     const names = await blocked.getByRole("link").allInnerTexts();
     expect(names).toEqual(expect.arrayContaining(["Omar Bin Rashid", "Leena Thomas"]));
     for (const name of names) await hold(page, name);
