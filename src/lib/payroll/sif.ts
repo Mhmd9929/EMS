@@ -25,7 +25,10 @@ export type SifEmployee = {
 
 export type SifHeader = { employerId: string | null; employerBankCode: string | null; period: string; currency: string; createdAt: Date; reference: string };
 
-export type SifResult = { fileName: string; content: string; errors: string[]; total: number; count: number };
+/** A problem in the file. `message` is English (also in `errors`); the UI translates `code` (payroll.sif.<code>). */
+export type SifProblem = { code: "employerId" | "employerBankCode" | "personId" | "routingCode" | "iban"; employee?: string; message: string };
+
+export type SifResult = { fileName: string; content: string; errors: string[]; problems: SifProblem[]; total: number; count: number };
 
 type Format = { label: string; build: (h: SifHeader, rows: SifEmployee[]) => SifResult };
 
@@ -36,15 +39,15 @@ export const SIF_FORMATS: Record<string, Format> = {
   UAE_SIF_V1: {
     label: "UAE WPS SIF (MOHRE)",
     build(h, rows) {
-      const errors: string[] = [];
-      if (!h.employerId || !/^\d{13}$/.test(h.employerId)) errors.push("Company WPS employer ID must be 13 digits (Payroll → Settings).");
-      if (!h.employerBankCode || !/^\d{9}$/.test(h.employerBankCode)) errors.push("Employer bank routing code must be 9 digits (Payroll → Settings).");
+      const problems: SifProblem[] = [];
+      if (!h.employerId || !/^\d{13}$/.test(h.employerId)) problems.push({ code: "employerId", message: "Company WPS employer ID must be 13 digits (Payroll → Settings)." });
+      if (!h.employerBankCode || !/^\d{9}$/.test(h.employerBankCode)) problems.push({ code: "employerBankCode", message: "Employer bank routing code must be 9 digits (Payroll → Settings)." });
       const lines: string[] = [];
       for (const r of rows) {
         const who = `${r.employeeNumber} ${r.name}`;
-        if (!r.personId) errors.push(`${who}: missing labour card / person ID`);
-        if (!r.routingCode || !/^\d{9}$/.test(r.routingCode)) errors.push(`${who}: bank routing code must be 9 digits`);
-        if (!r.iban) errors.push(`${who}: missing IBAN`);
+        if (!r.personId) problems.push({ code: "personId", employee: who, message: `${who}: missing labour card / person ID` });
+        if (!r.routingCode || !/^\d{9}$/.test(r.routingCode)) problems.push({ code: "routingCode", employee: who, message: `${who}: bank routing code must be 9 digits` });
+        if (!r.iban) problems.push({ code: "iban", employee: who, message: `${who}: missing IBAN` });
         lines.push(
           ["EDR", (r.personId ?? "").padStart(14, "0"), r.routingCode ?? "", r.iban ?? "", iso(r.payStart), iso(r.payEnd), r.days, minorToDecimalString(r.fixed, h.currency), minorToDecimalString(r.variable, h.currency), r.leaveDays].join(","),
         );
@@ -56,7 +59,7 @@ export const SIF_FORMATS: Record<string, Format> = {
         ["SCR", h.employerId ?? "", h.employerBankCode ?? "", iso(c), `${pad(c.getUTCHours())}${pad(c.getUTCMinutes())}`, `${m}${y}`, rows.length, minorToDecimalString(total, h.currency), h.currency, h.reference].join(","),
       );
       const stamp = `${String(c.getUTCFullYear()).slice(2)}${pad(c.getUTCMonth() + 1)}${pad(c.getUTCDate())}${pad(c.getUTCHours())}${pad(c.getUTCMinutes())}${pad(c.getUTCSeconds())}`;
-      return { fileName: `${h.employerId ?? "EMPLOYER"}${stamp}.SIF`, content: lines.join("\r\n") + "\r\n", errors, total, count: rows.length };
+      return { fileName: `${h.employerId ?? "EMPLOYER"}${stamp}.SIF`, content: lines.join("\r\n") + "\r\n", errors: problems.map((p) => p.message), problems, total, count: rows.length };
     },
   },
 };

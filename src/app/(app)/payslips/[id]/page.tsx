@@ -4,14 +4,17 @@ import { notFound } from "next/navigation";
 import { Download, ExternalLink } from "lucide-react";
 import { requireAuth } from "@/server/auth/context";
 import { getPayslip } from "@/server/services/payroll/payslip.service";
-import { periodLabel } from "@/lib/payroll/calc";
-import { formatDate } from "@/lib/dates";
-import { amountInWords } from "@/lib/payroll/words";
+import { amountInWords, amountInWordsAr } from "@/lib/payroll/words";
+import { lineNoteText } from "@/lib/payroll/issues";
+import { getFormat } from "@/server/i18n";
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Money } from "@/components/payroll/badges";
 
-export const metadata: Metadata = { title: "Payslip" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("payslips"))("meta.view") };
+}
 
 export default async function PayslipPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireAuth();
@@ -19,36 +22,37 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   // getPayslip throws NotFound for anything the user may not see (another employee's, unreleased, voided).
   const p = await getPayslip(ctx, id).catch(() => notFound());
   const cur = p.currency;
+  const [t, tp, f] = await Promise.all([getTranslations("payslips.view"), getTranslations("payroll"), getFormat()]);
   const own = p.employee.id === ctx.employeeId;
   const facts: [string, React.ReactNode][] = [
-    ["Employee no.", p.employee.number],
-    ["Department", p.employee.department ?? "—"],
-    ["Position", p.employee.position ?? "—"],
-    ["Joined", formatDate(p.employee.joinDate)],
-    ["Pay period", `${formatDate(p.periodStart)} – ${formatDate(p.periodEnd)}`],
-    ["Paid days", `${p.paidDays}${p.unpaidLeaveDays ? ` (${p.unpaidLeaveDays} unpaid leave)` : ""}`],
-    ["Bank", p.employee.bankName ?? "—"],
-    ["IBAN", p.employee.ibanMasked || "—"],
+    [t("facts.employeeNo"), <span key="no" dir="ltr">{p.employee.number}</span>],
+    [t("facts.department"), p.employee.department ?? "—"],
+    [t("facts.position"), p.employee.position ?? "—"],
+    [t("facts.joined"), f.date(p.employee.joinDate)],
+    [t("facts.payPeriod"), `${f.date(p.periodStart)} – ${f.date(p.periodEnd)}`],
+    [t("facts.paidDays"), p.unpaidLeaveDays ? t("paidDaysUnpaid", { paid: p.paidDays, unpaid: p.unpaidLeaveDays }) : String(p.paidDays)],
+    [t("facts.bank"), p.employee.bankName ?? "—"],
+    [t("facts.iban"), p.employee.ibanMasked ? <span key="iban" dir="ltr">{p.employee.ibanMasked}</span> : "—"],
   ];
-  const Lines = ({ title, lines, total }: { title: string; lines: { name: string; amount: number; note: string | null }[]; total: number }) => (
+  const Lines = ({ title, totalLabel, lines, total }: { title: string; totalLabel: string; lines: { name: string; amount: number; note: string | null }[]; total: number }) => (
     <Card className="gap-0 py-0">
       <CardHeader className="border-b py-3">
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent className="px-0">
         <ul className="divide-y text-sm">
-          {lines.length === 0 && <li className="text-muted-foreground px-6 py-2">None</li>}
+          {lines.length === 0 && <li className="text-muted-foreground px-6 py-2">{t("none")}</li>}
           {lines.map((l, i) => (
             <li key={i} className="flex justify-between gap-4 px-6 py-2">
               <span>
                 {l.name}
-                {l.note && <span className="text-muted-foreground block text-xs">{l.note}</span>}
+                {l.note && <span className="text-muted-foreground block text-xs">{lineNoteText(l.note, tp)}</span>}
               </span>
               <Money minor={l.amount} currency={cur} />
             </li>
           ))}
           <li className="bg-muted/50 flex justify-between px-6 py-2 font-medium">
-            <span>Total {title.toLowerCase()}</span>
+            <span>{totalLabel}</span>
             <Money minor={total} currency={cur} />
           </li>
         </ul>
@@ -62,21 +66,21 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
         <div className="space-y-1">
           <p className="text-muted-foreground text-sm">
             <Link href={own ? "/payslips" : `/employees/${p.employee.id}?tab=payroll`} className="hover:underline">
-              {own ? "My payslips" : p.employee.name}
+              {own ? t("myPayslips") : p.employee.name}
             </Link>{" "}
-            / {p.number}
+            / <span dir="ltr">{p.number}</span>
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Payslip — {periodLabel(p.period)}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("heading", { month: f.month(p.period) })}</h1>
           <p className="text-muted-foreground text-sm">
-            {p.employee.name} · {p.company.legalName ?? p.company.name} · released {formatDate(p.releasedAt)}
+            {t("subtitle", { name: p.employee.name, company: p.company.legalName ?? p.company.name, date: f.date(p.releasedAt) })}
           </p>
         </div>
         <div className="flex gap-2">
           <a href={`/api/payslips/${p.id}/pdf`} target="_blank" rel="noopener" className={buttonVariants({ variant: "outline" })}>
-            <ExternalLink aria-hidden /> Open PDF
+            <ExternalLink aria-hidden /> {t("openPdf")}
           </a>
           <a href={`/api/payslips/${p.id}/pdf?download=1`} className={buttonVariants()}>
-            <Download aria-hidden /> Download PDF
+            <Download aria-hidden /> {t("downloadPdf")}
           </a>
         </div>
       </div>
@@ -95,15 +99,15 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Lines title="Earnings" lines={p.earnings} total={p.gross} />
-        <Lines title="Deductions" lines={p.deductions} total={p.totalDeductions} />
+        <Lines title={t("earnings")} totalLabel={t("totalEarnings")} lines={p.earnings} total={p.gross} />
+        <Lines title={t("deductions")} totalLabel={t("totalDeductions")} lines={p.deductions} total={p.totalDeductions} />
       </div>
 
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-muted-foreground text-sm">Net pay</p>
-            <p className="text-muted-foreground text-xs">{amountInWords(p.net, cur)}</p>
+            <p className="text-muted-foreground text-sm">{t("netPay")}</p>
+            <p className="text-muted-foreground text-xs">{f.locale === "ar" ? amountInWordsAr(p.net, cur) : amountInWords(p.net, cur)}</p>
           </div>
           <p className="text-link text-2xl font-semibold">
             <Money minor={p.net} currency={cur} showCode />
@@ -113,15 +117,15 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Year to date (from {periodLabel(p.ytd.from)})</CardTitle>
+          <CardTitle className="text-base">{t("ytd", { month: f.month(p.ytd.from) })}</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-4 text-sm sm:grid-cols-3">
             {(
               [
-                ["Gross", p.ytd.gross],
-                ["Deductions", p.ytd.deductions],
-                ["Net", p.ytd.net],
+                [t("gross"), p.ytd.gross],
+                [t("deductions"), p.ytd.deductions],
+                [t("net"), p.ytd.net],
               ] as const
             ).map(([k, v]) => (
               <div key={k}>

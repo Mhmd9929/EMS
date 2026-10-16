@@ -240,8 +240,7 @@ export async function adjustBalance(ctx: AuthContext, input: { employeeId: strin
         companyId: ctx.companyId,
         userIds: [employee.userId],
         type: "leave.balance_adjusted",
-        title: `Your ${type.name} balance was adjusted`,
-        body: `HR adjusted your ${type.name} balance for ${input.year} by ${round2(input.days)} days. Reason: ${input.reason}`,
+        message: { key: "leaveBalanceAdjusted", params: { type: type.name, year: String(input.year), days: round2(input.days), reason: input.reason } },
         link: "/leave",
       })),
     );

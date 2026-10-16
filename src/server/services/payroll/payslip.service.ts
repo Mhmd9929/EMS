@@ -4,6 +4,7 @@ import type { AuthContext } from "@/server/auth/permissions";
 import { getEmployeeAccess } from "@/server/rbac/scope";
 import { ForbiddenError, NotFoundError } from "@/server/errors";
 import { maskIban } from "@/lib/iban";
+import { serverT } from "@/server/i18n";
 import { n } from "./common";
 
 /**
@@ -18,7 +19,7 @@ export async function getPayslip(ctx: AuthContext, payslipId: string) {
     include: { runEmployee: { include: { lines: { orderBy: { sortOrder: "asc" } }, run: true } } },
   });
   const isOwner = !!ps && !!ctx.employeeId && ps.employeeId === ctx.employeeId;
-  if (!ps || (!isOwner && !ctx.permissions.has("payslip.read.all"))) throw new NotFoundError("Payslip not found.");
+  if (!ps || (!isOwner && !ctx.permissions.has("payslip.read.all"))) throw new NotFoundError((await serverT("payroll"))("errors.payslipNotFound"));
 
   const company = await db.company.findUniqueOrThrow({
     where: { id: ctx.companyId },

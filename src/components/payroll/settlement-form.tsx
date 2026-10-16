@@ -7,9 +7,11 @@ import { Field } from "@/components/forms/field";
 import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Input, Textarea } from "@/components/ui/input";
+import { useTranslations } from "next-intl";
 
 export function SettlementForm({ employeeId, currency }: { employeeId: string; currency: string }) {
   const router = useRouter();
+  const t = useTranslations("payroll.settlementForm");
   const { state, onSubmit, pending } = useFormAction(saveSettlementAction);
   useActionFeedback(state, { onSuccess: () => router.refresh() });
   return (
@@ -17,18 +19,18 @@ export function SettlementForm({ employeeId, currency }: { employeeId: string; c
       <FormError state={state} />
       <input type="hidden" name="employeeId" value={employeeId} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={`Other earnings (${currency})`} name="otherEarnings" error={fieldError(state, "otherEarnings")} hint="e.g. notice pay, airfare">
+        <Field label={t("otherEarnings", { currency })} name="otherEarnings" error={fieldError(state, "otherEarnings")} hint={t("otherEarningsHint")}>
           <Input inputMode="decimal" placeholder="0.00" />
         </Field>
-        <Field label={`Deductions (${currency})`} name="deductions" error={fieldError(state, "deductions")} hint="e.g. loan balance, unreturned assets">
+        <Field label={t("deductions", { currency })} name="deductions" error={fieldError(state, "deductions")} hint={t("deductionsHint")}>
           <Input inputMode="decimal" placeholder="0.00" />
         </Field>
       </div>
-      <Field label="Notes" name="notes" error={fieldError(state, "notes")}>
+      <Field label={t("notes")} name="notes" error={fieldError(state, "notes")}>
         <Textarea rows={2} />
       </Field>
       <div>
-        <SubmitButton pending={pending}>Save draft settlement</SubmitButton>
+        <SubmitButton pending={pending}>{t("save")}</SubmitButton>
       </div>
     </form>
   );

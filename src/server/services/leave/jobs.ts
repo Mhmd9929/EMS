@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/server/db";
 import { writeAudit } from "@/server/audit";
-import { formatDate, todayInTimeZone } from "@/lib/dates";
+import { todayInTimeZone } from "@/lib/dates";
 import { closeLeaveYear, expireCarryForward, syncAccruals } from "./balance.service";
 import { stepRecipients, usersWithPermission } from "./approvers";
 import { deliverEmailsInBackground, notify } from "../notification.service";
@@ -75,11 +75,11 @@ export async function runLeaveEscalations(now = new Date()) {
         const escalate = a.lastReminderAt !== null && a.approverRole === "MANAGER";
         const hr = escalate ? await usersWithPermission(tx, c.id, "leave.approve.all") : [];
         const days = Math.floor((now.getTime() - a.activatedAt!.getTime()) / 86_400_000);
-        const what = `${displayName(a.request.employee)}'s ${a.request.leaveType.name} (${formatDate(a.request.startDate)} – ${formatDate(a.request.endDate)})`;
+        const what = { name: displayName(a.request.employee), type: a.request.leaveType.name, start: a.request.startDate, end: a.request.endDate, days };
         const out = [
-          ...(await notify(tx, { companyId: c.id, userIds: recipients, type: "leave.reminder", title: `Reminder: leave request waiting ${days} days`, body: `${what} is still waiting for your decision.`, link: `/leave/requests/${a.requestId}` })),
+          ...(await notify(tx, { companyId: c.id, userIds: recipients, type: "leave.reminder", message: { key: "leaveReminder", params: what }, link: `/leave/requests/${a.requestId}` })),
           ...(escalate
-            ? await notify(tx, { companyId: c.id, userIds: hr.filter((u) => !recipients.includes(u) && u !== a.request.employee.userId), type: "leave.escalated", title: `Escalated: leave request waiting ${days} days`, body: `${what} has not been decided by the manager. You can act on it as HR.`, link: `/leave/requests/${a.requestId}` })
+            ? await notify(tx, { companyId: c.id, userIds: hr.filter((u) => !recipients.includes(u) && u !== a.request.employee.userId), type: "leave.escalated", message: { key: "leaveEscalated", params: what }, link: `/leave/requests/${a.requestId}` })
             : []),
         ];
         await tx.leaveApproval.update({ where: { id: a.id }, data: { lastReminderAt: now } });

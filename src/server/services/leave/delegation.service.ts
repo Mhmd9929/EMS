@@ -3,7 +3,7 @@ import { db } from "@/server/db";
 import type { AuthContext } from "@/server/auth/permissions";
 import { writeAudit } from "@/server/audit";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
-import { formatDate, todayInTimeZone, toDateInput } from "@/lib/dates";
+import { todayInTimeZone, toDateInput } from "@/lib/dates";
 import { deliverEmailsInBackground, notify } from "../notification.service";
 import { serverT } from "@/server/i18n";
 
@@ -51,8 +51,7 @@ export async function createDelegation(ctx: AuthContext, input: { delegateId: st
         companyId: ctx.companyId,
         userIds: [delegate.id],
         type: "leave.delegation",
-        title: `${ctx.employeeName ?? ctx.name} delegated leave approvals to you`,
-        body: `From ${formatDate(input.startDate)} to ${formatDate(input.endDate)} you can approve leave for ${ctx.employeeName ?? ctx.name}'s team.${input.reason ? ` Note: ${input.reason}` : ""}`,
+        message: { key: "leaveDelegation", params: { actor: ctx.employeeName ?? ctx.name, start: input.startDate, end: input.endDate }, note: input.reason },
         link: "/leave/approvals",
       })),
     );

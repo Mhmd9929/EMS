@@ -16,7 +16,7 @@ import type { LeaveApplyInput } from "@/lib/validation/leave";
 import { BOOKED_STATUSES, displayName, holidaySet, leaveEmployeeSelect, loadPolicies, typeRules, type LeaveEmployee } from "./common";
 import { computeBalances, loadLeaveEmployee, projectedCredits } from "./balance.service";
 import { delegatorsFor, stepRecipients } from "./approvers";
-import { deliverEmailsInBackground, notify } from "../notification.service";
+import { approvalChainParam, deliverEmailsInBackground, notify } from "../notification.service";
 
 const BACKDATE_LIMIT_DAYS = 30;
 
@@ -311,12 +311,17 @@ export async function submitLeave(ctx: AuthContext, input: LeaveApplyInput & { a
         after: { leaveType: type.code, startDate: created.startDate, endDate: created.endDate, halfDay: created.halfDay, days: evaluation.dayCount.total, status: created.status },
       }, tx);
 
-      const summary = `${displayName(e)} requested ${formatDays(evaluation.dayCount.total)} of ${type.name} (${formatDate(created.startDate)} – ${formatDate(created.endDate)}).`;
       if (!autoApprove) {
         const active = created.approvals.find((a) => a.step === firstActive)!;
         const recipients = await stepRecipients(tx, ctx.companyId, active, e.userId, todayInTimeZone(ctx.timezone));
         notificationIds.push(
-          ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.submitted", title: `Leave request from ${displayName(e)}`, body: `${summary} Please review it.`, link: `/leave/requests/${created.id}` })),
+          ...(await notify(tx, {
+            companyId: ctx.companyId,
+            userIds: recipients,
+            type: "leave.submitted",
+            message: { key: "leaveSubmitted", params: { name: displayName(e), days: evaluation.dayCount.total, type: type.name, start: created.startDate, end: created.endDate } },
+            link: `/leave/requests/${created.id}`,
+          })),
         );
       }
       notificationIds.push(
@@ -324,8 +329,9 @@ export async function submitLeave(ctx: AuthContext, input: LeaveApplyInput & { a
           companyId: ctx.companyId,
           userIds: [e.userId],
           type: autoApprove ? "leave.approved" : "leave.submitted_self",
-          title: autoApprove ? `${type.name} approved` : `${type.name} request submitted`,
-          body: autoApprove ? `Your ${type.name} (${formatDate(created.startDate)} – ${formatDate(created.endDate)}) was approved automatically.` : `Your request was sent for approval (${chain.join(" → ")}).`,
+          message: autoApprove
+            ? { key: "leaveAutoApproved", params: { type: type.name, start: created.startDate, end: created.endDate } }
+            : { key: "leaveSubmittedSelf", params: { type: type.name, chain: approvalChainParam(chain) } },
           link: `/leave/requests/${created.id}`,
           email: autoApprove,
         })),
@@ -463,17 +469,16 @@ export async function decideLeave(ctx: AuthContext, requestId: string, decision:
     }, tx);
 
     // Notify the requester at every step, and the next approvers if any.
-    const requesterTitle =
-      isCancellation
-        ? decision === "APPROVED" ? `${typeName} cancelled` : `${typeName} cancellation declined`
-        : status === "APPROVED" ? `${typeName} approved` : status === "REJECTED" ? `${typeName} rejected` : `${typeName} approved by your manager`;
+    const requesterKey = isCancellation
+      ? decision === "APPROVED" ? "leaveCancellationApproved" : "leaveCancellationDeclined"
+      : status === "APPROVED" ? "leaveApproved" : status === "REJECTED" ? "leaveRejected" : "leaveStepApproved";
+    const leaveParams = { type: typeName, start: r.startDate, end: r.endDate };
     notificationIds.push(
       ...(await notify(tx, {
         companyId: ctx.companyId,
         userIds: [r.employee.userId],
         type: isCancellation ? "leave.cancellation_decided" : status === "PENDING" ? "leave.step_approved" : `leave.${status.toLowerCase()}`,
-        title: requesterTitle,
-        body: `${ctx.employeeName ?? ctx.name} ${verb} your ${typeName} (${range}).${status === "PENDING" ? " It now needs HR approval." : ""}${comment ? `\nComment: ${comment}` : ""}`,
+        message: { key: requesterKey, params: { ...leaveParams, actor: ctx.employeeName ?? ctx.name }, comment },
         link: `/leave/requests/${r.id}`,
       })),
     );
@@ -485,8 +490,7 @@ export async function decideLeave(ctx: AuthContext, requestId: string, decision:
           companyId: ctx.companyId,
           userIds: recipients,
           type: "leave.submitted",
-          title: `Leave request from ${displayName(r.employee)} needs ${next.approverRole === "HR" ? "HR" : "your"} approval`,
-          body: `${displayName(r.employee)}'s ${typeName} (${range}, ${formatDays(num(r.days))}) was approved at the previous step.`,
+          message: { key: next.approverRole === "HR" ? "leaveNextApproverHr" : "leaveNextApproverYou", params: { ...leaveParams, name: displayName(r.employee), days: num(r.days) } },
           link: `/leave/requests/${r.id}`,
         })),
       );
@@ -527,7 +531,7 @@ export async function withdrawLeave(ctx: AuthContext, requestId: string) {
     if (current) {
       const recipients = await stepRecipients(tx, ctx.companyId, current, r.employee.userId, todayInTimeZone(ctx.timezone));
       notificationIds.push(
-        ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.withdrawn", title: `${displayName(r.employee)} withdrew a leave request`, body: `${r.leaveType.name} ${formatDate(r.startDate)} – ${formatDate(r.endDate)} no longer needs your approval.`, link: `/leave/requests/${r.id}`, email: false })),
+        ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.withdrawn", message: { key: "leaveWithdrawn", params: { name: displayName(r.employee), type: r.leaveType.name, start: r.startDate, end: r.endDate } }, link: `/leave/requests/${r.id}`, email: false })),
       );
     }
   });
@@ -556,7 +560,7 @@ export async function requestCancellation(ctx: AuthContext, requestId: string, r
     await writeAudit(ctx, { action: "leave.cancellation.request", entityType: "LeaveRequest", entityId: r.id, summary: `Asked to cancel ${r.leaveType.name} ${toDateInput(r.startDate)} → ${toDateInput(r.endDate)}: ${reason}`, before: { status: r.status }, after: { status: "CANCELLATION_REQUESTED", reason } }, tx);
     const recipients = await stepRecipients(tx, ctx.companyId, approval, r.employee.userId, todayInTimeZone(ctx.timezone));
     notificationIds.push(
-      ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.cancellation_requested", title: `${displayName(r.employee)} wants to cancel approved leave`, body: `${r.leaveType.name} ${formatDate(r.startDate)} – ${formatDate(r.endDate)}. Reason: ${reason}`, link: `/leave/requests/${r.id}` })),
+      ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.cancellation_requested", message: { key: "leaveCancellationRequested", params: { name: displayName(r.employee), type: r.leaveType.name, start: r.startDate, end: r.endDate, reason } }, link: `/leave/requests/${r.id}` })),
     );
   });
   deliverEmailsInBackground(notificationIds);
@@ -579,7 +583,7 @@ export async function hrCancelLeave(ctx: AuthContext, requestId: string, reason:
     await tx.leaveApproval.updateMany({ where: { requestId: r.id, decision: "PENDING" }, data: { decision: "SKIPPED" } });
     await writeAudit(ctx, { action: "leave.cancel.hr", entityType: "LeaveRequest", entityId: r.id, summary: `HR cancelled ${displayName(r.employee)}'s ${r.leaveType.name} ${toDateInput(r.startDate)} → ${toDateInput(r.endDate)}: ${reason}`, before: { status: r.status }, after: { status: "CANCELLED", reason } }, tx);
     notificationIds.push(
-      ...(await notify(tx, { companyId: ctx.companyId, userIds: [r.employee.userId], type: "leave.cancelled", title: `${r.leaveType.name} cancelled by HR`, body: `Your ${r.leaveType.name} (${formatDate(r.startDate)} – ${formatDate(r.endDate)}) was cancelled. Reason: ${reason}`, link: `/leave/requests/${r.id}` })),
+      ...(await notify(tx, { companyId: ctx.companyId, userIds: [r.employee.userId], type: "leave.cancelled", message: { key: "leaveCancelledByHr", params: { type: r.leaveType.name, start: r.startDate, end: r.endDate, reason } }, link: `/leave/requests/${r.id}` })),
     );
   });
   deliverEmailsInBackground(notificationIds);

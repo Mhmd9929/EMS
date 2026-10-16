@@ -10,6 +10,9 @@ import { ForbiddenError, NotFoundError, ValidationError } from "@/server/errors"
 import { serverT } from "@/server/i18n";
 import { sendMail } from "@/server/mail";
 import { inviteEmail, passwordChangedEmail, passwordResetEmail } from "@/server/mail/templates";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+
+const localeOf = (u: { locale?: string | null }) => (isLocale(u.locale) ? u.locale : DEFAULT_LOCALE);
 import { SYSTEM_ROLES } from "@/server/rbac/catalogue";
 import { paginated, type ListParams } from "@/lib/list-params";
 import { isEmploymentEnded } from "@/server/auth/status";
@@ -29,7 +32,7 @@ export async function sendInvite(ctx: AuthContext, userId: string): Promise<{ li
   if (user.passwordHash) throw new ValidationError(t("errors.alreadyActivated"));
   const raw = await issueToken(db, user.id, "INVITE");
   const link = `${env.APP_URL}/invite?token=${raw}`;
-  await sendMail(inviteEmail({ to: user.email, name: user.name, company: user.company.name, link, expiresHours: TOKEN_TTL_MINUTES.INVITE / 60 }));
+  await sendMail(await inviteEmail({ to: user.email, name: user.name, company: user.company.name, link, expiresHours: TOKEN_TTL_MINUTES.INVITE / 60, locale: localeOf(user) }));
   await writeAudit(ctx, { action: "user.invite", entityType: "User", entityId: user.id, summary: `Invitation sent to ${user.email}` });
   return { link: env.NODE_ENV === "production" ? null : link };
 }
@@ -69,7 +72,7 @@ export async function requestPasswordReset(email: string) {
   if (recent) return;
   const raw = await issueToken(db, user.id, "PASSWORD_RESET");
   const link = `${env.APP_URL}/reset-password?token=${raw}`;
-  await sendMail(passwordResetEmail({ to: user.email, name: user.name, company: user.company.name, link }));
+  await sendMail(await passwordResetEmail({ to: user.email, name: user.name, company: user.company.name, link, locale: localeOf(user) }));
   await writeAudit({ companyId: user.companyId, userId: user.id }, { action: "user.password_reset.request", entityType: "User", entityId: user.id });
 }
 
@@ -91,7 +94,7 @@ export async function resetPassword(rawToken: string, password: string) {
     await writeAudit({ companyId: user.companyId, userId: user.id }, { action: "user.password_reset", entityType: "User", entityId: user.id }, tx);
     return user;
   });
-  await sendMail(passwordChangedEmail({ to: user.email, name: user.name, company: user.company.name }));
+  await sendMail(await passwordChangedEmail({ to: user.email, name: user.name, company: user.company.name, locale: localeOf(user) }));
 }
 
 /** Change own password. Bumps sessionVersion, which signs out every other session. */
@@ -108,7 +111,7 @@ export async function changePassword(ctx: AuthContext, currentPassword: string, 
     });
     await writeAudit(ctx, { action: "user.password_change", entityType: "User", entityId: user.id }, tx);
   });
-  await sendMail(passwordChangedEmail({ to: user.email, name: user.name, company: user.company.name }));
+  await sendMail(await passwordChangedEmail({ to: user.email, name: user.name, company: user.company.name, locale: localeOf(user) }));
   return { email: user.email };
 }
 
@@ -239,7 +242,7 @@ export async function adminSendPasswordReset(ctx: AuthContext, userId: string) {
   if (!user.passwordHash) return sendInvite(ctx, userId);
   const raw = await issueToken(db, user.id, "PASSWORD_RESET");
   const link = `${env.APP_URL}/reset-password?token=${raw}`;
-  await sendMail(passwordResetEmail({ to: user.email, name: user.name, company: user.company.name, link }));
+  await sendMail(await passwordResetEmail({ to: user.email, name: user.name, company: user.company.name, link, locale: localeOf(user) }));
   await writeAudit(ctx, { action: "user.password_reset.admin", entityType: "User", entityId: userId });
   return { link: env.NODE_ENV === "production" ? null : link };
 }

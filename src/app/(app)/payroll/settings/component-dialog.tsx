@@ -11,6 +11,7 @@ import { Field } from "@/components/forms/field";
 import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Checkbox, Input, NativeSelect } from "@/components/ui/input";
+import { useTranslations } from "next-intl";
 
 type C = { id: string; code: string; name: string; kind: string; calcType: string; formula: string | null; isRecurring: boolean; isTaxable: boolean; isFixedPay: boolean; isActive: boolean; isSystem: boolean };
 
@@ -27,17 +28,18 @@ function Toggle({ name, label, defaultChecked, hint, disabled }: { name: string;
 }
 
 export function ComponentDialog({ component, codes }: { component?: C; codes: string[] }) {
+  const t = useTranslations("payroll.componentDialog");
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {component ? (
-          <Button variant="ghost" size="sm" aria-label={`Edit ${component.name}`}>
-            <Pencil aria-hidden /> Edit
+          <Button variant="ghost" size="sm" aria-label={t("editLabel", { name: component.name })}>
+            <Pencil aria-hidden /> {t("edit")}
           </Button>
         ) : (
           <Button>
-            <Plus aria-hidden /> New component
+            <Plus aria-hidden /> {t("newButton")}
           </Button>
         )}
       </DialogTrigger>
@@ -48,6 +50,9 @@ export function ComponentDialog({ component, codes }: { component?: C; codes: st
 
 function ComponentForm({ component: c, codes, onDone }: { component?: C; codes: string[]; onDone: () => void }) {
   const router = useRouter();
+  const t = useTranslations("payroll.componentDialog");
+  const tc = useTranslations("common");
+  const te = useTranslations("enums.componentKind");
   const { state, onSubmit, pending } = useFormAction(savePayComponentAction);
   useActionFeedback(state, {
     onSuccess: () => {
@@ -62,8 +67,8 @@ function ComponentForm({ component: c, codes, onDone }: { component?: C; codes: 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{c ? `Edit ${c.name}` : "New pay component"}</DialogTitle>
-        {system && <DialogDescription>System component: code, type and recurrence are fixed.</DialogDescription>}
+        <DialogTitle>{c ? t("editTitle", { name: c.name }) : t("newTitle")}</DialogTitle>
+        {system && <DialogDescription>{t("systemNote")}</DialogDescription>}
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4">
         <FormError state={state} />
@@ -77,41 +82,41 @@ function ComponentForm({ component: c, codes, onDone }: { component?: C; codes: 
           </>
         )}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Name" name="name" error={err("name")} required className="sm:col-span-2">
+          <Field label={t("name")} name="name" error={err("name")} required className="sm:col-span-2">
             <Input defaultValue={c?.name} />
           </Field>
-          <Field label="Code" name={system ? "code-display" : "code"} error={err("code")} required hint="Used in formulas">
-            <Input defaultValue={c?.code} className="font-mono uppercase" disabled={system} maxLength={30} />
+          <Field label={t("code")} name={system ? "code-display" : "code"} error={err("code")} required hint={t("codeHint")}>
+            <Input defaultValue={c?.code} className="font-mono uppercase" disabled={system} maxLength={30} dir="ltr" />
           </Field>
-          <Field label="Type" name={system ? "kind-display" : "kind"} error={err("kind")} required>
+          <Field label={t("type")} name={system ? "kind-display" : "kind"} error={err("kind")} required>
             <NativeSelect value={kind} onChange={(e) => setKind(e.target.value)} disabled={system}>
-              <option value="EARNING">Earning</option>
-              <option value="DEDUCTION">Deduction</option>
+              <option value="EARNING">{te("EARNING")}</option>
+              <option value="DEDUCTION">{te("DEDUCTION")}</option>
             </NativeSelect>
           </Field>
-          <Field label="Calculation" name="calcType" error={err("calcType")} required className="sm:col-span-2">
+          <Field label={t("calculation")} name="calcType" error={err("calcType")} required className="sm:col-span-2">
             <NativeSelect value={calcType} onChange={(e) => setCalcType(e.target.value)}>
-              <option value="FIXED">Fixed amount (entered per employee)</option>
-              <option value="FORMULA">Formula</option>
+              <option value="FIXED">{t("fixedOption")}</option>
+              <option value="FORMULA">{t("formulaOption")}</option>
             </NativeSelect>
           </Field>
         </div>
         {calcType === "FORMULA" && (
-          <Field label="Formula" name="formula" error={err("formula")} required hint={`Use + − × ÷, brackets, min/max/round/floor/ceil/abs and component codes: ${codes.join(", ")}`}>
-            <Input defaultValue={c?.formula ?? ""} className="font-mono" placeholder="BASIC * 0.5" />
+          <Field label={t("formula")} name="formula" error={err("formula")} required hint={t("formulaHint", { codes: codes.join(", ") })}>
+            <Input defaultValue={c?.formula ?? ""} className="font-mono" placeholder="BASIC * 0.5" dir="ltr" />
           </Field>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Toggle name={system ? "isRecurring-display" : "isRecurring"} label="Monthly (recurring)" defaultChecked={c?.isRecurring ?? true} disabled={system} hint="Off = one-time, used for adjustments" />
-          {kind === "EARNING" && <Toggle name="isFixedPay" label="Fixed pay for WPS" defaultChecked={c?.isFixedPay ?? true} hint="Off = reported as variable pay" />}
-          <Toggle name="isTaxable" label="Taxable" defaultChecked={c?.isTaxable ?? false} hint="For reporting; UAE has no personal income tax" />
-          <Toggle name="isActive" label="Active" defaultChecked={c?.isActive ?? true} />
+          <Toggle name={system ? "isRecurring-display" : "isRecurring"} label={t("recurring")} defaultChecked={c?.isRecurring ?? true} disabled={system} hint={t("recurringHint")} />
+          {kind === "EARNING" && <Toggle name="isFixedPay" label={t("fixedPay")} defaultChecked={c?.isFixedPay ?? true} hint={t("fixedPayHint")} />}
+          <Toggle name="isTaxable" label={t("taxable")} defaultChecked={c?.isTaxable ?? false} hint={t("taxableHint")} />
+          <Toggle name="isActive" label={t("active")} defaultChecked={c?.isActive ?? true} />
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <SubmitButton pending={pending}>Save</SubmitButton>
+          <SubmitButton pending={pending}>{tc("save")}</SubmitButton>
         </DialogFooter>
       </form>
     </>

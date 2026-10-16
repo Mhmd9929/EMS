@@ -9,22 +9,26 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ComponentDialog } from "./component-dialog";
 import { PayrollSettingsForm } from "./settings-form";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = { title: "Payroll settings" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("payroll"))("meta.settings") };
+}
 
 export default async function PayrollSettingsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
   requirePermission(ctx, "payroll.settings.manage");
   const tab = first((await searchParams).tab) === "general" ? "general" : "components";
+  const t = await getTranslations("payroll.settings");
   return (
     <>
-      <PageHeader title="Payroll settings" description="Pay components, proration, WPS and end-of-service rules. UAE defaults are pre-loaded and editable." />
+      <PageHeader title={t("title")} description={t("description")} />
       <LinkTabs
         baseHref="/payroll/settings"
         active={tab}
         tabs={[
-          { key: "components", label: "Pay components" },
-          { key: "general", label: "General, WPS & end of service" },
+          { key: "components", label: t("tabComponents") },
+          { key: "general", label: t("tabGeneral") },
         ]}
       />
       <div className="mt-6">{tab === "components" ? <ComponentsTab /> : <GeneralTab />}</div>
@@ -38,16 +42,16 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
       <TableRow key={c.id} className={c.isActive ? undefined : "opacity-60"}>
         <TableCell>
           <p className="font-medium">{c.name}</p>
-          <p className="text-muted-foreground font-mono text-xs">{c.code}</p>
+          <p className="text-muted-foreground font-mono text-xs" dir="ltr">{c.code}</p>
         </TableCell>
-        <TableCell className="text-sm">{c.calcType === "FORMULA" ? <code className="bg-muted rounded px-1.5 py-0.5 text-xs">{c.formula}</code> : "Fixed amount"}</TableCell>
+        <TableCell className="text-sm">{c.calcType === "FORMULA" ? <code className="bg-muted rounded px-1.5 py-0.5 text-xs" dir="ltr">{c.formula}</code> : t("fixedAmount")}</TableCell>
         <TableCell className="hidden md:table-cell">
           <div className="flex flex-wrap gap-1">
-            <Badge variant="secondary">{c.isRecurring ? "Monthly" : "One-time"}</Badge>
-            {c.kind === "EARNING" && <Badge variant="outline">{c.isFixedPay ? "WPS fixed" : "WPS variable"}</Badge>}
-            {c.isTaxable && <Badge variant="outline">Taxable</Badge>}
-            {c.isSystem && <Badge variant="outline">System</Badge>}
-            {!c.isActive && <Badge variant="secondary">Inactive</Badge>}
+            <Badge variant="secondary">{c.isRecurring ? t("monthly") : t("oneTime")}</Badge>
+            {c.kind === "EARNING" && <Badge variant="outline">{c.isFixedPay ? t("wpsFixed") : t("wpsVariable")}</Badge>}
+            {c.isTaxable && <Badge variant="outline">{t("taxable")}</Badge>}
+            {c.isSystem && <Badge variant="outline">{t("system")}</Badge>}
+            {!c.isActive && <Badge variant="secondary">{t("inactive")}</Badge>}
           </div>
         </TableCell>
         <TableCell className="text-end">
@@ -59,8 +63,15 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
       <div className="space-y-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-muted-foreground max-w-2xl text-sm">
-            Monthly components make up an employee&apos;s salary structure; one-time components are used for monthly adjustments. Formulas can use other components, e.g.{" "}
-            <code className="bg-muted rounded px-1">BASIC * 0.5</code> or <code className="bg-muted rounded px-1">min(BASIC * 0.1, 2000)</code>.
+            {t.rich("componentsIntro", {
+              example1: "BASIC * 0.5",
+              example2: "min(BASIC * 0.1, 2000)",
+              code: (chunks) => (
+                <code className="bg-muted rounded px-1" dir="ltr">
+                  {chunks}
+                </code>
+              ),
+            })}
           </p>
           <ComponentDialog codes={codes} />
         </div>
@@ -69,10 +80,10 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{kind === "EARNING" ? "Earnings" : "Deductions"}</TableHead>
-                  <TableHead>Calculation</TableHead>
-                  <TableHead className="hidden md:table-cell">Flags</TableHead>
-                  <TableHead className="sr-only">Actions</TableHead>
+                  <TableHead>{kind === "EARNING" ? t("earnings") : t("deductions")}</TableHead>
+                  <TableHead>{t("calculation")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("flags")}</TableHead>
+                  <TableHead className="sr-only">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>{components.filter((c) => c.kind === kind).map(row)}</TableBody>

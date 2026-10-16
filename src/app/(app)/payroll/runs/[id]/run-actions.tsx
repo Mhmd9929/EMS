@@ -14,16 +14,19 @@ import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Textarea } from "@/components/ui/input";
 import { ConfirmAction } from "@/components/confirm-action";
+import { useTranslations } from "next-intl";
 
 type Status = "DRAFT" | "CALCULATED" | "UNDER_REVIEW" | "APPROVED" | "RELEASED" | "CANCELLED";
 
 export function RunActions({ runId, status, canManage, canApprove, isMaker, canReopen, blocking }: { runId: string; status: Status; canManage: boolean; canApprove: boolean; isMaker: boolean; canReopen: boolean; blocking: number }) {
   const router = useRouter();
+  const t = useTranslations("payroll.actions");
+  const tc = useTranslations("common");
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<ActionResult>) =>
     start(async () => {
       const r = await fn();
-      if (r.ok) toast.success(r.message ?? "Done");
+      if (r.ok) toast.success(r.message ?? tc("done"));
       else toast.error(r.error);
       router.refresh();
     });
@@ -31,27 +34,27 @@ export function RunActions({ runId, status, canManage, canApprove, isMaker, canR
     <div className="flex flex-wrap gap-2">
       {canManage && (status === "DRAFT" || status === "CALCULATED") && (
         <Button disabled={pending} onClick={() => run(() => calculateRunAction(runId))} variant={status === "DRAFT" ? "default" : "outline"}>
-          <Calculator aria-hidden /> {status === "DRAFT" ? "Calculate" : "Recalculate"}
+          <Calculator aria-hidden /> {status === "DRAFT" ? t("calculate") : t("recalculate")}
         </Button>
       )}
       {canManage && status === "CALCULATED" && (
-        <Button disabled={pending || blocking > 0} onClick={() => run(() => submitRunAction(runId))} title={blocking ? "Resolve blocking issues first" : undefined}>
-          <Send aria-hidden /> Submit for approval
+        <Button disabled={pending || blocking > 0} onClick={() => run(() => submitRunAction(runId))} title={blocking ? t("resolveFirst") : undefined}>
+          <Send aria-hidden /> {t("submit")}
         </Button>
       )}
       {status === "UNDER_REVIEW" && canApprove && <CommentDialog runId={runId} kind="approve" />}
-      {status === "UNDER_REVIEW" && !canApprove && isMaker && <p className="text-muted-foreground self-center text-sm">Waiting for a second approver (maker-checker).</p>}
+      {status === "UNDER_REVIEW" && !canApprove && isMaker && <p className="text-muted-foreground self-center text-sm">{t("waitingApprover")}</p>}
       {(status === "UNDER_REVIEW" || status === "APPROVED") && (canApprove || canManage) && <CommentDialog runId={runId} kind="return" />}
       {canManage && status === "APPROVED" && (
         <ConfirmAction
           trigger={
             <Button disabled={pending}>
-              <Lock aria-hidden /> Release payroll
+              <Lock aria-hidden /> {t("releaseButton")}
             </Button>
           }
-          title="Release this payroll?"
-          description="The run is locked, payslips are issued and every employee is notified. Only a Super Admin can reopen it afterwards."
-          confirmLabel="Release"
+          title={t("releaseTitle")}
+          description={t("releaseDescription")}
+          confirmLabel={t("releaseConfirm")}
           action={() => releaseRunAction(runId)}
           onDone={() => router.refresh()}
         />
@@ -63,6 +66,8 @@ export function RunActions({ runId, status, canManage, canApprove, isMaker, canR
 }
 
 function CommentDialog({ runId, kind }: { runId: string; kind: "approve" | "return" }) {
+  const t = useTranslations("payroll.actions");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { state, onSubmit, pending } = useFormAction(kind === "approve" ? approveRunAction : returnRunAction);
@@ -77,30 +82,30 @@ function CommentDialog({ runId, kind }: { runId: string; kind: "approve" | "retu
       <DialogTrigger asChild>
         {kind === "approve" ? (
           <Button>
-            <Check aria-hidden /> Approve
+            <Check aria-hidden /> {t("approve")}
           </Button>
         ) : (
           <Button variant="outline">
-            <Undo2 aria-hidden /> Send back
+            <Undo2 aria-hidden /> {t("sendBack")}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{kind === "approve" ? "Approve payroll" : "Send back for changes"}</DialogTitle>
-          <DialogDescription>{kind === "approve" ? "You confirm you reviewed the register and variances." : "The run returns to Calculated so it can be fixed and recalculated."}</DialogDescription>
+          <DialogTitle>{kind === "approve" ? t("approveTitle") : t("sendBackTitle")}</DialogTitle>
+          <DialogDescription>{kind === "approve" ? t("approveDescription") : t("sendBackDescription")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="grid gap-4">
           <FormError state={state} />
           <input type="hidden" name="runId" value={runId} />
-          <Field label="Comment" name="comment" error={fieldError(state, "comment")} required={kind === "return"}>
+          <Field label={t("comment")} name="comment" error={fieldError(state, "comment")} required={kind === "return"}>
             <Textarea rows={3} />
           </Field>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
-            <SubmitButton pending={pending}>{kind === "approve" ? "Approve" : "Send back"}</SubmitButton>
+            <SubmitButton pending={pending}>{kind === "approve" ? t("approve") : t("sendBack")}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -109,6 +114,8 @@ function CommentDialog({ runId, kind }: { runId: string; kind: "approve" | "retu
 }
 
 function ReasonDialog({ runId, kind }: { runId: string; kind: "cancel" | "reopen" }) {
+  const t = useTranslations("payroll.actions");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { state, onSubmit, pending } = useFormAction(kind === "cancel" ? cancelRunAction : reopenRunAction);
@@ -122,30 +129,28 @@ function ReasonDialog({ runId, kind }: { runId: string; kind: "cancel" | "reopen
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">
-          {kind === "cancel" ? <X aria-hidden /> : <RotateCcw aria-hidden />} {kind === "cancel" ? "Cancel run" : "Reopen (Super Admin)"}
+          {kind === "cancel" ? <X aria-hidden /> : <RotateCcw aria-hidden />} {kind === "cancel" ? t("cancelRun") : t("reopenButton")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{kind === "cancel" ? "Cancel this run?" : "Reopen a released run?"}</DialogTitle>
+          <DialogTitle>{kind === "cancel" ? t("cancelTitle") : t("reopenTitle")}</DialogTitle>
           <DialogDescription>
-            {kind === "cancel"
-              ? "Cancelled runs are kept for the record but can't be changed. Employees in it can be paid in a new run."
-              : "Payslips are withdrawn from employees and the run returns to Calculated. Everything is audited."}
+            {kind === "cancel" ? t("cancelDescription") : t("reopenDescription")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="grid gap-4">
           <FormError state={state} />
           <input type="hidden" name="runId" value={runId} />
-          <Field label="Reason" name="reason" error={fieldError(state, "reason")} required>
+          <Field label={t("reason")} name="reason" error={fieldError(state, "reason")} required>
             <Textarea rows={3} />
           </Field>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Back
+              {tc("back")}
             </Button>
             <SubmitButton pending={pending} variant="destructive">
-              {kind === "cancel" ? "Cancel run" : "Reopen"}
+              {kind === "cancel" ? t("cancelRun") : t("reopen")}
             </SubmitButton>
           </DialogFooter>
         </form>

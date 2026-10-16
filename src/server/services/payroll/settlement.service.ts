@@ -10,6 +10,7 @@ import { addDays, formatDate, todayInTimeZone } from "@/lib/dates";
 import { round2 } from "@/lib/leave/numbers";
 import { unpaidLeaveDays } from "@/server/services/leave/report.service";
 import { computeBalances, loadLeaveEmployee } from "@/server/services/leave/balance.service";
+import { serverT } from "@/server/i18n";
 import { gratuityConfig, loadComponents, n, periodKey, structureInclude, toComponentDef, toStructureInput } from "./common";
 
 /**
@@ -23,11 +24,12 @@ export async function computeSettlement(ctx: AuthContext, employeeId: string, op
     db.company.findUniqueOrThrow({ where: { id: ctx.companyId } }),
     loadComponents(db, ctx.companyId),
   ]);
-  if (!employee) throw new NotFoundError("Employee not found.");
+  const t = await serverT("payroll");
+  if (!employee) throw new NotFoundError(t("errors.employeeNotFound"));
   const endDate = opts.endDate ?? employee.lastWorkingDay ?? todayInTimeZone(ctx.timezone);
   const defs = components.map(toComponentDef);
   const structure = employee.salaryStructures.filter((s) => s.effectiveFrom <= endDate).sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime())[0];
-  if (!structure) throw new ValidationError("This employee has no salary structure, so gratuity can't be calculated.");
+  if (!structure) throw new ValidationError(t("errors.noStructure"));
   const monthly = structureMonthlyAmounts(toStructureInput(structure), defs, company.currency);
   const basic = monthly.BASIC ?? 0;
   const grossRecurring = Object.entries(monthly).reduce((a, [code, v]) => a + (defs.find((d) => d.code === code)?.kind === "EARNING" ? v : 0), 0);
@@ -96,8 +98,9 @@ export async function computeSettlement(ctx: AuthContext, employeeId: string, op
 export async function saveSettlement(ctx: AuthContext, input: { employeeId: string; otherEarnings: string; deductions: string; notes: string | null }) {
   assertCan(ctx, "payroll.settlement.manage");
   const employee = await db.employee.findFirst({ where: { id: input.employeeId, companyId: ctx.companyId }, select: { id: true, lastWorkingDay: true, firstName: true, lastName: true } });
-  if (!employee) throw new NotFoundError("Employee not found.");
-  if (!employee.lastWorkingDay) throw new ValidationError("Record the termination (last working day) before preparing the final settlement.");
+  const t = await serverT("payroll");
+  if (!employee) throw new NotFoundError(t("errors.employeeNotFound"));
+  if (!employee.lastWorkingDay) throw new ValidationError(t("errors.recordTermination"));
   const other = toMinor(input.otherEarnings, ctx.currency);
   const ded = toMinor(input.deductions, ctx.currency);
   const s = await computeSettlement(ctx, employee.id, { endDate: employee.lastWorkingDay, otherEarnings: other, deductions: ded });
@@ -120,9 +123,10 @@ export async function saveSettlement(ctx: AuthContext, input: { employeeId: stri
 export async function approveSettlement(ctx: AuthContext, settlementId: string) {
   assertCan(ctx, "payroll.settlement.manage");
   const s = await db.finalSettlement.findFirst({ where: { id: settlementId, companyId: ctx.companyId }, include: { employee: { select: { firstName: true, lastName: true } } } });
-  if (!s) throw new NotFoundError("Settlement not found.");
-  if (s.status !== "DRAFT") throw new ValidationError("Only draft settlements can be approved.");
-  if (s.createdById === ctx.userId) throw new ForbiddenError("Maker-checker: someone other than the preparer must approve the settlement.");
+  const t = await serverT("payroll");
+  if (!s) throw new NotFoundError(t("errors.settlementNotFound"));
+  if (s.status !== "DRAFT") throw new ValidationError(t("errors.onlyDraft"));
+  if (s.createdById === ctx.userId) throw new ForbiddenError(t("errors.settlementMakerChecker"));
   await db.$transaction(async (tx) => {
     await tx.finalSettlement.update({ where: { id: s.id }, data: { status: "APPROVED", approvedById: ctx.userId, approvedAt: new Date() } });
     await writeAudit(ctx, { action: "payroll.settlement.approve", entityType: "FinalSettlement", entityId: s.id, summary: `Approved final settlement for ${s.employee.firstName} ${s.employee.lastName} (${formatMoney(n(s.total), ctx.currency)})` }, tx);

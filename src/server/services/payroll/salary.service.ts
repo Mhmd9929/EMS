@@ -8,18 +8,20 @@ import { structureMonthlyAmounts } from "@/lib/payroll/calc";
 import { toMinor } from "@/lib/payroll/money";
 import { todayInTimeZone, toDateInput } from "@/lib/dates";
 import { paginated, type ListParams } from "@/lib/list-params";
+import { serverT } from "@/server/i18n";
 import { loadComponents, n, structureInclude, toComponentDef, toStructureInput } from "./common";
 
 /** Salary history (newest first) with resolved monthly amounts per structure. */
 export async function getSalaryHistory(ctx: AuthContext, employeeId: string) {
   assertCan(ctx, "payroll.salary.read");
   const employee = await db.employee.findFirst({ where: { id: employeeId, companyId: ctx.companyId }, select: { id: true } });
-  if (!employee) throw new NotFoundError("Employee not found.");
+  if (!employee) throw new NotFoundError((await serverT("payroll"))("errors.employeeNotFound"));
   const [structures, components] = await Promise.all([
     db.salaryStructure.findMany({ where: { employeeId }, include: structureInclude, orderBy: { effectiveFrom: "desc" } }),
     loadComponents(db, ctx.companyId),
   ]);
   const defs = components.map(toComponentDef);
+  const t = await serverT("payroll");
   const today = todayInTimeZone(ctx.timezone);
   const currentIndex = structures.findIndex((s) => s.effectiveFrom <= today);
   return structures.map((s, i) => {
@@ -28,7 +30,7 @@ export async function getSalaryHistory(ctx: AuthContext, employeeId: string) {
     try {
       amounts = structureMonthlyAmounts(toStructureInput(s), defs, ctx.currency);
     } catch (e) {
-      error = e instanceof Error ? e.message : "Formula error";
+      error = t("errors.formulaError", { detail: e instanceof Error ? e.message : "Formula error" });
     }
     const lines = components
       .filter((c) => c.code in amounts)
@@ -44,33 +46,34 @@ export async function createSalaryStructure(
   input: { employeeId: string; effectiveFrom: Date; reason: string; componentIds: string[]; amounts: string[] },
 ) {
   assertCan(ctx, "payroll.salary.manage");
-  if (input.componentIds.length !== input.amounts.length) throw new ValidationError("Invalid salary lines.");
+  const t = await serverT("payroll");
+  if (input.componentIds.length !== input.amounts.length) throw new ValidationError(t("errors.invalidLines"));
   const [employee, components] = await Promise.all([
     db.employee.findFirst({ where: { id: input.employeeId, companyId: ctx.companyId }, select: { id: true, firstName: true, lastName: true, joinDate: true, status: true } }),
     loadComponents(db, ctx.companyId),
   ]);
-  if (!employee) throw new NotFoundError("Employee not found.");
-  if (employee.status === "TERMINATED") throw new ValidationError("Cannot change the salary of a terminated employee.");
+  if (!employee) throw new NotFoundError(t("errors.employeeNotFound"));
+  if (employee.status === "TERMINATED") throw new ValidationError(t("errors.terminated"));
   const byId = new Map(components.map((c) => [c.id, c]));
   const lines: { componentId: string; amount: bigint | null }[] = [];
   const seen = new Set<string>();
   input.componentIds.forEach((id, i) => {
     const c = byId.get(id);
-    if (!c || !c.isRecurring || c.kind !== "EARNING" || !c.isActive) throw new ValidationError("Salary structures can only contain active recurring earnings.");
-    if (seen.has(id)) throw new ValidationError(`${c.name} appears twice.`);
+    if (!c || !c.isRecurring || c.kind !== "EARNING" || !c.isActive) throw new ValidationError(t("errors.onlyRecurringEarnings"));
+    if (seen.has(id)) throw new ValidationError(t("errors.appearsTwice", { name: c.name }));
     seen.add(id);
     if (c.calcType === "FORMULA") return void lines.push({ componentId: id, amount: null });
     let minor: number;
     try {
       minor = toMinor(input.amounts[i] || "0", ctx.currency);
     } catch {
-      throw new ValidationError(`Invalid amount for ${c.name}.`, { amounts: [`Invalid amount for ${c.name}`] });
+      throw new ValidationError(t("errors.invalidAmountFor", { name: c.name }), { amounts: [t("errors.invalidAmountForField", { name: c.name })] });
     }
-    if (minor < 0) throw new ValidationError(`${c.name} cannot be negative.`);
+    if (minor < 0) throw new ValidationError(t("errors.negative", { name: c.name }));
     lines.push({ componentId: id, amount: BigInt(minor) });
   });
   const basic = components.find((c) => c.code === "BASIC");
-  if (basic && !seen.has(basic.id)) throw new ValidationError("Basic salary is required (it drives gratuity and leave encashment).");
+  if (basic && !seen.has(basic.id)) throw new ValidationError(t("errors.basicRequired"));
   // Formulas must resolve with these lines.
   try {
     structureMonthlyAmounts(
@@ -79,11 +82,11 @@ export async function createSalaryStructure(
       ctx.currency,
     );
   } catch (e) {
-    throw new ValidationError(e instanceof Error ? e.message : "Formula error");
+    throw new ValidationError(t("errors.formulaError", { detail: e instanceof Error ? e.message : "Formula error" }));
   }
-  if (input.effectiveFrom < employee.joinDate) throw new ValidationError("Effective date is before the join date.", { effectiveFrom: ["Before the join date"] });
+  if (input.effectiveFrom < employee.joinDate) throw new ValidationError(t("errors.beforeJoin"), { effectiveFrom: [t("errors.beforeJoinField")] });
   if (await db.salaryStructure.findUnique({ where: { employeeId_effectiveFrom: { employeeId: employee.id, effectiveFrom: input.effectiveFrom } } })) {
-    throw new ValidationError("There is already a salary starting on that date.", { effectiveFrom: ["Already used"] });
+    throw new ValidationError(t("errors.dateUsed"), { effectiveFrom: [t("errors.alreadyUsed")] });
   }
   const released = await db.payslip.findFirst({
     where: { employeeId: employee.id, voidedAt: null, runEmployee: { run: { periodEnd: { gte: input.effectiveFrom } } } },
@@ -108,8 +111,9 @@ export async function createSalaryStructure(
 export async function deleteSalaryStructure(ctx: AuthContext, structureId: string) {
   assertCan(ctx, "payroll.salary.manage");
   const s = await db.salaryStructure.findFirst({ where: { id: structureId, companyId: ctx.companyId }, include: structureInclude });
-  if (!s) throw new NotFoundError("Salary not found.");
-  if (s.effectiveFrom <= todayInTimeZone(ctx.timezone)) throw new ValidationError("Only future (scheduled) salary changes can be deleted. Add a new change instead.");
+  const t = await serverT("payroll");
+  if (!s) throw new NotFoundError(t("errors.salaryNotFound"));
+  if (s.effectiveFrom <= todayInTimeZone(ctx.timezone)) throw new ValidationError(t("errors.onlyFuture"));
   await db.$transaction(async (tx) => {
     await tx.salaryStructure.delete({ where: { id: s.id } });
     await writeAudit(ctx, { action: "payroll.salary.delete", entityType: "SalaryStructure", entityId: s.id, summary: `Deleted scheduled salary from ${toDateInput(s.effectiveFrom)}`, before: toStructureInput(s) }, tx);

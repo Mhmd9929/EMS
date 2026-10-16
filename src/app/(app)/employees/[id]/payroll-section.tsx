@@ -7,9 +7,10 @@ import { listPayslips } from "@/server/services/payroll/payslip.service";
 import { computeSettlement, settlementsFor } from "@/server/services/payroll/settlement.service";
 import { AppError } from "@/server/errors";
 import { formatIban } from "@/lib/iban";
-import { formatDate, toDateInput } from "@/lib/dates";
-import { formatMoney, minorToDecimalString } from "@/lib/payroll/money";
-import { periodLabel } from "@/lib/payroll/calc";
+import { toDateInput } from "@/lib/dates";
+import { minorToDecimalString } from "@/lib/payroll/money";
+import { getFormat } from "@/server/i18n";
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,20 +28,21 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
   const canSettle = e.access === "all" && can(ctx, "payroll.settlement.manage");
   const canPayslips = e.access === "self" || (e.access === "all" && can(ctx, "payslip.read.all"));
   const cur = ctx.currency;
+  const [t, te, f] = await Promise.all([getTranslations("payroll.section"), getTranslations("enums.settlementStatus"), getFormat()]);
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Bank details (WPS)</CardTitle>
+          <CardTitle className="text-base">{t("bankTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             {(
               [
-                ["Bank", e.bankName],
-                ["Account holder", e.bankAccountName],
-                ["IBAN", e.iban ? <span className="font-mono">{e.canSeeSensitive ? formatIban(e.iban) : e.iban}</span> : null],
-                ["Routing code", e.bankRoutingCode],
+                [t("bank"), e.bankName],
+                [t("accountHolder"), e.bankAccountName],
+                [t("iban"), e.iban ? <span className="font-mono" dir="ltr">{e.canSeeSensitive ? formatIban(e.iban) : e.iban}</span> : null],
+                [t("routingCode"), e.bankRoutingCode ? <span dir="ltr">{e.bankRoutingCode}</span> : null],
               ] as [string, React.ReactNode][]
             ).map(([k, v]) => (
               <div key={k} className="min-w-0">
@@ -73,57 +75,51 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-base">Salary</CardTitle>
+            <CardTitle className="text-base">{t("salaryTitle")}</CardTitle>
             <CardDescription>
-              {current ? (
-                <>
-                  Gross <Money minor={current.gross} currency={cur} showCode /> / month since {formatDate(current.effectiveFrom)}
-                </>
-              ) : (
-                "No salary in effect — payroll will flag this employee."
-              )}
+              {current ? t("currentSalary", { amount: f.money(current.gross, cur, { withCode: true }), date: f.date(current.effectiveFrom) }) : t("noSalaryInEffect")}
             </CardDescription>
           </div>
           {canManage && <SalaryDialog employeeId={e.id} components={options} defaultDate={toDateInput(history.length ? nextMonth : e.joinDate)} currency={cur} />}
         </CardHeader>
         <CardContent>
           {history.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No salary recorded yet.</p>
+            <p className="text-muted-foreground text-sm">{t("noSalaryRecorded")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>From</TableHead>
-                  <TableHead>Components</TableHead>
-                  <TableHead className="text-end">Gross</TableHead>
-                  <TableHead className="hidden md:table-cell">Reason</TableHead>
-                  <TableHead className="sr-only">Actions</TableHead>
+                  <TableHead>{t("from")}</TableHead>
+                  <TableHead>{t("components")}</TableHead>
+                  <TableHead className="text-end">{t("gross")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("reason")}</TableHead>
+                  <TableHead className="sr-only">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {history.map((h) => (
                   <TableRow key={h.id} className={h.status === "past" ? "text-muted-foreground" : undefined}>
                     <TableCell className="whitespace-nowrap">
-                      {formatDate(h.effectiveFrom)}
+                      {f.date(h.effectiveFrom)}
                       {h.status === "current" && (
                         <Badge variant="success" className="ms-2">
-                          Current
+                          {t("current")}
                         </Badge>
                       )}
                       {h.status === "scheduled" && (
                         <Badge variant="warning" className="ms-2">
-                          Scheduled
+                          {t("scheduled")}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-xs">
-                      {h.error ? <span className="text-destructive">{h.error}</span> : h.lines.map((l) => `${l.name} ${formatMoney(l.amount, cur)}`).join(" · ")}
+                      {h.error ? <span className="text-destructive">{h.error}</span> : h.lines.map((l) => `${l.name} ${f.money(l.amount, cur, { withCode: true })}`).join(" · ")}
                     </TableCell>
                     <TableCell className="text-end font-medium">
                       <Money minor={h.gross} currency={cur} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{h.reason}</TableCell>
-                    <TableCell className="text-end">{canManage && h.status === "scheduled" && <DeleteSalaryButton structureId={h.id} employeeId={e.id} label={formatDate(h.effectiveFrom)} />}</TableCell>
+                    <TableCell className="text-end">{canManage && h.status === "scheduled" && <DeleteSalaryButton structureId={h.id} employeeId={e.id} label={f.date(h.effectiveFrom)} />}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -143,7 +139,7 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
       return (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">End of service</CardTitle>
+            <CardTitle className="text-base">{t("endOfService")}</CardTitle>
             <CardDescription>{err.message}</CardDescription>
           </CardHeader>
         </Card>
@@ -153,20 +149,26 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
     const leaver = !!e.lastWorkingDay;
     const g = s.gratuity;
     const rows: [string, string, number][] = [
-      [`Unpaid salary`, s.unpaidSalaryDays ? `${s.unpaidSalaryDays} days from ${formatDate(s.unpaidFrom)}` : "paid up to date", s.unpaidSalary],
-      ["Leave encashment", `${s.leaveDays} days × ${s.encashmentBasis === "GROSS" ? "gross" : "basic"} ÷ 30${s.leaveLines.length ? ` (${s.leaveLines.map((l) => `${l.type} ${l.days}`).join(", ")})` : ""}`, s.leaveEncashment],
+      [t("unpaidSalary"), s.unpaidSalaryDays ? t("unpaidSalaryNote", { days: s.unpaidSalaryDays, date: f.date(s.unpaidFrom) }) : t("paidUpToDate"), s.unpaidSalary],
       [
-        "Gratuity",
-        g.eligible ? `${g.serviceYears} yrs → ${Math.round(g.totalDays * 100) / 100} days × ${formatMoney(Math.round(g.dailyWage), s.currency)}${g.capped ? " (capped)" : ""}${s.unpaidLeaveExcluded ? `; ${s.unpaidLeaveExcluded} unpaid leave days excluded` : ""}` : `not eligible (${g.serviceYears} yrs service)`,
+        t("leaveEncashment"),
+        `${t("leaveEncashmentNote", { days: s.leaveDays, basis: s.encashmentBasis === "GROSS" ? t("encashGross") : t("encashBasic") })}${s.leaveLines.length ? ` (${s.leaveLines.map((l) => `${l.type} ${l.days}`).join(", ")})` : ""}`,
+        s.leaveEncashment,
+      ],
+      [
+        t("gratuity"),
+        g.eligible
+          ? `${t("gratuityNote", { years: g.serviceYears, days: Math.round(g.totalDays * 100) / 100, daily: f.money(Math.round(g.dailyWage), s.currency, { withCode: true }) })}${g.capped ? t("capped") : ""}${s.unpaidLeaveExcluded ? t("unpaidExcluded", { days: s.unpaidLeaveExcluded }) : ""}`
+          : t("notEligible", { years: g.serviceYears }),
         g.amount,
       ],
     ];
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{leaver ? "Final settlement" : "End-of-service estimate"}</CardTitle>
+          <CardTitle className="text-base">{leaver ? t("finalSettlement") : t("estimate")}</CardTitle>
           <CardDescription>
-            {leaver ? `Last working day ${formatDate(e.lastWorkingDay)}.` : `If employment ended on ${formatDate(s.endDate)}.`} Basic <Money minor={s.basic} currency={s.currency} /> / month · joined {formatDate(e.joinDate)}.
+            {leaver ? t("lastWorkingDay", { date: f.date(e.lastWorkingDay) }) : t("ifEnded", { date: f.date(s.endDate) })} {t("basic", { amount: f.money(s.basic, s.currency, { withCode: false }), date: f.date(e.joinDate) })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -181,30 +183,30 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
               </li>
             ))}
             <li className="flex justify-between py-2 font-semibold">
-              <span>Estimated total (before other earnings / deductions)</span>
+              <span>{t("estimatedTotal")}</span>
               <Money minor={s.total} currency={s.currency} showCode />
             </li>
           </ul>
 
           {existing.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium">Saved settlements</h3>
+              <h3 className="text-sm font-medium">{t("saved")}</h3>
               <ul className="divide-y rounded-lg border text-sm">
                 {existing.map((x) => (
                   <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                     <span>
-                      <Badge variant={x.status === "APPROVED" ? "success" : "warning"}>{x.status === "APPROVED" ? "Approved" : "Draft"}</Badge>{" "}
+                      <Badge variant={x.status === "APPROVED" ? "success" : "warning"}>{te(x.status === "APPROVED" ? "APPROVED" : "DRAFT")}</Badge>{" "}
                       <Money minor={x.total} currency={s.currency} showCode />
                       <span className="text-muted-foreground text-xs">
                         {" "}
-                        · gratuity <Money minor={x.gratuity} currency={s.currency} /> · leave <Money minor={x.leaveEncashment} currency={s.currency} /> · salary <Money minor={x.unpaidSalary} currency={s.currency} /> · other +<Money minor={x.otherEarnings} currency={s.currency} /> −<Money minor={x.deductions} currency={s.currency} />
+                        · {t("savedGratuity")} <Money minor={x.gratuity} currency={s.currency} /> · {t("savedLeave")} <Money minor={x.leaveEncashment} currency={s.currency} /> · {t("savedSalary")} <Money minor={x.unpaidSalary} currency={s.currency} /> · {t("savedOther")} +<Money minor={x.otherEarnings} currency={s.currency} /> −<Money minor={x.deductions} currency={s.currency} />
                         {x.notes && ` · ${x.notes}`}
                       </span>
                     </span>
                     {canSettle && x.status === "DRAFT" && x.createdById !== ctx.userId && (
-                      <ApproveSettlementButton settlementId={x.id} employeeId={e.id} name={`${e.firstName} ${e.lastName}`} total={formatMoney(x.total, s.currency, { withCode: true })} />
+                      <ApproveSettlementButton settlementId={x.id} employeeId={e.id} name={`${e.firstName} ${e.lastName}`} total={f.money(x.total, s.currency, { withCode: true })} />
                     )}
-                    {canSettle && x.status === "DRAFT" && x.createdById === ctx.userId && <span className="text-muted-foreground text-xs">Awaiting a second approver</span>}
+                    {canSettle && x.status === "DRAFT" && x.createdById === ctx.userId && <span className="text-muted-foreground text-xs">{t("awaitingApprover")}</span>}
                   </li>
                 ))}
               </ul>
@@ -213,11 +215,11 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
 
           {canSettle && leaver && !existing.some((x) => x.status === "APPROVED") && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium">{existing.length ? "Recalculate settlement (replaces the draft)" : "Prepare settlement"}</h3>
+              <h3 className="text-sm font-medium">{existing.length ? t("recalculate") : t("prepare")}</h3>
               <SettlementForm employeeId={e.id} currency={s.currency} />
             </div>
           )}
-          {canSettle && !leaver && <p className="text-muted-foreground text-xs">Record the termination first to prepare a final settlement.</p>}
+          {canSettle && !leaver && <p className="text-muted-foreground text-xs">{t("recordTermination")}</p>}
         </CardContent>
       </Card>
     );
@@ -228,22 +230,22 @@ export async function PayrollSection({ ctx, e, today }: { ctx: AuthContext; e: E
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Payslips</CardTitle>
+          <CardTitle className="text-base">{t("payslips")}</CardTitle>
           {self && (
             <Link href="/payslips" className="text-link text-sm hover:underline">
-              All my payslips
+              {t("allMyPayslips")}
             </Link>
           )}
         </CardHeader>
         <CardContent>
           {payslips.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No released payslips yet.</p>
+            <p className="text-muted-foreground text-sm">{t("noPayslips")}</p>
           ) : (
             <ul className="divide-y text-sm">
               {payslips.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-2 py-2">
                   <Link href={`/payslips/${p.id}`} className="hover:underline">
-                    {periodLabel(p.period)}
+                    {f.month(p.period)}
                   </Link>
                   <Money minor={p.net} currency={p.currency} showCode />
                 </li>

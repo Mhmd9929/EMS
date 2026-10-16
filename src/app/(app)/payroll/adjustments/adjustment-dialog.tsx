@@ -13,21 +13,24 @@ import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Input, NativeSelect } from "@/components/ui/input";
 import { ConfirmAction } from "@/components/confirm-action";
+import { useTranslations } from "next-intl";
 
 type Opt = { value: string; label: string };
 
 export function PeriodPicker({ value }: { value: string }) {
   const { update } = useUpdateParams();
-  return <Input type="month" aria-label="Month" value={value} onChange={(e) => e.target.value && update({ period: e.target.value })} className="w-44" />;
+  const t = useTranslations("payroll.adjustments");
+  return <Input type="month" aria-label={t("month")} value={value} onChange={(e) => e.target.value && update({ period: e.target.value })} className="w-44" />;
 }
 
 export function AdjustmentDialog({ period, employees, components }: { period: string; employees: Opt[]; components: Opt[] }) {
+  const t = useTranslations("payroll.adjustments");
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus aria-hidden /> Add adjustment
+          <Plus aria-hidden /> {t("addButton")}
         </Button>
       </DialogTrigger>
       <DialogContent>{open && <AdjustmentForm period={period} employees={employees} components={components} onDone={() => setOpen(false)} />}</DialogContent>
@@ -37,6 +40,8 @@ export function AdjustmentDialog({ period, employees, components }: { period: st
 
 function AdjustmentForm({ period, employees, components, onDone }: { period: string; employees: Opt[]; components: Opt[]; onDone: () => void }) {
   const router = useRouter();
+  const t = useTranslations("payroll.adjustments");
+  const tc = useTranslations("common");
   const { state, onSubmit, pending } = useFormAction(saveAdjustmentAction);
   useActionFeedback(state, {
     onSuccess: () => {
@@ -48,14 +53,14 @@ function AdjustmentForm({ period, employees, components, onDone }: { period: str
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Add adjustment</DialogTitle>
-        <DialogDescription>Paid (or deducted) once, in the chosen month&apos;s payroll.</DialogDescription>
+        <DialogTitle>{t("addTitle")}</DialogTitle>
+        <DialogDescription>{t("addDescription")}</DialogDescription>
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4">
         <FormError state={state} />
-        <Field label="Employee" name="employeeId" error={err("employeeId")} required>
+        <Field label={t("employee")} name="employeeId" error={err("employeeId")} required>
           <NativeSelect defaultValue="">
-            <option value="">Choose…</option>
+            <option value="">{t("choose")}</option>
             {employees.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -64,12 +69,12 @@ function AdjustmentForm({ period, employees, components, onDone }: { period: str
           </NativeSelect>
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Month" name="period" error={err("period")} required>
+          <Field label={t("month")} name="period" error={err("period")} required>
             <Input type="month" defaultValue={period} />
           </Field>
-          <Field label="Component" name="componentId" error={err("componentId")} required>
+          <Field label={t("component")} name="componentId" error={err("componentId")} required>
             <NativeSelect defaultValue="">
-              <option value="">Choose…</option>
+              <option value="">{t("choose")}</option>
               {components.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -78,17 +83,17 @@ function AdjustmentForm({ period, employees, components, onDone }: { period: str
             </NativeSelect>
           </Field>
         </div>
-        <Field label="Amount" name="amount" error={err("amount")} required>
+        <Field label={t("amount")} name="amount" error={err("amount")} required>
           <Input inputMode="decimal" placeholder="0.00" />
         </Field>
-        <Field label="Description" name="description" error={err("description")} hint="Shown on the payslip" required>
+        <Field label={t("descriptionCol")} name="description" error={err("description")} hint={t("descriptionHint")} required>
           <Input maxLength={200} />
         </Field>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <SubmitButton pending={pending}>Add</SubmitButton>
+          <SubmitButton pending={pending}>{t("add")}</SubmitButton>
         </DialogFooter>
       </form>
     </>
@@ -97,16 +102,17 @@ function AdjustmentForm({ period, employees, components, onDone }: { period: str
 
 export function DeleteAdjustmentButton({ id, label }: { id: string; label: string }) {
   const router = useRouter();
+  const t = useTranslations("payroll.adjustments");
   return (
     <ConfirmAction
       trigger={
-        <Button variant="ghost" size="sm" aria-label={`Delete ${label}`}>
+        <Button variant="ghost" size="sm" aria-label={t("deleteLabel", { label })}>
           <Trash2 aria-hidden />
         </Button>
       }
-      title="Delete this adjustment?"
+      title={t("deleteTitle")}
       description={label}
-      confirmLabel="Delete"
+      confirmLabel={t("deleteConfirm")}
       destructive
       action={() => deleteAdjustmentAction(id)}
       onDone={() => router.refresh()}

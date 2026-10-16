@@ -1,1 +1,50 @@
-{}
+{
+  "meta": {
+    "list": "My payslips",
+    "view": "Payslip"
+  },
+  "list": {
+    "title": "My payslips",
+    "description": "Payslips appear here once payroll for the month has been released.",
+    "year": "Year",
+    "yearOption": "Year {year}",
+    "noEmployeeTitle": "No employee record",
+    "noEmployeeDescription": "Your user account is not linked to an employee, so there are no payslips to show.",
+    "empty": "No payslips for {year}",
+    "month": "Month",
+    "released": "Released",
+    "gross": "Gross",
+    "deductions": "Deductions",
+    "netPay": "Net pay",
+    "actions": "Actions",
+    "downloadLabel": "Download {month} payslip PDF",
+    "pdf": "PDF"
+  },
+  "view": {
+    "myPayslips": "My payslips",
+    "heading": "Payslip — {month}",
+    "subtitle": "{name} · {company} · released {date}",
+    "openPdf": "Open PDF",
+    "downloadPdf": "Download PDF",
+    "facts": {
+      "employeeNo": "Employee no.",
+      "department": "Department",
+      "position": "Position",
+      "joined": "Joined",
+      "payPeriod": "Pay period",
+      "paidDays": "Paid days",
+      "bank": "Bank",
+      "iban": "IBAN"
+    },
+    "paidDaysUnpaid": "{paid} ({unpaid} unpaid leave)",
+    "earnings": "Earnings",
+    "deductions": "Deductions",
+    "none": "None",
+    "totalEarnings": "Total earnings",
+    "totalDeductions": "Total deductions",
+    "netPay": "Net pay",
+    "ytd": "Year to date (from {month})",
+    "gross": "Gross",
+    "net": "Net"
+  }
+}

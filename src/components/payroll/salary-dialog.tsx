@@ -12,17 +12,19 @@ import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Checkbox, Input } from "@/components/ui/input";
 import { ConfirmAction } from "@/components/confirm-action";
+import { useTranslations } from "next-intl";
 
 export type SalaryComponentOption = { id: string; code: string; name: string; calcType: string; formula: string | null; current: string | null; included: boolean };
 
 /** New salary (effective-dated). Past salaries are never edited; history is append-only. */
 export function SalaryDialog({ employeeId, components, defaultDate, currency }: { employeeId: string; components: SalaryComponentOption[]; defaultDate: string; currency: string }) {
+  const t = useTranslations("payroll.salaryDialog");
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus aria-hidden /> Change salary
+          <Plus aria-hidden /> {t("button")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">{open && <SalaryForm employeeId={employeeId} components={components} defaultDate={defaultDate} currency={currency} onDone={() => setOpen(false)} />}</DialogContent>
@@ -32,6 +34,8 @@ export function SalaryDialog({ employeeId, components, defaultDate, currency }: 
 
 function SalaryForm({ employeeId, components, defaultDate, currency, onDone }: { employeeId: string; components: SalaryComponentOption[]; defaultDate: string; currency: string; onDone: () => void }) {
   const router = useRouter();
+  const t = useTranslations("payroll.salaryDialog");
+  const tc = useTranslations("common");
   const { state, onSubmit, pending } = useFormAction(saveSalaryAction);
   useActionFeedback(state, {
     onSuccess: () => {
@@ -43,33 +47,33 @@ function SalaryForm({ employeeId, components, defaultDate, currency, onDone }: {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Change salary</DialogTitle>
-        <DialogDescription>Applies from the effective date; earlier months keep the previous salary. Mid-month changes are pro-rated.</DialogDescription>
+        <DialogTitle>{t("title")}</DialogTitle>
+        <DialogDescription>{t("description")}</DialogDescription>
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4">
         <FormError state={state} />
         <input type="hidden" name="employeeId" value={employeeId} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Effective from" name="effectiveFrom" error={fieldError(state, "effectiveFrom")} required>
+          <Field label={t("effectiveFrom")} name="effectiveFrom" error={fieldError(state, "effectiveFrom")} required>
             <Input type="date" defaultValue={defaultDate} />
           </Field>
-          <Field label="Reason" name="reason" error={fieldError(state, "reason")} required>
-            <Input placeholder="e.g. Annual increment" maxLength={300} />
+          <Field label={t("reason")} name="reason" error={fieldError(state, "reason")} required>
+            <Input placeholder={t("reasonPlaceholder")} maxLength={300} />
           </Field>
         </div>
         <fieldset className="grid gap-2 rounded-lg border p-3">
-          <legend className="px-1 text-sm font-medium">Monthly components ({currency})</legend>
+          <legend className="px-1 text-sm font-medium">{t("components", { currency })}</legend>
           {components.map((c) => (
             <div key={c.id} className="grid grid-cols-[1fr_9rem] items-center gap-3">
               <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={!!included[c.id]} disabled={c.code === "BASIC"} onChange={(e) => setIncluded((s) => ({ ...s, [c.id]: e.target.checked }))} aria-label={`Include ${c.name}`} />
+                <Checkbox checked={!!included[c.id]} disabled={c.code === "BASIC"} onChange={(e) => setIncluded((s) => ({ ...s, [c.id]: e.target.checked }))} aria-label={t("include", { name: c.name })} />
                 {c.name}
               </label>
               {included[c.id] && <input type="hidden" name="componentIds" value={c.id} />}
               {c.calcType === "FORMULA" ? (
-                <span className="text-muted-foreground font-mono text-xs">{c.formula}</span>
+                <span className="text-muted-foreground font-mono text-xs" dir="ltr">{c.formula}</span>
               ) : (
-                <Input name={included[c.id] ? "amounts" : undefined} aria-label={`${c.name} amount`} defaultValue={c.current ?? ""} inputMode="decimal" placeholder="0.00" disabled={!included[c.id]} className="text-end" />
+                <Input name={included[c.id] ? "amounts" : undefined} aria-label={t("amountOf", { name: c.name })} defaultValue={c.current ?? ""} inputMode="decimal" placeholder="0.00" disabled={!included[c.id]} className="text-end" />
               )}
               {included[c.id] && c.calcType === "FORMULA" && <input type="hidden" name="amounts" value="" />}
             </div>
@@ -78,9 +82,9 @@ function SalaryForm({ employeeId, components, defaultDate, currency, onDone }: {
         </fieldset>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <SubmitButton pending={pending}>Save salary</SubmitButton>
+          <SubmitButton pending={pending}>{t("save")}</SubmitButton>
         </DialogFooter>
       </form>
     </>
@@ -89,16 +93,17 @@ function SalaryForm({ employeeId, components, defaultDate, currency, onDone }: {
 
 export function DeleteSalaryButton({ structureId, employeeId, label }: { structureId: string; employeeId: string; label: string }) {
   const router = useRouter();
+  const t = useTranslations("payroll.salaryDialog");
   return (
     <ConfirmAction
       trigger={
-        <Button variant="ghost" size="sm" aria-label={`Delete scheduled salary from ${label}`}>
+        <Button variant="ghost" size="sm" aria-label={t("deleteLabel", { date: label })}>
           <Trash2 aria-hidden />
         </Button>
       }
-      title="Delete this scheduled salary change?"
-      description={`The change from ${label} has not started yet.`}
-      confirmLabel="Delete"
+      title={t("deleteTitle")}
+      description={t("deleteDescription", { date: label })}
+      confirmLabel={t("deleteConfirm")}
       destructive
       action={() => deleteSalaryAction(structureId, employeeId)}
       onDone={() => router.refresh()}

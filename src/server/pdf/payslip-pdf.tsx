@@ -4,8 +4,9 @@ import { randomBytes } from "node:crypto";
 import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import { storage } from "@/server/storage";
 import type { PayslipData } from "@/server/services/payroll/payslip.service";
-import { amountInWords } from "@/lib/payroll/words";
+import { amountInWords, amountInWordsAr } from "@/lib/payroll/words";
 import { createFormat } from "@/lib/format";
+import { lineNoteText, type PayrollTranslator } from "@/lib/payroll/issues";
 import { isRtl, type AppLocale } from "@/i18n/config";
 import { translatorFor } from "@/server/i18n";
 import { readBrandAsset } from "@/server/brand-assets";
@@ -82,6 +83,10 @@ function Rows({ title, totalLabel, amountLabel, rows, total, money, rtl }: { tit
 /** Payslip PDF in the viewer's language (Arabic is laid out right-to-left). */
 export async function renderPayslipPdf(p: PayslipData, locale: AppLocale = "en", words?: string): Promise<Buffer> {
   const t: Labels = await translatorFor(locale, "documents");
+  const tPayroll = (await translatorFor(locale, "payroll")) as unknown as PayrollTranslator;
+  const note = (n: string | null) => lineNoteText(n, tPayroll);
+  const earnings = p.earnings.map((r) => ({ ...r, note: note(r.note) }));
+  const deductions = p.deductions.map((r) => ({ ...r, note: note(r.note) }));
   const f = createFormat(locale);
   const rtl = isRtl(locale);
   const row = rtl ? "row-reverse" : "row";
@@ -138,14 +143,14 @@ export async function renderPayslipPdf(p: PayslipData, locale: AppLocale = "en",
         </View>
 
         <View style={[s.tables, { flexDirection: row }]}>
-          <Rows title={t("payslip.earnings")} totalLabel={t("payslip.totalEarnings")} amountLabel={t("payslip.amount")} rows={p.earnings} total={p.gross} money={money} rtl={rtl} />
-          <Rows title={t("payslip.deductions")} totalLabel={t("payslip.totalDeductions")} amountLabel={t("payslip.amount")} rows={p.deductions} total={p.totalDeductions} money={money} rtl={rtl} />
+          <Rows title={t("payslip.earnings")} totalLabel={t("payslip.totalEarnings")} amountLabel={t("payslip.amount")} rows={earnings} total={p.gross} money={money} rtl={rtl} />
+          <Rows title={t("payslip.deductions")} totalLabel={t("payslip.totalDeductions")} amountLabel={t("payslip.amount")} rows={deductions} total={p.totalDeductions} money={money} rtl={rtl} />
         </View>
 
         <View style={[s.net, { flexDirection: row }, rtl ? { borderLeft: 0, borderRight: `3pt solid ${P.gold}` } : {}]}>
           <View style={rtl ? { flex: 1, paddingLeft: 12 } : { flex: 1, paddingRight: 12 }}>
             <Text style={[s.label, { textAlign: align }]}>{t("payslip.netPay")}</Text>
-            <Text style={{ textAlign: align }}>{words ?? amountInWords(p.net, p.currency)}</Text>
+            <Text style={{ textAlign: align }}>{words ?? (locale === "ar" ? amountInWordsAr(p.net, p.currency) : amountInWords(p.net, p.currency))}</Text>
           </View>
           <Text style={s.netValue}>{f.money(p.net, p.currency)}</Text>
         </View>

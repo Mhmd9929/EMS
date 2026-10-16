@@ -1,4 +1,5 @@
 import "server-only";
+import { createFormat } from "@/lib/format";
 import type { PayrollEntryStatus, PayrollRunStatus, Prisma } from "@prisma/client";
 import { db, type DbClient } from "@/server/db";
 import { assertCan, type AuthContext } from "@/server/auth/permissions";
@@ -6,6 +7,8 @@ import { writeAudit } from "@/server/audit";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
 import { calculatePay, periodBounds, periodLabel, previousPeriod, variancePct, type CalcIssue } from "@/lib/payroll/calc";
 import { formatMoney } from "@/lib/payroll/money";
+import { issueText } from "@/lib/payroll/issues";
+import { serverT } from "@/server/i18n";
 import { unpaidLeaveDays } from "@/server/services/leave/report.service";
 import { deliverEmailsInBackground, notify } from "@/server/services/notification.service";
 import { loadComponents, n, structureInclude, toComponentDef, toStructureInput } from "./common";
@@ -16,12 +19,16 @@ const VARIANCE_WARNING_PCT = 20;
 
 async function loadRun(client: DbClient, ctx: AuthContext, runId: string) {
   const run = await client.payrollRun.findFirst({ where: { id: runId, companyId: ctx.companyId } });
-  if (!run) throw new NotFoundError("Payroll run not found.");
+  if (!run) throw new NotFoundError((await serverT("payroll"))("errors.runNotFound"));
   return run;
 }
 
-function assertStatus(status: PayrollRunStatus, allowed: PayrollRunStatus[], action: string) {
-  if (!allowed.includes(status)) throw new ValidationError(`Cannot ${action} a run that is ${status.toLowerCase().replace("_", " ")}.`);
+type StatusAction = "calculate" | "submit" | "approve" | "sendBack" | "release" | "cancel" | "reopen" | "changeEmployees";
+
+async function assertStatus(status: PayrollRunStatus, allowed: PayrollRunStatus[], action: StatusAction) {
+  if (allowed.includes(status)) return;
+  const [t, te] = await Promise.all([serverT("payroll"), serverT("enums")]);
+  throw new ValidationError(t("errors.cannotInStatus", { action: t(`errors.statusAction.${action}`), status: te(`runStatus.${status}`).toLowerCase() }));
 }
 
 // ───────────────────────────── Create / list ─────────────────────────────
@@ -31,12 +38,13 @@ export async function createRun(ctx: AuthContext, input: { period: string; scope
   const { start, end } = periodBounds(input.period);
   let scopeLabel = "All employees";
   if (input.scope !== "ALL") {
-    if (!input.scopeId) throw new ValidationError("Choose the department or location.", { scopeId: ["Required"] });
+    const t = await serverT("payroll");
+    if (!input.scopeId) throw new ValidationError(t("errors.chooseScope"), { scopeId: [t("errors.required")] });
     const target =
       input.scope === "DEPARTMENT"
         ? await db.department.findFirst({ where: { id: input.scopeId, companyId: ctx.companyId }, select: { name: true } })
         : await db.location.findFirst({ where: { id: input.scopeId, companyId: ctx.companyId }, select: { name: true } });
-    if (!target) throw new ValidationError("Unknown department or location.", { scopeId: ["Unknown"] });
+    if (!target) throw new ValidationError(t("errors.unknownScope"), { scopeId: [t("errors.unknown")] });
     scopeLabel = `${input.scope === "DEPARTMENT" ? "Department" : "Location"}: ${target.name}`;
   }
   const company = await db.company.findUniqueOrThrow({ where: { id: ctx.companyId }, select: { payrollProrationBasis: true, currency: true } });
@@ -69,7 +77,7 @@ export async function listRuns(ctx: AuthContext, filters: { year?: number; statu
 export async function calculateRun(ctx: AuthContext, runId: string) {
   assertCan(ctx, "payroll.run.manage");
   const run = await loadRun(db, ctx, runId);
-  assertStatus(run.status, ["DRAFT", "CALCULATED"], "calculate");
+  await assertStatus(run.status, ["DRAFT", "CALCULATED"], "calculate");
 
   const scopeWhere: Prisma.EmployeeWhereInput =
     run.scope === "DEPARTMENT" ? { departmentId: run.scopeId } : run.scope === "LOCATION" ? { locationId: run.scopeId } : {};
@@ -124,14 +132,18 @@ export async function calculateRun(ctx: AuthContext, runId: string) {
       });
       if (!result.payable) return null;
       const issues: CalcIssue[] = [...result.issues];
-      if (!e.iban) issues.push({ level: "error", message: "No IBAN — cannot be paid by bank transfer / WPS" });
-      if (!e.bankRoutingCode) issues.push({ level: "warning", message: "No bank routing code (needed for the WPS file)" });
-      if (!e.labourCardNumber) issues.push({ level: "warning", message: "No labour card number (needed for the WPS file)" });
+      // Issues are stored: English `message` plus a `code` the UI translates (payroll.issues.<code>).
+      if (!e.iban) issues.push({ level: "error", code: "noIban", message: "No IBAN — cannot be paid by bank transfer / WPS" });
+      if (!e.bankRoutingCode) issues.push({ level: "warning", code: "noRoutingCode", message: "No bank routing code (needed for the WPS file)" });
+      if (!e.labourCardNumber) issues.push({ level: "warning", code: "noLabourCard", message: "No labour card number (needed for the WPS file)" });
       const previousNet = prevNet.get(e.id) ?? null;
       const variance = variancePct(result.net, previousNet);
-      if (variance !== null && Math.abs(variance) >= VARIANCE_WARNING_PCT) issues.push({ level: "warning", message: `Net pay changed ${variance > 0 ? "+" : ""}${variance}% vs last month` });
-      if (e.joinDate >= run.periodStart) issues.push({ level: "warning", message: "New joiner this month" });
-      if (e.lastWorkingDay && e.lastWorkingDay <= run.periodEnd) issues.push({ level: "warning", message: "Leaver — final month (prepare the final settlement separately)" });
+      if (variance !== null && Math.abs(variance) >= VARIANCE_WARNING_PCT) {
+        const change = `${variance > 0 ? "+" : ""}${variance}`;
+        issues.push({ level: "warning", code: "variance", params: { change }, message: `Net pay changed ${change}% vs last month` });
+      }
+      if (e.joinDate >= run.periodStart) issues.push({ level: "warning", code: "newJoiner", message: "New joiner this month" });
+      if (e.lastWorkingDay && e.lastWorkingDay <= run.periodEnd) issues.push({ level: "warning", code: "leaver", message: "Leaver — final month (prepare the final settlement separately)" });
       const kept = keep.get(e.id);
       return { e, result, issues, previousNet, status: (kept?.status ?? "INCLUDED") as PayrollEntryStatus, statusReason: kept?.statusReason ?? null };
     })
@@ -187,10 +199,11 @@ async function refreshTotals(tx: DbClient, runId: string) {
 
 export async function setEntryStatus(ctx: AuthContext, input: { entryId: string; status: PayrollEntryStatus; reason: string | null }) {
   assertCan(ctx, ["payroll.run.manage", "payroll.run.approve"]);
-  if (input.status !== "INCLUDED" && !input.reason) throw new ValidationError("Give a reason.", { reason: ["Required to hold or exclude"] });
+  const t = await serverT("payroll");
+  if (input.status !== "INCLUDED" && !input.reason) throw new ValidationError(t("errors.giveReason"), { reason: [t("errors.reasonRequired")] });
   const entry = await db.payrollRunEmployee.findFirst({ where: { id: input.entryId, run: { companyId: ctx.companyId } }, include: { run: true } });
-  if (!entry) throw new NotFoundError("Entry not found.");
-  assertStatus(entry.run.status, ["CALCULATED", "UNDER_REVIEW"], "change employees in");
+  if (!entry) throw new NotFoundError(t("errors.entryNotFound"));
+  await assertStatus(entry.run.status, ["CALCULATED", "UNDER_REVIEW"], "changeEmployees");
   await db.$transaction(async (tx) => {
     await tx.payrollRunEmployee.update({ where: { id: entry.id }, data: { status: input.status, statusReason: input.status === "INCLUDED" ? null : input.reason } });
     await refreshTotals(tx, entry.runId);
@@ -208,17 +221,21 @@ export async function setEntryStatus(ctx: AuthContext, input: { entryId: string;
 function blockingIssues(entries: { name: string; status: PayrollEntryStatus; issues: unknown }[]) {
   return entries
     .filter((e) => e.status === "INCLUDED")
-    .flatMap((e) => ((e.issues as CalcIssue[]) ?? []).filter((i) => i.level === "error").map((i) => `${e.name}: ${i.message}`));
+    .flatMap((e) => ((e.issues as CalcIssue[]) ?? []).filter((i) => i.level === "error").map((issue) => ({ name: e.name, issue })));
 }
 
 export async function submitRun(ctx: AuthContext, runId: string) {
   assertCan(ctx, "payroll.run.manage");
   const run = await loadRun(db, ctx, runId);
-  assertStatus(run.status, ["CALCULATED"], "submit");
+  await assertStatus(run.status, ["CALCULATED"], "submit");
+  const t = await serverT("payroll");
   const entries = await db.payrollRunEmployee.findMany({ where: { runId }, select: { name: true, status: true, issues: true } });
-  if (!entries.some((e) => e.status === "INCLUDED")) throw new ValidationError("No employees are included in this run.");
+  if (!entries.some((e) => e.status === "INCLUDED")) throw new ValidationError(t("errors.noneIncluded"));
   const blocking = blockingIssues(entries);
-  if (blocking.length) throw new ValidationError(`Fix or hold/exclude these first: ${blocking.slice(0, 3).join("; ")}${blocking.length > 3 ? ` (+${blocking.length - 3} more)` : ""}`);
+  if (blocking.length) {
+    const list = blocking.slice(0, 3).map((b) => `${b.name}: ${issueText(b.issue, t)}`).join("; ");
+    throw new ValidationError(blocking.length > 3 ? t("errors.fixFirstMore", { list, count: blocking.length - 3 }) : t("errors.fixFirst", { list }));
+  }
   await db.$transaction(async (tx) => {
     await tx.payrollRun.update({ where: { id: runId }, data: { status: "UNDER_REVIEW", submittedById: ctx.userId, submittedAt: new Date(), reviewComment: null } });
     await writeAudit(ctx, { action: "payroll.run.submit", entityType: "PayrollRun", entityId: runId, summary: `Submitted ${periodLabel(run.period)} for approval` }, tx);
@@ -229,9 +246,9 @@ export async function submitRun(ctx: AuthContext, runId: string) {
 export async function approveRun(ctx: AuthContext, runId: string, comment: string | null) {
   assertCan(ctx, "payroll.run.approve");
   const run = await loadRun(db, ctx, runId);
-  assertStatus(run.status, ["UNDER_REVIEW"], "approve");
+  await assertStatus(run.status, ["UNDER_REVIEW"], "approve");
   if (run.calculatedById === ctx.userId || run.submittedById === ctx.userId) {
-    throw new ForbiddenError("Maker-checker: a run must be approved by someone other than the person who calculated or submitted it.");
+    throw new ForbiddenError((await serverT("payroll"))("errors.makerChecker"));
   }
   await db.$transaction(async (tx) => {
     await tx.payrollRun.update({ where: { id: runId }, data: { status: "APPROVED", approvedById: ctx.userId, approvedAt: new Date(), reviewComment: comment } });
@@ -241,9 +258,12 @@ export async function approveRun(ctx: AuthContext, runId: string, comment: strin
 
 export async function returnRun(ctx: AuthContext, runId: string, comment: string | null) {
   assertCan(ctx, ["payroll.run.approve", "payroll.run.manage"]);
-  if (!comment) throw new ValidationError("Explain what needs to change.", { comment: ["Required"] });
+  if (!comment) {
+    const t = await serverT("payroll");
+    throw new ValidationError(t("errors.explainChange"), { comment: [t("errors.required")] });
+  }
   const run = await loadRun(db, ctx, runId);
-  assertStatus(run.status, ["UNDER_REVIEW", "APPROVED"], "send back");
+  await assertStatus(run.status, ["UNDER_REVIEW", "APPROVED"], "sendBack");
   await db.$transaction(async (tx) => {
     await tx.payrollRun.update({ where: { id: runId }, data: { status: "CALCULATED", reviewComment: comment, approvedById: null, approvedAt: null, submittedById: null, submittedAt: null } });
     await writeAudit(ctx, { action: "payroll.run.return", entityType: "PayrollRun", entityId: runId, summary: `Sent ${periodLabel(run.period)} back for changes: ${comment}` }, tx);
@@ -254,12 +274,13 @@ export async function returnRun(ctx: AuthContext, runId: string, comment: string
 export async function releaseRun(ctx: AuthContext, runId: string, opts: { notify?: boolean } = {}) {
   assertCan(ctx, "payroll.run.manage");
   const ids: string[] = [];
+  const t = await serverT("payroll");
   const run = await db.$transaction(
     async (tx) => {
       const run = await loadRun(tx, ctx, runId);
-      assertStatus(run.status, ["APPROVED"], "release");
+      await assertStatus(run.status, ["APPROVED"], "release");
       const locked = await tx.payrollRun.updateMany({ where: { id: runId, status: "APPROVED" }, data: { status: "RELEASED", releasedById: ctx.userId, releasedAt: new Date() } });
-      if (locked.count !== 1) throw new ValidationError("This run changed while you were releasing it. Reload and try again.");
+      if (locked.count !== 1) throw new ValidationError(t("errors.runChanged"));
       const entries = await tx.payrollRunEmployee.findMany({ where: { runId, status: "INCLUDED" }, include: { employee: { select: { userId: true } } } });
       const now = new Date();
       for (const e of entries) {
@@ -277,8 +298,7 @@ export async function releaseRun(ctx: AuthContext, runId: string, opts: { notify
             companyId: ctx.companyId,
             userIds: entries.map((e) => e.employee.userId),
             type: "payroll.payslip",
-            title: `Your ${periodLabel(run.period)} payslip is ready`,
-            body: `Your payslip for ${periodLabel(run.period)} has been released. Open it to view or download the PDF.`,
+            message: { key: "payslipReady", params: { month: (locale) => createFormat(locale).month(run.period) } },
             link: "/payslips",
           })),
         );
@@ -295,7 +315,7 @@ export async function releaseRun(ctx: AuthContext, runId: string, opts: { notify
 export async function cancelRun(ctx: AuthContext, runId: string, reason: string) {
   assertCan(ctx, "payroll.run.manage");
   const run = await loadRun(db, ctx, runId);
-  assertStatus(run.status, ["DRAFT", "CALCULATED", "UNDER_REVIEW", "APPROVED"], "cancel");
+  await assertStatus(run.status, ["DRAFT", "CALCULATED", "UNDER_REVIEW", "APPROVED"], "cancel");
   await db.$transaction(async (tx) => {
     await tx.payrollRun.update({ where: { id: runId }, data: { status: "CANCELLED", cancelledById: ctx.userId, cancelledAt: new Date(), cancelReason: reason } });
     await writeAudit(ctx, { action: "payroll.run.cancel", entityType: "PayrollRun", entityId: runId, summary: `Cancelled ${periodLabel(run.period)}: ${reason}`, before: { status: run.status }, after: { status: "CANCELLED" } }, tx);
@@ -306,7 +326,7 @@ export async function cancelRun(ctx: AuthContext, runId: string, reason: string)
 export async function reopenRun(ctx: AuthContext, runId: string, reason: string) {
   assertCan(ctx, "payroll.run.reopen");
   const run = await loadRun(db, ctx, runId);
-  assertStatus(run.status, ["RELEASED"], "reopen");
+  await assertStatus(run.status, ["RELEASED"], "reopen");
   await db.$transaction(async (tx) => {
     const voided = await tx.payslip.updateMany({ where: { runEmployee: { runId }, voidedAt: null }, data: { voidedAt: new Date() } });
     await tx.payrollAdjustment.updateMany({ where: { runId }, data: { runId: null } });
@@ -363,7 +383,7 @@ export async function getRunEntry(ctx: AuthContext, entryId: string) {
     where: { id: entryId, run: { companyId: ctx.companyId } },
     include: { run: true, lines: { orderBy: { sortOrder: "asc" } }, payslip: { select: { id: true, voidedAt: true } } },
   });
-  if (!entry) throw new NotFoundError("Entry not found.");
+  if (!entry) throw new NotFoundError((await serverT("payroll"))("errors.entryNotFound"));
   return { ...entry, issues: (entry.issues as CalcIssue[]) ?? [] };
 }
 
