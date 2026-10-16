@@ -1,5 +1,82 @@
 # Changelog
 
+## Phase 4e — Arabic and right-to-left
+
+### Added
+- **Languages**: the whole portal in English and Arabic.
+  - The language is chosen from the header, the user menu or the login page, saved on the user
+    (`User.locale`) and applied at sign-in.
+  - `<html lang dir>` switches to RTL; logical CSS properties throughout; direction-aware icons, the org chart
+    and calendars mirror.
+- **Message files**: one file per namespace and language (`messages/en|ar/*.json`, about 2,000 keys each),
+  typed against English, with a parity test for keys and placeholders.
+- **Formatting**: `ar-AE` for Arabic (Arabic month names, Western digits) for dates, months and money.
+- **Server text**: errors, validation messages (including Zod's built-ins), toasts, Excel and CSV headers and
+  import reports are in the user's language.
+- **Notifications and emails** are rendered in each recipient's saved language from templates; Arabic emails
+  are right-to-left.
+- **Payslip PDF** in the downloader's language: IBM Plex Sans (Latin and Arabic), RTL layout, net amount in
+  Arabic words.
+- **Payroll**: calculation issues now carry codes and are translated when displayed; older stored rows fall
+  back to their English text.
+- **Docs**: `docs/I18N.md` covers conventions, RTL rules and the HR/payroll Arabic glossary.
+
+### Fixed
+- The seed and worker failed after the i18n change; they now use the framework-free translator from
+  `use-intl/core`.
+
+### Notes
+- The bank transfer CSV and the WPS SIF stay English for bank systems.
+- Audit summaries and other stored text stay as recorded.
+- The Arabic wording should be reviewed by a native speaker before go-live.
+
+## Unreleased — HSA rebrand (UI only)
+
+### Changed
+- **Brand theme**: `src/theme/brand.ts` is the single source of the HSA palette:
+  - gold `#D9B300`, bright `#FCC917`, dark `#8A6F00`, black `#0A0A0A`, charcoal `#1C1C1C` and neutral greys;
+  - semantic light and dark tokens, injected as CSS variables and mapped to Tailwind/shadcn utilities.
+  - No hard-coded colours remain in components (leave-type colours are user data).
+- **Contrast**: a unit test checks 83 text/background pairs for WCAG AA.
+  - Adjustments made to pass: light-grey surfaces `#FAFAFA` and gold tint `#FDFAEE`, so `#8A6F00` stays at
+    4.5:1 or more on them; success text `#166534`; warning text `#B13A0B`, which is orange and distinct from
+    the gold.
+  - Gold text on white now uses `text-link` (`#8A6F00`).
+  - The two-tone focus ring (bright gold plus a dark inner ring) is visible on white.
+- **Layout**:
+  - Black sidebar with a gold active state and charcoal hover. It collapses to an icon rail, and the choice
+    is remembered.
+  - Black header (or white with a gold border, set by `HEADER_STYLE`).
+  - Split login and auth pages: a black panel with the logo and gold waves next to the white form.
+  - Gold accent on page headings, tabs, checkboxes, badges and the payroll stepper.
+- **Documents**:
+  - The payslip PDF has a black band with the full logo, a gold accent line and gold table headers.
+  - Emails have a black header with the inline logo, a gold accent line and gold buttons.
+- **Fonts**: self-hosted Inter and IBM Plex Sans Arabic.
+- **Title and favicon**: "HSA Employee Portal" and `/brand/favicon.ico`. Brand assets are exempt from the
+  auth middleware, so they load on the login page.
+- Left/right CSS classes were converted to logical start/end equivalents (groundwork for Arabic RTL). There
+  is no visual change in English.
+
+## Unreleased — development setup
+
+### Changed
+- **Development runs natively.** `docker-compose.yml` now starts only Postgres and Mailpit. The app runs with
+  `npm run dev`, which now uses Turbopack: a page's first visit takes about 1–2 s instead of 10 s or more
+  with webpack. `npm run dev:webpack` keeps the old bundler.
+- `.env.example` defaults match the Docker services (Mailpit SMTP by default). There is a new
+  `npm run db:setup` (migrate, sync permissions, seed only if empty).
+- Mailpit is pinned to `v1.29` instead of `latest`.
+
+### Added
+- **`docker-compose.prod.yml`**: the full stack in production mode (`next build` image, migrate job, worker,
+  Postgres, Mailpit on :8026) as a separate Compose project with its own database. Start it with
+  `docker compose -f docker-compose.prod.yml up --build -d` or `npm run docker:prod`.
+
+### Upgrade notes
+- If you used the old all-in-Docker setup, run `docker compose down --remove-orphans` once. Your database
+  volume is kept and is reused by the new dev setup.
+
 ## Checkpoint 3 — Payroll (Phase 3)
 
 ### Added

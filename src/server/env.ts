@@ -13,7 +13,7 @@ const schema = z.object({
   LOGIN_WINDOW_MINUTES: z.coerce.number().int().min(1).default(15),
   BCRYPT_COST: z.coerce.number().int().min(4).max(15).default(12),
   EMAIL_TRANSPORT: z.enum(["console", "smtp"]).default("console"),
-  EMAIL_FROM: z.string().default("HRMS <no-reply@hrms.local>"),
+  EMAIL_FROM: z.string().default("HSA Employee Portal <no-reply@hrms.local>"),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().optional(),
   SMTP_USER: z.string().optional(),

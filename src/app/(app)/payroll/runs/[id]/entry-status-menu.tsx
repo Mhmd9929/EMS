@@ -12,11 +12,14 @@ import { Field } from "@/components/forms/field";
 import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Input } from "@/components/ui/input";
+import { useTranslations } from "next-intl";
 
 type S = "INCLUDED" | "HELD" | "EXCLUDED";
-const LABEL: Record<S, string> = { INCLUDED: "Included", HELD: "Held", EXCLUDED: "Excluded" };
 
 export function EntryStatusMenu({ entryId, name, status, reason }: { entryId: string; name: string; status: S; reason: string | null }) {
+  const t = useTranslations("payroll.entryStatus");
+  const te = useTranslations("enums.entryStatus");
+  const tc = useTranslations("common");
   const [target, setTarget] = useState<S | null>(null);
   const router = useRouter();
   const { state, onSubmit, pending } = useFormAction(setEntryStatusAction);
@@ -30,8 +33,8 @@ export function EntryStatusMenu({ entryId, name, status, reason }: { entryId: st
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={`Change status of ${name}`} title={reason ?? undefined}>
-            <Badge variant={status === "INCLUDED" ? "success" : "secondary"}>{LABEL[status]} ▾</Badge>
+          <Button variant="ghost" size="sm" className="h-7 px-1" aria-label={t("changeStatusOf", { name })} title={reason ?? undefined}>
+            <Badge variant={status === "INCLUDED" ? "success" : "secondary"}>{te(status)} ▾</Badge>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -39,7 +42,7 @@ export function EntryStatusMenu({ entryId, name, status, reason }: { entryId: st
             .filter((s) => s !== status)
             .map((s) => (
               <DropdownMenuItem key={s} onSelect={() => setTarget(s)}>
-                {s === "INCLUDED" ? "Include in this run" : s === "HELD" ? "Hold salary (not paid this run)" : "Exclude from this run"}
+                {s === "INCLUDED" ? t("include") : s === "HELD" ? t("hold") : t("exclude")}
               </DropdownMenuItem>
             ))}
         </DropdownMenuContent>
@@ -48,24 +51,24 @@ export function EntryStatusMenu({ entryId, name, status, reason }: { entryId: st
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {target === "INCLUDED" ? "Include" : target === "HELD" ? "Hold" : "Exclude"} {name}
+              {t(target === "INCLUDED" ? "includeTitle" : target === "HELD" ? "holdTitle" : "excludeTitle", { name })}
             </DialogTitle>
-            <DialogDescription>Held and excluded employees are not in the WPS or bank files and get no payslip from this run.</DialogDescription>
+            <DialogDescription>{t("description")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="grid gap-4">
             <FormError state={state} />
             <input type="hidden" name="entryId" value={entryId} />
             <input type="hidden" name="status" value={target ?? ""} />
             {target !== "INCLUDED" && (
-              <Field label="Reason" name="reason" error={fieldError(state, "reason")} required>
-                <Input placeholder="e.g. Pending clearance, bank details wrong" />
+              <Field label={t("reason")} name="reason" error={fieldError(state, "reason")} required>
+                <Input placeholder={t("reasonPlaceholder")} />
               </Field>
             )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setTarget(null)}>
-                Cancel
+                {tc("cancel")}
               </Button>
-              <SubmitButton pending={pending}>Confirm</SubmitButton>
+              <SubmitButton pending={pending}>{tc("confirm")}</SubmitButton>
             </DialogFooter>
           </form>
         </DialogContent>

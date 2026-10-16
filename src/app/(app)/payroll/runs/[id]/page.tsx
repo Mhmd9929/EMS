@@ -6,8 +6,9 @@ import { requireAuth, requirePermission, can } from "@/server/auth/context";
 import { getRun } from "@/server/services/payroll/run.service";
 import { NotFoundError } from "@/server/errors";
 import { first, type SearchParams } from "@/lib/list-params";
-import { periodLabel } from "@/lib/payroll/calc";
-import { formatDateTime } from "@/lib/dates";
+import { issueText, runScopeText } from "@/lib/payroll/issues";
+import { getFormat } from "@/server/i18n";
+import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
@@ -21,7 +22,9 @@ import { cn } from "@/lib/utils";
 import { RunActions } from "./run-actions";
 import { EntryStatusMenu } from "./entry-status-menu";
 
-export const metadata: Metadata = { title: "Payroll run" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("payroll"))("meta.run") };
+}
 
 export default async function RunPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -34,16 +37,17 @@ export default async function RunPage({ params, searchParams }: { params: Promis
     throw e;
   });
   const { run, rows, counts, people } = data;
+  const [t, te, f] = await Promise.all([getTranslations("payroll"), getTranslations("enums"), getFormat()]);
   const editable = run.status === "CALCULATED" || run.status === "UNDER_REVIEW";
   const exportable = can(ctx, "payroll.export");
   const path = `/payroll/runs/${run.id}`;
   const timeline = [
-    ["Created", people.createdBy, run.createdAt],
-    ["Calculated", people.calculatedBy, run.calculatedAt],
-    ["Submitted", people.submittedBy, run.submittedAt],
-    ["Approved", people.approvedBy, run.approvedAt],
-    ["Released", people.releasedBy, run.releasedAt],
-    ["Cancelled", people.cancelledBy, run.cancelledAt],
+    [t("run.timeline.created"), people.createdBy, run.createdAt],
+    [t("run.timeline.calculated"), people.calculatedBy, run.calculatedAt],
+    [t("run.timeline.submitted"), people.submittedBy, run.submittedAt],
+    [t("run.timeline.approved"), people.approvedBy, run.approvedAt],
+    [t("run.timeline.released"), people.releasedBy, run.releasedAt],
+    [t("run.timeline.cancelled"), people.cancelledBy, run.cancelledAt],
   ].filter(([, , at]) => at) as [string, string | null, Date][];
 
   return (
@@ -52,17 +56,17 @@ export default async function RunPage({ params, searchParams }: { params: Promis
         <div className="space-y-2">
           <p className="text-muted-foreground text-sm">
             <Link href="/payroll" className="hover:underline">
-              Payroll runs
+              {t("run.breadcrumb")}
             </Link>{" "}
-            / {run.scopeLabel}
+            / {runScopeText(run, t)}
           </p>
           <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight">
-            {periodLabel(run.period)} payroll <RunStatusBadge status={run.status} />
+            {t("run.heading", { period: f.month(run.period) })} <RunStatusBadge status={run.status} />
           </h1>
           <RunStepper status={run.status} />
           <p className="text-muted-foreground text-xs">
-            {run.prorationBasis === "THIRTY_DAYS" ? "30-day basis" : "Calendar-day basis"} · {run.currency}
-            {timeline.map(([label, who, at]) => ` · ${label} ${who ? `by ${who} ` : ""}${formatDateTime(at, ctx.timezone)}`).join("")}
+            {run.prorationBasis === "THIRTY_DAYS" ? t("basis.thirty") : t("basis.calendar")} · {run.currency}
+            {timeline.map(([label, who, at]) => ` · ${who ? t("run.timelineBy", { label, who, at: f.dateTime(at, ctx.timezone) }) : t("run.timelineAt", { label, at: f.dateTime(at, ctx.timezone) })}`).join("")}
           </p>
         </div>
         <RunActions
@@ -76,22 +80,26 @@ export default async function RunPage({ params, searchParams }: { params: Promis
         />
       </div>
 
-      {run.reviewComment && <Alert variant={run.status === "CALCULATED" ? "warning" : "info"} title="Reviewer comment">{run.reviewComment}</Alert>}
-      {run.cancelReason && <Alert variant="error" title="Cancelled">{run.cancelReason}</Alert>}
-      {run.status === "DRAFT" && <Alert title="Not calculated yet">Calculate to compute every employee&apos;s pay for the month. You can recalculate as often as needed until the run is submitted.</Alert>}
+      {run.reviewComment && (
+        <Alert variant={run.status === "CALCULATED" ? "warning" : "info"} title={t("run.reviewerComment")}>
+          {run.reviewComment.startsWith("Reopened: ") ? t("run.reopenedComment", { reason: run.reviewComment.slice("Reopened: ".length) }) : run.reviewComment}
+        </Alert>
+      )}
+      {run.cancelReason && <Alert variant="error" title={t("run.cancelled")}>{run.cancelReason}</Alert>}
+      {run.status === "DRAFT" && <Alert title={t("run.notCalculatedTitle")}>{t("run.notCalculatedBody")}</Alert>}
       {counts.errors > 0 && editable && (
-        <Alert variant="error" title={`${counts.errors} blocking issue${counts.errors === 1 ? "" : "s"}`}>
-          Fix the data (e.g. add a salary or IBAN) and recalculate, or hold/exclude those employees before submitting.
+        <Alert variant="error" title={t("run.blockingTitle", { count: counts.errors })}>
+          {t("run.blockingBody")}
         </Alert>
       )}
 
       {run.status !== "DRAFT" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Employees paid", `${counts.included}`, counts.held ? `${counts.held} held / excluded` : "none held"],
-            ["Gross", <Money key="g" minor={run.totalGross} currency={run.currency} showCode />, null],
-            ["Deductions", <Money key="d" minor={run.totalDeductions} currency={run.currency} showCode />, null],
-            ["Net pay", <Money key="n" minor={run.totalNet} currency={run.currency} showCode className="text-primary" />, "to be transferred"],
+            [t("run.employeesPaid"), `${counts.included}`, counts.held ? t("run.heldCount", { count: counts.held }) : t("run.noneHeld")],
+            [t("run.gross"), <Money key="g" minor={run.totalGross} currency={run.currency} showCode />, null],
+            [t("run.deductions"), <Money key="d" minor={run.totalDeductions} currency={run.currency} showCode />, null],
+            [t("run.netPay"), <Money key="n" minor={run.totalNet} currency={run.currency} showCode className="text-link" />, t("run.toBeTransferred")],
           ].map(([label, value, hint]) => (
             <Card key={label as string} className="gap-1 py-4">
               <CardHeader>
@@ -109,13 +117,13 @@ export default async function RunPage({ params, searchParams }: { params: Promis
       {run.status !== "DRAFT" && (
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <nav className="flex flex-wrap gap-1 rounded-lg border p-0.5 text-sm" aria-label="Filter">
+            <nav className="flex flex-wrap gap-1 rounded-lg border p-0.5 text-sm" aria-label={t("run.filter")}>
               {(
                 [
-                  ["all", "All"],
-                  ["issues", "With issues"],
-                  ["variance", "Big changes"],
-                  ["held", "Held / excluded"],
+                  ["all", t("run.views.all")],
+                  ["issues", t("run.views.issues")],
+                  ["variance", t("run.views.variance")],
+                  ["held", t("run.views.held")],
                 ] as const
               ).map(([v, label]) => (
                 <Link key={v} href={hrefWith(path, sp, { view: v === "all" ? undefined : v })} aria-current={view === v ? "page" : undefined} className={cn("rounded-md px-3 py-1", view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
@@ -126,15 +134,15 @@ export default async function RunPage({ params, searchParams }: { params: Promis
             {exportable && (
               <div className="flex flex-wrap gap-2">
                 <a href={`/api/payroll/runs/${run.id}/export?type=register`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                  <Download aria-hidden /> Register (Excel)
+                  <Download aria-hidden /> {t("run.exportRegister")}
                 </a>
                 {(run.status === "APPROVED" || run.status === "RELEASED") && (
                   <>
                     <a href={`/api/payroll/runs/${run.id}/export?type=sif`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                      <Download aria-hidden /> WPS SIF
+                      <Download aria-hidden /> {t("run.exportSif")}
                     </a>
                     <a href={`/api/payroll/runs/${run.id}/export?type=bank`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                      <Download aria-hidden /> Bank transfer CSV
+                      <Download aria-hidden /> {t("run.exportBank")}
                     </a>
                   </>
                 )}
@@ -142,23 +150,23 @@ export default async function RunPage({ params, searchParams }: { params: Promis
             )}
           </div>
           <Toolbar>
-            <SearchInput placeholder="Search name, number, department…" />
+            <SearchInput placeholder={t("run.searchPlaceholder")} />
           </Toolbar>
           {rows.length === 0 ? (
-            <EmptyState title="No employees match" />
+            <EmptyState title={t("run.noMatches")} />
           ) : (
             <Card className="py-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead className="hidden text-right md:table-cell">Paid days</TableHead>
-                    <TableHead className="hidden text-right lg:table-cell">Gross</TableHead>
-                    <TableHead className="hidden text-right lg:table-cell">Deductions</TableHead>
-                    <TableHead className="text-right">Net</TableHead>
-                    <TableHead className="hidden text-right md:table-cell">Last month</TableHead>
-                    <TableHead className="text-right">Change</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t("run.cols.employee")}</TableHead>
+                    <TableHead className="hidden text-end md:table-cell">{t("run.cols.paidDays")}</TableHead>
+                    <TableHead className="hidden text-end lg:table-cell">{t("run.cols.gross")}</TableHead>
+                    <TableHead className="hidden text-end lg:table-cell">{t("run.cols.deductions")}</TableHead>
+                    <TableHead className="text-end">{t("run.cols.net")}</TableHead>
+                    <TableHead className="hidden text-end md:table-cell">{t("run.cols.lastMonth")}</TableHead>
+                    <TableHead className="text-end">{t("run.cols.change")}</TableHead>
+                    <TableHead>{t("run.cols.status")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -173,34 +181,34 @@ export default async function RunPage({ params, searchParams }: { params: Promis
                             {e.name}
                           </Link>
                           <p className="text-muted-foreground text-xs">
-                            {e.employeeNumber} · {e.department ?? "—"}
+                            <span dir="ltr">{e.employeeNumber}</span> · {e.department ?? "—"}
                           </p>
                           {[...errors, ...warnings].slice(0, 2).map((i) => (
-                            <p key={i.message} className={cn("flex items-center gap-1 text-xs", i.level === "error" ? "text-destructive" : "text-amber-700 dark:text-amber-400")}>
+                            <p key={`${i.code ?? ""}${i.message}`} className={cn("flex items-center gap-1 text-xs", i.level === "error" ? "text-destructive" : "text-warning")}>
                               {i.level === "error" ? <CircleAlert className="size-3" aria-hidden /> : <AlertTriangle className="size-3" aria-hidden />}
-                              {i.message}
+                              {issueText(i, t)}
                             </p>
                           ))}
                         </TableCell>
-                        <TableCell className="hidden text-right tabular-nums md:table-cell">
+                        <TableCell className="hidden text-end tabular-nums md:table-cell">
                           {Number(e.paidDays)}
-                          {Number(e.unpaidLeaveDays) > 0 && <span className="text-destructive block text-xs">−{Number(e.unpaidLeaveDays)} unpaid</span>}
+                          {Number(e.unpaidLeaveDays) > 0 && <span className="text-destructive block text-xs">{t("run.unpaidDays", { days: Number(e.unpaidLeaveDays) })}</span>}
                         </TableCell>
-                        <TableCell className="hidden text-right lg:table-cell">
+                        <TableCell className="hidden text-end lg:table-cell">
                           <Money minor={e.gross} currency={run.currency} />
                         </TableCell>
-                        <TableCell className="hidden text-right lg:table-cell">
+                        <TableCell className="hidden text-end lg:table-cell">
                           <Money minor={e.deductions} currency={run.currency} />
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-end font-medium">
                           <Money minor={e.net} currency={run.currency} />
                         </TableCell>
-                        <TableCell className="text-muted-foreground hidden text-right md:table-cell">{e.previousNet === null ? "—" : <Money minor={e.previousNet} currency={run.currency} />}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-muted-foreground hidden text-end md:table-cell">{e.previousNet === null ? "—" : <Money minor={e.previousNet} currency={run.currency} />}</TableCell>
+                        <TableCell className="text-end">
                           {e.variance === null ? (
-                            <Badge variant="secondary">new</Badge>
+                            <Badge variant="secondary">{t("run.newBadge")}</Badge>
                           ) : (
-                            <span className={cn("tabular-nums text-sm", big ? "font-semibold text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
+                            <span dir="ltr" className={cn("tabular-nums text-sm", big ? "font-semibold text-warning" : "text-muted-foreground")}>
                               {e.variance > 0 ? "+" : ""}
                               {e.variance}%
                             </span>
@@ -211,7 +219,7 @@ export default async function RunPage({ params, searchParams }: { params: Promis
                             <EntryStatusMenu entryId={e.id} name={e.name} status={e.status} reason={e.statusReason} />
                           ) : (
                             <Badge variant={e.status === "INCLUDED" ? "success" : "secondary"} title={e.statusReason ?? undefined}>
-                              {e.status === "INCLUDED" ? "Included" : e.status === "HELD" ? "Held" : "Excluded"}
+                              {te(`entryStatus.${e.status}`)}
                             </Badge>
                           )}
                         </TableCell>

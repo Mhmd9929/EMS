@@ -3,7 +3,9 @@ import { db } from "@/server/db";
 import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { writeAudit } from "@/server/audit";
 import { ValidationError } from "@/server/errors";
-import { parseCsv, validateImport, type ImportLookups, type ImportValidation } from "@/lib/import/employee-csv";
+import { parseCsv, validateImport, type ImportI18n, type ImportLookups, type ImportValidation } from "@/lib/import/employee-csv";
+import { getAppLocale, serverT } from "@/server/i18n";
+import { translateIssue } from "@/server/validation-i18n";
 import { createEmployee } from "./employee.service";
 import { sendInvite } from "./user.service";
 
@@ -29,8 +31,13 @@ export type ImportPreview = ImportValidation & { total: number };
 
 export async function previewImport(ctx: AuthContext, csvText: string): Promise<ImportPreview> {
   assertCan(ctx, "employee.import");
-  const { records, headers, errors } = parseCsv(csvText);
-  const result = validateImport(records, headers, await loadLookups(ctx.companyId));
+  const [t, locale] = await Promise.all([serverT("employees"), getAppLocale()]);
+  const i18n: ImportI18n = {
+    t: (key, values) => t(`import.errors.${key}`, values),
+    issueMessage: (issue) => translateIssue(issue, locale),
+  };
+  const { records, headers, errors } = parseCsv(csvText, i18n);
+  const result = validateImport(records, headers, await loadLookups(ctx.companyId), i18n);
   return { ...result, fileErrors: [...errors, ...result.fileErrors], total: records.length };
 }
 
@@ -40,7 +47,7 @@ export async function commitImport(ctx: AuthContext, csvText: string, opts: { se
   assertCan(ctx, ["employee.create"]);
   const preview = await previewImport(ctx, csvText);
   if (preview.fileErrors.length || preview.errorCount) {
-    throw new ValidationError("The file has errors. Fix them and run the dry run again.");
+    throw new ValidationError((await serverT("employees"))("errors.importHasErrors"));
   }
   const created = await db.$transaction(
     async (tx) => {

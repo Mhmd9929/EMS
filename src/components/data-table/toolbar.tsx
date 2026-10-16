@@ -5,6 +5,7 @@ import { Loader2, Search, X } from "lucide-react";
 import { Input, NativeSelect } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PAGE_SIZES } from "@/lib/list-params";
+import { useTranslations } from "next-intl";
 
 export function useUpdateParams() {
   const router = useRouter();
@@ -24,8 +25,10 @@ export function useUpdateParams() {
 }
 
 /** Debounced search box bound to the `q` URL param. */
-export function SearchInput({ placeholder = "Search…", param = "q" }: { placeholder?: string; param?: string }) {
+export function SearchInput({ placeholder: placeholderProp, param = "q" }: { placeholder?: string; param?: string }) {
   const { update, params, pending } = useUpdateParams();
+  const tCommon = useTranslations("common");
+  const placeholder = placeholderProp ?? tCommon("search");
   const initial = params.get(param) ?? "";
   const [value, setValue] = useState(initial);
   useEffect(() => setValue(initial), [initial]);
@@ -38,9 +41,9 @@ export function SearchInput({ placeholder = "Search…", param = "q" }: { placeh
   return (
     <div className="relative w-full sm:max-w-xs">
       {pending ? (
-        <Loader2 className="text-muted-foreground absolute top-2.5 left-2.5 size-4 animate-spin" aria-hidden />
+        <Loader2 className="text-muted-foreground absolute top-2.5 start-2.5 size-4 animate-spin" aria-hidden />
       ) : (
-        <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" aria-hidden />
+        <Search className="text-muted-foreground absolute top-2.5 start-2.5 size-4" aria-hidden />
       )}
       <Input
         type="search"
@@ -48,7 +51,7 @@ export function SearchInput({ placeholder = "Search…", param = "q" }: { placeh
         placeholder={placeholder}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="pl-8"
+        className="ps-8"
       />
     </div>
   );
@@ -57,9 +60,10 @@ export function SearchInput({ placeholder = "Search…", param = "q" }: { placeh
 /** `defaultValue` (e.g. the current year) replaces the "All" option for filters that always apply. */
 export function FilterSelect({ param, label, options, defaultValue }: { param: string; label: string; options: { value: string; label: string }[]; defaultValue?: string }) {
   const { update, params } = useUpdateParams();
+  const t = useTranslations("common");
   return (
     <NativeSelect aria-label={label} value={params.get(param) ?? defaultValue ?? ""} onChange={(e) => update({ [param]: e.target.value || undefined })} className="w-full sm:w-auto">
-      {defaultValue === undefined && <option value="">{label}: All</option>}
+      {defaultValue === undefined && <option value="">{t("filterAll", { label })}</option>}
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
@@ -71,21 +75,23 @@ export function FilterSelect({ param, label, options, defaultValue }: { param: s
 
 export function ClearFilters({ params: keys }: { params: string[] }) {
   const { update, params } = useUpdateParams();
+  const t = useTranslations("common");
   if (!keys.some((k) => params.get(k))) return null;
   return (
     <Button variant="ghost" size="sm" onClick={() => update(Object.fromEntries(keys.map((k) => [k, undefined])))}>
-      <X aria-hidden /> Clear
+      <X aria-hidden /> {t("clear")}
     </Button>
   );
 }
 
 export function PageSizeSelect({ value }: { value: number }) {
   const { update } = useUpdateParams();
+  const t = useTranslations("common.pagination");
   return (
-    <NativeSelect aria-label="Rows per page" value={String(value)} onChange={(e) => update({ pageSize: e.target.value })} className="h-8 w-auto">
+    <NativeSelect aria-label={t("rowsPerPage")} value={String(value)} onChange={(e) => update({ pageSize: e.target.value })} className="h-8 w-auto">
       {PAGE_SIZES.map((s) => (
         <option key={s} value={s}>
-          {s} / page
+          {t("perPage", { count: s })}
         </option>
       ))}
     </NativeSelect>

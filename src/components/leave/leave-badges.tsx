@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 
 const STATUS: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "secondary" | "outline" }> = {
@@ -9,10 +10,13 @@ const STATUS: Record<string, { label: string; variant: "success" | "warning" | "
 };
 
 export const LEAVE_STATUSES = Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label }));
+/** Status codes, for filters: label them with `enums.leaveStatus.<code>`. */
+export const LEAVE_STATUS_VALUES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED", "CANCELLATION_REQUESTED"] as const;
 
 export function LeaveStatusBadge({ status }: { status: string }) {
+  const t = useTranslations("enums.leaveStatus");
   const s = STATUS[status] ?? { label: status, variant: "secondary" as const };
-  return <Badge variant={s.variant}>{s.label}</Badge>;
+  return <Badge variant={s.variant}>{status in STATUS ? t(status as "PENDING") : s.label}</Badge>;
 }
 
 export function LeaveTypeLabel({ name, color, className }: { name: string; color: string; className?: string }) {

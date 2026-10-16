@@ -8,12 +8,9 @@ import { changePasswordSchema, forgotPasswordSchema, loginSchema, setPasswordSch
 import { parseInput, runAction } from "./result";
 import { acceptInvite, changePassword, requestPasswordReset, resetPassword } from "@/server/services/user.service";
 import type { ActionResult } from "@/lib/action-result";
+import { serverT } from "@/server/i18n";
 
-const LOGIN_ERRORS: Record<string, string> = {
-  invalid_credentials: "Invalid email or password.",
-  rate_limited: "Too many failed attempts. Please wait 15 minutes and try again.",
-  account_disabled: "Your account is disabled. Contact HR.",
-};
+const LOGIN_ERROR_CODES = ["invalid_credentials", "rate_limited", "account_disabled"] as const;
 
 /** Only allow same-site relative redirects after login. */
 function safeCallback(url: string | undefined) {
@@ -27,7 +24,8 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
     password: formData.get("password"),
     callbackUrl: formData.get("callbackUrl") ?? undefined,
   });
-  if (!parsed.success) return { ok: false, error: "Enter your email and password." };
+  const t = await serverT("auth");
+  if (!parsed.success) return { ok: false, error: t("errors.missing") };
   try {
     await signIn("credentials", {
       email: parsed.data.email,
@@ -36,8 +34,11 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
     });
     return { ok: true };
   } catch (error) {
-    if (error instanceof CredentialsSignin) return { ok: false, error: LOGIN_ERRORS[error.code] ?? LOGIN_ERRORS.invalid_credentials };
-    if (error instanceof AuthError) return { ok: false, error: "Sign-in failed. Please try again." };
+    if (error instanceof CredentialsSignin) {
+      const code = LOGIN_ERROR_CODES.find((c) => c === error.code) ?? "invalid_credentials";
+      return { ok: false, error: t(`errors.${code}`) };
+    }
+    if (error instanceof AuthError) return { ok: false, error: t("errors.failed") };
     throw error; // NEXT_REDIRECT on success
   }
 }
@@ -56,7 +57,7 @@ export async function forgotPasswordAction(_prev: ActionResult | null, formData:
   return runAction(async () => {
     const { email } = parseInput(forgotPasswordSchema, formData);
     await requestPasswordReset(email);
-    return { ok: true, message: "If an account exists for that email, a reset link is on its way." };
+    return { ok: true, message: (await serverT("auth"))("resetLinkSent") };
   });
 }
 

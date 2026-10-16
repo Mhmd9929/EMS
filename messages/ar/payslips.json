@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "list": "قسائم راتبي",
+    "view": "قسيمة الراتب"
+  },
+  "list": {
+    "title": "قسائم راتبي",
+    "description": "تظهر قسائم الرواتب هنا بعد إصدار رواتب الشهر.",
+    "year": "السنة",
+    "yearOption": "سنة {year}",
+    "noEmployeeTitle": "لا يوجد سجل موظف",
+    "noEmployeeDescription": "حساب المستخدم الخاص بك غير مرتبط بموظف، لذا لا توجد قسائم رواتب لعرضها.",
+    "empty": "لا توجد قسائم رواتب لسنة {year}",
+    "month": "الشهر",
+    "released": "تاريخ الإصدار",
+    "gross": "الإجمالي",
+    "deductions": "الاستقطاعات",
+    "netPay": "صافي الراتب",
+    "actions": "الإجراءات",
+    "downloadLabel": "تنزيل قسيمة راتب {month} بصيغة PDF",
+    "pdf": "PDF"
+  },
+  "view": {
+    "myPayslips": "قسائم راتبي",
+    "heading": "قسيمة الراتب — {month}",
+    "subtitle": "{name} · {company} · صدرت في {date}",
+    "openPdf": "فتح ملف PDF",
+    "downloadPdf": "تنزيل ملف PDF",
+    "facts": {
+      "employeeNo": "الرقم الوظيفي",
+      "department": "القسم",
+      "position": "المسمى الوظيفي",
+      "joined": "تاريخ الالتحاق",
+      "payPeriod": "فترة الراتب",
+      "paidDays": "الأيام المدفوعة",
+      "bank": "البنك",
+      "iban": "رقم الآيبان"
+    },
+    "paidDaysUnpaid": "{paid} ({unpaid} إجازة بدون راتب)",
+    "earnings": "الاستحقاقات",
+    "deductions": "الاستقطاعات",
+    "none": "لا يوجد",
+    "totalEarnings": "إجمالي الاستحقاقات",
+    "totalDeductions": "إجمالي الاستقطاعات",
+    "netPay": "صافي الراتب",
+    "ytd": "منذ بداية السنة (من {month})",
+    "gross": "الإجمالي",
+    "net": "الصافي"
+  }
+}

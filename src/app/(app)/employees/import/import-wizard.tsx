@@ -1,6 +1,7 @@
 "use client";
 import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { CheckCircle2, FileSpreadsheet, XCircle } from "lucide-react";
 import { commitImportAction, previewImportAction } from "@/server/actions/employee.actions";
 import { useActionFeedback } from "@/components/forms/use-action-feedback";
@@ -14,6 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FormError } from "@/components/forms/form-error";
 
 export function ImportWizard() {
+  const t = useTranslations("employees.import");
+  const tc = useTranslations("common");
   const [file, setFile] = useState<File | null>(null);
   const [sendInvites, setSendInvites] = useState(false);
   const [showValid, setShowValid] = useState(false);
@@ -33,10 +36,10 @@ export function ImportWizard() {
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
           <CheckCircle2 className="text-success size-10" aria-hidden />
-          <p className="text-lg font-semibold">Imported {commit.data.created} employees</p>
-          {commit.data.invited > 0 && <p className="text-muted-foreground text-sm">{commit.data.invited} invitations sent.</p>}
+          <p className="text-lg font-semibold">{t("imported", { count: commit.data.created })}</p>
+          {commit.data.invited > 0 && <p className="text-muted-foreground text-sm">{t("invitationsSent", { count: commit.data.invited })}</p>}
           <Link href="/employees" className={buttonVariants()}>
-            Go to employees
+            {t("goToEmployees")}
           </Link>
         </CardContent>
       </Card>
@@ -53,18 +56,18 @@ export function ImportWizard() {
       <Card>
         <CardContent className="space-y-4">
           <div className="grid gap-2">
-            <Label htmlFor="csv">CSV file</Label>
+            <Label htmlFor="csv">{t("csvFile")}</Label>
             <input
               id="csv"
               type="file"
               accept=".csv,text/csv"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:mr-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
+              className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:me-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
             />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button disabled={!file || previewing} onClick={() => startTransition(() => runPreview(fd()))} variant="outline">
-              <FileSpreadsheet aria-hidden /> {previewing ? "Validating…" : "Run dry run"}
+              <FileSpreadsheet aria-hidden /> {previewing ? t("validating") : t("runDryRun")}
             </Button>
           </div>
           <FormError state={preview} />
@@ -81,11 +84,11 @@ export function ImportWizard() {
             ))}
             {rows.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="secondary">{result.total} rows</Badge>
-                <Badge variant="success">{rows.length - result.errorCount} valid</Badge>
-                <Badge variant={result.errorCount ? "destructive" : "secondary"}>{result.errorCount} with errors</Badge>
-                <label className="ml-auto flex items-center gap-2">
-                  <Checkbox checked={showValid} onChange={(e) => setShowValid(e.target.checked)} /> Show valid rows
+                <Badge variant="secondary">{t("rowsBadge", { count: result.total })}</Badge>
+                <Badge variant="success">{t("validBadge", { count: rows.length - result.errorCount })}</Badge>
+                <Badge variant={result.errorCount ? "destructive" : "secondary"}>{t("errorsBadge", { count: result.errorCount })}</Badge>
+                <label className="ms-auto flex items-center gap-2">
+                  <Checkbox checked={showValid} onChange={(e) => setShowValid(e.target.checked)} /> {t("showValid")}
                 </label>
               </div>
             )}
@@ -94,9 +97,9 @@ export function ImportWizard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Row</TableHead>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Result</TableHead>
+                      <TableHead>{t("row")}</TableHead>
+                      <TableHead>{tc("employee")}</TableHead>
+                      <TableHead>{t("result")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -105,12 +108,14 @@ export function ImportWizard() {
                         <TableCell className="tabular-nums">{r.row}</TableCell>
                         <TableCell>
                           <p className="font-medium">{r.name || "—"}</p>
-                          <p className="text-muted-foreground text-xs">{r.email}</p>
+                          <p className="text-muted-foreground text-xs">
+                            <span dir="ltr">{r.email}</span>
+                          </p>
                         </TableCell>
                         <TableCell>
                           {r.errors.length === 0 ? (
                             <span className="text-success inline-flex items-center gap-1 text-sm">
-                              <CheckCircle2 className="size-4" aria-hidden /> Ready
+                              <CheckCircle2 className="size-4" aria-hidden /> {t("ready")}
                             </span>
                           ) : (
                             <ul className="text-destructive space-y-0.5 text-xs">
@@ -129,14 +134,14 @@ export function ImportWizard() {
                 </Table>
               </div>
             )}
-            {rows.length > 0 && result.errorCount > 0 && <Alert variant="warning">Fix the errors in your file and run the dry run again. Nothing has been saved.</Alert>}
+            {rows.length > 0 && result.errorCount > 0 && <Alert variant="warning">{t("fixErrors")}</Alert>}
             {canCommit && (
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
                 <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={sendInvites} onChange={(e) => setSendInvites(e.target.checked)} /> Email invitations to imported employees
+                  <Checkbox checked={sendInvites} onChange={(e) => setSendInvites(e.target.checked)} /> {t("emailInvites")}
                 </label>
                 <Button disabled={committing} onClick={() => startTransition(() => runCommit(fd()))}>
-                  {committing ? "Importing…" : `Import ${rows.length} employees`}
+                  {committing ? t("importing") : t("importCount", { count: rows.length })}
                 </Button>
               </div>
             )}

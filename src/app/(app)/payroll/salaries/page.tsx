@@ -5,7 +5,8 @@ import { requireAuth, requirePermission } from "@/server/auth/context";
 import { SALARY_SORTS, listSalaries } from "@/server/services/payroll/salary.service";
 import { listDepartmentOptions } from "@/server/services/org.service";
 import { first, parseListParams, type SearchParams } from "@/lib/list-params";
-import { formatDate } from "@/lib/dates";
+import { getFormat } from "@/server/i18n";
+import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,9 @@ import { ClearFilters, FilterSelect, SearchInput, Toolbar } from "@/components/d
 import { EmptyState } from "@/components/empty-state";
 import { Money } from "@/components/payroll/badges";
 
-export const metadata: Metadata = { title: "Salaries" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("payroll"))("meta.salaries") };
+}
 
 export default async function SalariesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -28,31 +31,32 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     listSalaries(ctx, params, { departmentId: first(sp.department), missing: first(sp.missing) === "1" }),
     listDepartmentOptions(ctx),
   ]);
+  const [t, f] = await Promise.all([getTranslations("payroll.salaries"), getFormat()]);
   const sort = (label: string, key: (typeof SALARY_SORTS)[number], className?: string) => (
     <SortHeader label={label} sortKey={key} current={params.sort} dir={params.dir} pathname={pathname} searchParams={sp} className={className} />
   );
   return (
     <>
-      <PageHeader title="Salaries" description="Current monthly salary per employee. Open an employee's Payroll tab to see the history or schedule a change." />
+      <PageHeader title={t("title")} description={t("description")} />
       <Toolbar>
-        <SearchInput placeholder="Search name or number…" />
-        <FilterSelect param="department" label="Department" options={departments} />
-        <FilterSelect param="missing" label="Salary" options={[{ value: "1", label: "No salary yet" }]} />
+        <SearchInput placeholder={t("searchPlaceholder")} />
+        <FilterSelect param="department" label={t("department")} options={departments} />
+        <FilterSelect param="missing" label={t("salary")} options={[{ value: "1", label: t("noSalaryYet") }]} />
         <ClearFilters params={["q", "department", "missing"]} />
       </Toolbar>
       {result.items.length === 0 ? (
-        <EmptyState icon={Wallet} title="No employees match" />
+        <EmptyState icon={Wallet} title={t("noMatches")} />
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                {sort("Employee", "name")}
-                <TableHead className="hidden md:table-cell">Department</TableHead>
-                <TableHead className="hidden lg:table-cell">Grade</TableHead>
-                <TableHead className="hidden text-right sm:table-cell">Basic</TableHead>
-                {sort("Gross / month", "gross", "text-right")}
-                <TableHead className="hidden md:table-cell">Since</TableHead>
+                {sort(t("employee"), "name")}
+                <TableHead className="hidden md:table-cell">{t("department")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("grade")}</TableHead>
+                <TableHead className="hidden text-end sm:table-cell">{t("basic")}</TableHead>
+                {sort(t("grossMonth"), "gross", "text-end")}
+                <TableHead className="hidden md:table-cell">{t("since")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -63,18 +67,18 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                       {e.preferredName || e.firstName} {e.lastName}
                     </Link>
                     <p className="text-muted-foreground text-xs">
-                      {e.employeeNumber} · {e.position?.title ?? "—"}
+                      <span dir="ltr">{e.employeeNumber}</span> · {e.position?.title ?? "—"}
                     </p>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{e.department?.name ?? "—"}</TableCell>
                   <TableCell className="hidden lg:table-cell">{e.position?.grade ?? "—"}</TableCell>
-                  <TableCell className="hidden text-right sm:table-cell">{r.effectiveFrom ? <Money minor={r.basic} currency={ctx.currency} /> : "—"}</TableCell>
-                  <TableCell className="text-right font-medium">{r.effectiveFrom ? <Money minor={r.gross} currency={ctx.currency} /> : <Badge variant="destructive">No salary</Badge>}</TableCell>
+                  <TableCell className="hidden text-end sm:table-cell">{r.effectiveFrom ? <Money minor={r.basic} currency={ctx.currency} /> : "—"}</TableCell>
+                  <TableCell className="text-end font-medium">{r.effectiveFrom ? <Money minor={r.gross} currency={ctx.currency} /> : <Badge variant="destructive">{t("noSalary")}</Badge>}</TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {r.effectiveFrom ? formatDate(r.effectiveFrom) : "—"}
+                    {r.effectiveFrom ? f.date(r.effectiveFrom) : "—"}
                     {r.scheduled > 0 && (
-                      <Badge variant="warning" className="ml-2">
-                        change scheduled
+                      <Badge variant="warning" className="ms-2">
+                        {t("changeScheduled")}
                       </Badge>
                     )}
                   </TableCell>

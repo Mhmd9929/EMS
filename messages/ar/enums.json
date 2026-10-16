@@ -1,0 +1,101 @@
+{
+  "employmentType": {
+    "FULL_TIME": "دوام كامل",
+    "PART_TIME": "دوام جزئي",
+    "CONTRACT": "عقد مؤقت"
+  },
+  "employeeStatus": {
+    "ACTIVE": "نشط",
+    "ON_LEAVE": "في إجازة",
+    "TERMINATED": "منتهية خدمته",
+    "leaving": "يغادر في {date}"
+  },
+  "gender": {
+    "MALE": "ذكر",
+    "FEMALE": "أنثى"
+  },
+  "terminationReason": {
+    "Resignation": "استقالة",
+    "End of contract": "انتهاء العقد",
+    "Termination by employer": "إنهاء الخدمة من صاحب العمل",
+    "Termination during probation": "إنهاء الخدمة خلال فترة التجربة",
+    "Retirement": "التقاعد",
+    "Absconding": "انقطاع عن العمل",
+    "Death": "وفاة",
+    "Other": "أخرى"
+  },
+  "emirate": {
+    "Abu Dhabi": "أبوظبي",
+    "Dubai": "دبي",
+    "Sharjah": "الشارقة",
+    "Ajman": "عجمان",
+    "Umm Al Quwain": "أم القيوين",
+    "Ras Al Khaimah": "رأس الخيمة",
+    "Fujairah": "الفجيرة"
+  },
+  "leaveStatus": {
+    "PENDING": "قيد الانتظار",
+    "APPROVED": "معتمدة",
+    "REJECTED": "مرفوضة",
+    "CANCELLED": "ملغاة",
+    "CANCELLATION_REQUESTED": "طلب إلغاء"
+  },
+  "approvalRole": {
+    "MANAGER": "المدير",
+    "HR": "الموارد البشرية"
+  },
+  "halfDay": {
+    "NONE": "يوم كامل",
+    "FIRST_HALF": "النصف الأول",
+    "SECOND_HALF": "النصف الثاني"
+  },
+  "accrualMethod": {
+    "UPFRONT": "سنويًا مقدمًا",
+    "MONTHLY": "استحقاق شهري",
+    "NONE": "بدون رصيد"
+  },
+  "runStatus": {
+    "DRAFT": "مسودة",
+    "CALCULATED": "محسوب",
+    "UNDER_REVIEW": "قيد المراجعة",
+    "APPROVED": "معتمد",
+    "RELEASED": "صادر",
+    "CANCELLED": "ملغى"
+  },
+  "entryStatus": {
+    "INCLUDED": "مشمول",
+    "HELD": "موقوف",
+    "EXCLUDED": "مستبعد"
+  },
+  "settlementStatus": {
+    "DRAFT": "مسودة",
+    "APPROVED": "معتمدة",
+    "CANCELLED": "ملغاة"
+  },
+  "componentKind": {
+    "EARNING": "استحقاق",
+    "DEDUCTION": "استقطاع"
+  },
+  "calcType": {
+    "FIXED": "مبلغ ثابت",
+    "FORMULA": "معادلة"
+  },
+  "prorationBasis": {
+    "CALENDAR_DAYS": "أيام التقويم",
+    "THIRTY_DAYS": "شهر من 30 يومًا"
+  },
+  "runScope": {
+    "ALL": "جميع الموظفين",
+    "DEPARTMENT": "قسم واحد",
+    "LOCATION": "موقع واحد"
+  },
+  "weekday": {
+    "1": "الاثنين",
+    "2": "الثلاثاء",
+    "3": "الأربعاء",
+    "4": "الخميس",
+    "5": "الجمعة",
+    "6": "السبت",
+    "7": "الأحد"
+  }
+}

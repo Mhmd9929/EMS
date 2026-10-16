@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { KeyRound } from "lucide-react";
@@ -10,42 +11,60 @@ import { buttonVariants } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { PhotoUpload } from "@/components/employees/photo-upload";
 import { EmergencyContacts } from "@/components/employees/emergency-contacts";
-import { formatDate } from "@/lib/dates";
-import { EMPLOYMENT_TYPES, GENDERS, labelOf } from "@/lib/constants";
+import { getFormat } from "@/server/i18n";
 import { formatIban } from "@/lib/iban";
 import { ProfileForm } from "./profile-form";
 
-export const metadata: Metadata = { title: "My profile" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("profile"))("meta.title") };
+}
 
 export default async function ProfilePage() {
   const ctx = await requireAuth();
   if (!ctx.employeeId) redirect("/profile/password");
   const e = await getEmployeeDetail(ctx, ctx.employeeId);
+  const t = await getTranslations("profile");
+  const tEnums = await getTranslations("enums");
+  const f = await getFormat();
   const rows: [string, React.ReactNode][] = [
-    ["Employee number", <span key="n" className="font-mono">{e.employeeNumber}</span>],
-    ["Work email", e.workEmail],
-    ["Position", e.position?.title],
-    ["Department", e.department?.name],
-    ["Manager", e.manager ? `${e.manager.preferredName || e.manager.firstName} ${e.manager.lastName}` : null],
-    ["Location", e.location?.name],
-    ["Employment type", labelOf(EMPLOYMENT_TYPES, e.employmentType)],
-    ["Join date", formatDate(e.joinDate)],
-    ["Date of birth", formatDate(e.dateOfBirth)],
-    ["Gender", e.gender ? labelOf(GENDERS, e.gender) : null],
-    ["Nationality", e.nationality],
-    ["Emirates ID", e.emiratesIdNumber ? `${e.emiratesIdNumber} (exp. ${formatDate(e.emiratesIdExpiry)})` : null],
-    ["Passport", e.passportNumber ? `${e.passportNumber} (exp. ${formatDate(e.passportExpiry)})` : null],
-    ["Bank", e.bankName],
-    ["IBAN", e.iban ? <span key="i" className="font-mono">{formatIban(e.iban)}</span> : null],
+    [t("fields.employeeNumber"), <span key="n" dir="ltr" className="font-mono">{e.employeeNumber}</span>],
+    [t("fields.workEmail"), <span key="w" dir="ltr">{e.workEmail}</span>],
+    [t("fields.position"), e.position?.title],
+    [t("fields.department"), e.department?.name],
+    [t("fields.manager"), e.manager ? `${e.manager.preferredName || e.manager.firstName} ${e.manager.lastName}` : null],
+    [t("fields.location"), e.location?.name],
+    [t("fields.employmentType"), tEnums(`employmentType.${e.employmentType}`)],
+    [t("fields.joinDate"), f.date(e.joinDate)],
+    [t("fields.dateOfBirth"), f.date(e.dateOfBirth)],
+    [t("fields.gender"), e.gender ? tEnums(`gender.${e.gender}`) : null],
+    [t("fields.nationality"), e.nationality],
+    [
+      t("fields.emiratesId"),
+      e.emiratesIdNumber ? (
+        <span key="e">
+          <span dir="ltr">{e.emiratesIdNumber}</span> {t("expiry", { date: f.date(e.emiratesIdExpiry) })}
+        </span>
+      ) : null,
+    ],
+    [
+      t("fields.passport"),
+      e.passportNumber ? (
+        <span key="p">
+          <span dir="ltr">{e.passportNumber}</span> {t("expiry", { date: f.date(e.passportExpiry) })}
+        </span>
+      ) : null,
+    ],
+    [t("fields.bank"), e.bankName],
+    [t("fields.iban"), e.iban ? <span key="i" dir="ltr" className="font-mono">{formatIban(e.iban)}</span> : null],
   ];
   return (
     <>
       <PageHeader
-        title="My profile"
-        description="Keep your contact details up to date. Ask HR to change job, identity or bank details."
+        title={t("title")}
+        description={t("description")}
         actions={
           <Link href="/profile/password" className={buttonVariants({ variant: "outline" })}>
-            <KeyRound aria-hidden /> Change password
+            <KeyRound aria-hidden /> {t("changePassword")}
           </Link>
         }
       />
@@ -65,15 +84,15 @@ export default async function ProfilePage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Employment record</CardTitle>
-              <CardDescription>Maintained by HR</CardDescription>
+              <CardTitle className="text-base">{t("employmentRecord")}</CardTitle>
+              <CardDescription>{t("maintainedByHr")}</CardDescription>
             </CardHeader>
             <CardContent>
               <dl className="space-y-2 text-sm">
                 {rows.map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-3">
                     <dt className="text-muted-foreground shrink-0">{k}</dt>
-                    <dd className="truncate text-right">{v ?? "—"}</dd>
+                    <dd className="truncate text-end">{v ?? "—"}</dd>
                   </div>
                 ))}
               </dl>
@@ -83,7 +102,7 @@ export default async function ProfilePage() {
         <div className="space-y-4 lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Personal information</CardTitle>
+              <CardTitle className="text-base">{t("personalInformation")}</CardTitle>
             </CardHeader>
             <CardContent>
               <ProfileForm
@@ -99,8 +118,8 @@ export default async function ProfilePage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Emergency contacts</CardTitle>
-              <CardDescription>Who should we call in an emergency? Up to 5 contacts.</CardDescription>
+              <CardTitle className="text-base">{t("emergencyContacts")}</CardTitle>
+              <CardDescription>{t("emergencyContactsDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <EmergencyContacts employeeId={e.id} contacts={e.emergencyContacts} canManage />

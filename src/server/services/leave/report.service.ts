@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { num, round2 } from "@/lib/leave/numbers";
+import { serverT } from "@/server/i18n";
 
 export type LeaveReportRow = { department: string; leaveType: string; color: string; isPaid: boolean; days: number; people: number; requests: number };
 
@@ -24,8 +25,9 @@ export async function leaveTakenReport(ctx: AuthContext, input: { from: Date; to
       ${input.leaveTypeId ? Prisma.sql`AND r."leaveTypeId" = ${input.leaveTypeId}` : Prisma.empty}
     GROUP BY dep.name, lt.name, lt.color, lt."isPaid", lt."sortOrder"
     ORDER BY dep.name NULLS LAST, lt."sortOrder"`;
+  const unassigned = (await serverT("leave"))("reports.unassigned");
   const data: LeaveReportRow[] = rows.map((r) => ({
-    department: r.department ?? "Unassigned",
+    department: r.department ?? unassigned,
     leaveType: r.leaveType,
     color: r.color,
     isPaid: r.isPaid,

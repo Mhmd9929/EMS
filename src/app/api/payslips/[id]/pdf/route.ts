@@ -3,6 +3,7 @@ import { getAuthContext } from "@/server/auth/context";
 import { getPayslip, payslipPdfPassword } from "@/server/services/payroll/payslip.service";
 import { encryptPdf, renderPayslipPdf } from "@/server/pdf/payslip-pdf";
 import { writeAudit } from "@/server/audit";
+import { getAppLocale } from "@/server/i18n";
 
 /** Payslip PDF. Visibility is decided by getPayslip (owner + released, or payslip.read.all) — anything else is a 404. */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +13,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const data = await getPayslip(ctx, id).catch(() => null);
   if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const password = await payslipPdfPassword(ctx.companyId, data.employee.id);
-  const pdf = password ? await encryptPdf(await renderPayslipPdf(data), password) : await renderPayslipPdf(data);
+  const rendered = await renderPayslipPdf(data, await getAppLocale());
+  const pdf = password ? await encryptPdf(rendered, password) : rendered;
   if (data.employee.id !== ctx.employeeId) {
     await writeAudit(ctx, { action: "payslip.download", entityType: "Payslip", entityId: data.id, summary: `Downloaded payslip ${data.number} of ${data.employee.name}` });
   }

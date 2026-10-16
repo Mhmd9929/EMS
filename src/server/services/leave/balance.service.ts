@@ -11,6 +11,7 @@ import { effectiveRules, type PolicyLike } from "@/lib/leave/policy";
 import { num, round2, sum } from "@/lib/leave/numbers";
 import { todayInTimeZone } from "@/lib/dates";
 import { paginated, type ListParams } from "@/lib/list-params";
+import { serverT } from "@/server/i18n";
 import { accrualRule, displayName, leaveEmployeeSelect, loadPolicies, requestDayTotals, typeRules, yearBounds, type LeaveEmployee } from "./common";
 import { notify, deliverEmailsInBackground } from "../notification.service";
 
@@ -91,6 +92,7 @@ export async function computeBalances(companyId: string, employees: LeaveEmploye
     ledgerFor(db, ids, year),
     requestDayTotals(db, companyId, ids, from, to),
   ]);
+  const tl = await serverT("leave");
   const result = new Map<string, TypeBalance[]>();
   for (const e of employees) {
     result.set(
@@ -104,7 +106,7 @@ export async function computeBalances(companyId: string, employees: LeaveEmploye
           ...b,
           leaveType: { id: t.id, code: t.code, name: t.name, color: t.color, isPaid: t.isPaid, accrualMethod: t.accrualMethod },
           eligible: rules.eligible,
-          ineligibleReason: rules.reason,
+          ineligibleReason: rules.reasonCode ? tl(`ineligible.${rules.reasonCode}`) : null,
           tracked: t.accrualMethod !== "NONE",
         };
       }),
@@ -115,7 +117,7 @@ export async function computeBalances(companyId: string, employees: LeaveEmploye
 
 export async function loadLeaveEmployee(client: DbClient, companyId: string, employeeId: string) {
   const e = await client.employee.findFirst({ where: { id: employeeId, companyId }, select: leaveEmployeeSelect });
-  if (!e) throw new NotFoundError("Employee not found.");
+  if (!e) throw new NotFoundError((await serverT("leave"))("errors.employeeNotFound"));
   return e;
 }
 
@@ -157,7 +159,7 @@ export async function listBalances(
   const scope = await getVisibleEmployeeScope(ctx);
   if (scope !== "all") throw new ForbiddenError();
   const type = await db.leaveType.findFirst({ where: { id: filters.leaveTypeId, companyId: ctx.companyId } });
-  if (!type) throw new NotFoundError("Leave type not found.");
+  if (!type) throw new NotFoundError((await serverT("leave"))("errors.typeNotFound"));
   const terms = params.q.split(/\s+/).filter(Boolean);
   const employees = await db.employee.findMany({
     where: {
@@ -201,17 +203,18 @@ export async function exportBalances(ctx: AuthContext, year: number) {
 export async function adjustBalance(ctx: AuthContext, input: { employeeId: string; leaveTypeId: string; year: number; days: number; reason: string }) {
   assertCan(ctx, "leave.balance.adjust");
   if ((await getEmployeeAccess(ctx, input.employeeId)) !== "all") throw new ForbiddenError();
-  if (input.employeeId === ctx.employeeId) throw new ForbiddenError("You cannot adjust your own leave balance.");
-  if (input.days === 0) throw new ValidationError("Adjustment cannot be zero.", { days: ["Enter a positive or negative number of days"] });
+  const t = await serverT("leave");
+  if (input.employeeId === ctx.employeeId) throw new ForbiddenError(t("errors.ownBalance"));
+  if (input.days === 0) throw new ValidationError(t("errors.zeroAdjustment"), { days: [t("errors.zeroAdjustmentField")] });
   const ids: string[] = [];
   const entry = await db.$transaction(async (tx) => {
     const [employee, type] = await Promise.all([
       tx.employee.findFirst({ where: { id: input.employeeId, companyId: ctx.companyId }, select: { id: true, userId: true, firstName: true, lastName: true, preferredName: true } }),
       tx.leaveType.findFirst({ where: { id: input.leaveTypeId, companyId: ctx.companyId } }),
     ]);
-    if (!employee) throw new NotFoundError("Employee not found.");
-    if (!type) throw new NotFoundError("Leave type not found.");
-    if (type.accrualMethod === "NONE") throw new ValidationError(`${type.name} does not track a balance.`);
+    if (!employee) throw new NotFoundError(t("errors.employeeNotFound"));
+    if (!type) throw new NotFoundError(t("errors.typeNotFound"));
+    if (type.accrualMethod === "NONE") throw new ValidationError(t("errors.notTracked", { type: type.name }));
     const created = await tx.leaveLedgerEntry.create({
       data: {
         companyId: ctx.companyId,
@@ -237,8 +240,7 @@ export async function adjustBalance(ctx: AuthContext, input: { employeeId: strin
         companyId: ctx.companyId,
         userIds: [employee.userId],
         type: "leave.balance_adjusted",
-        title: `Your ${type.name} balance was adjusted`,
-        body: `HR adjusted your ${type.name} balance for ${input.year} by ${round2(input.days)} days. Reason: ${input.reason}`,
+        message: { key: "leaveBalanceAdjusted", params: { type: type.name, year: String(input.year), days: round2(input.days), reason: input.reason } },
         link: "/leave",
       })),
     );

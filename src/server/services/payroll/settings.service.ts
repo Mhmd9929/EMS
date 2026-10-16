@@ -6,6 +6,7 @@ import { writeAudit, diffSnapshots } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/server/errors";
 import { FormulaError, formulaVariables, resolveFormulas } from "@/lib/payroll/formula";
 import type { payComponentSchema, payrollSettingsSchema } from "@/lib/validation/payroll";
+import { serverT } from "@/server/i18n";
 import { loadComponents } from "./common";
 
 export async function listPayComponents(ctx: AuthContext) {
@@ -14,18 +15,19 @@ export async function listPayComponents(ctx: AuthContext) {
 }
 
 /** Validate a formula against the other components (unknown names, syntax, cycles). */
-function validateFormula(code: string, formula: string, others: { code: string; calcType: string; formula: string | null }[]) {
+async function validateFormula(code: string, formula: string, others: { code: string; calcType: string; formula: string | null }[]) {
+  const t = await serverT("payroll");
   try {
     const known = new Set(others.map((o) => o.code));
     for (const v of formulaVariables(formula)) {
-      if (v === code) throw new FormulaError("A component cannot reference itself");
-      if (!known.has(v)) throw new FormulaError(`Unknown component "${v}"`);
+      if (v === code) throw new FormulaError(t("errors.selfReference"));
+      if (!known.has(v)) throw new FormulaError(t("errors.unknownComponent", { code: v }));
     }
     const fixed = Object.fromEntries(others.filter((o) => o.calcType === "FIXED").map((o) => [o.code, 1000]));
     const formulas = Object.fromEntries([...others.filter((o) => o.calcType === "FORMULA" && o.formula && o.code !== code).map((o) => [o.code, o.formula!]), [code, formula]]);
     resolveFormulas(fixed, formulas);
   } catch (e) {
-    throw new ValidationError("Invalid formula.", { formula: [e instanceof Error ? e.message : "Invalid formula"] });
+    throw new ValidationError(t("errors.invalidFormula"), { formula: [e instanceof Error ? e.message : t("errors.invalidFormulaField")] });
   }
 }
 
@@ -33,15 +35,16 @@ export async function upsertPayComponent(ctx: AuthContext, input: z.infer<typeof
   assertCan(ctx, "payroll.settings.manage");
   const all = await loadComponents(db, ctx.companyId);
   const before = input.id ? all.find((c) => c.id === input.id) : null;
-  if (input.id && !before) throw new NotFoundError("Component not found.");
+  const t = await serverT("payroll");
+  if (input.id && !before) throw new NotFoundError(t("errors.componentNotFound"));
   if (before?.isSystem && (before.code !== input.code || before.kind !== input.kind || before.isRecurring !== input.isRecurring)) {
-    throw new ValidationError("System components keep their code, type and recurrence.");
+    throw new ValidationError(t("errors.systemFixed"));
   }
-  if (all.some((c) => c.code === input.code && c.id !== input.id)) throw new ValidationError("Code already used.", { code: ["Another component uses this code"] });
+  if (all.some((c) => c.code === input.code && c.id !== input.id)) throw new ValidationError(t("errors.codeUsed"), { code: [t("errors.codeUsedField")] });
   if (input.calcType === "FORMULA") {
-    if (!input.formula) throw new ValidationError("Enter a formula.", { formula: ["Required for formula components"] });
-    if (!input.isRecurring) throw new ValidationError("Formula components must be recurring.", { calcType: ["One-time components are entered as amounts"] });
-    validateFormula(input.code, input.formula, all.filter((c) => c.id !== input.id));
+    if (!input.formula) throw new ValidationError(t("errors.enterFormula"), { formula: [t("errors.formulaRequiredField")] });
+    if (!input.isRecurring) throw new ValidationError(t("errors.formulaRecurring"), { calcType: [t("errors.oneTimeAmounts")] });
+    await validateFormula(input.code, input.formula, all.filter((c) => c.id !== input.id));
   }
   const { id: _id, ...rest } = input;
   void _id;

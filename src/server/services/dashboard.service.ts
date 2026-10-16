@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import type { AuthContext } from "@/server/auth/permissions";
 import { addDays, todayInTimeZone } from "@/lib/dates";
 import { getTeamEmployeeIds } from "@/server/rbac/scope";
+import { serverT } from "@/server/i18n";
 
 export type ExpiringDocument = {
   employeeId: string;
@@ -60,8 +61,9 @@ export async function getHrDashboard(ctx: AuthContext) {
 
   const departments = await db.department.findMany({ where: { companyId }, select: { id: true, name: true } });
   const deptName = new Map(departments.map((d) => [d.id, d.name]));
+  const t = await serverT("dashboard");
   const headcountByDepartment = byDepartment
-    .map((g) => ({ name: g.departmentId ? (deptName.get(g.departmentId) ?? "Unknown") : "Unassigned", count: g._count }))
+    .map((g) => ({ name: g.departmentId ? (deptName.get(g.departmentId) ?? t("hr.unknown")) : t("hr.unassigned"), count: g._count }))
     .sort((a, b) => b.count - a.count);
 
   const expiring: ExpiringDocument[] = [];

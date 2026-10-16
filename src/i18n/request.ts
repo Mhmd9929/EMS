@@ -1,18 +1,11 @@
 import { getRequestConfig } from "next-intl/server";
 import { cookies } from "next/headers";
+import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from "./config";
+import { loadMessages } from "./messages";
 
-/** Locales with a messages file. Arabic (RTL) arrives in Phase 4. */
-export const SUPPORTED_LOCALES = ["en"] as const;
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
-export const RTL_LOCALES: string[] = ["ar"];
-
+/** Locale comes from the `locale` cookie (set from the user's saved preference at sign-in, or the switcher). */
 export default getRequestConfig(async () => {
-  const store = await cookies();
-  const requested = store.get("locale")?.value;
-  const locale: Locale = (SUPPORTED_LOCALES as readonly string[]).includes(requested ?? "") ? (requested as Locale) : "en";
-  return {
-    locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
-    timeZone: "Asia/Dubai",
-  };
+  const requested = (await cookies()).get(LOCALE_COOKIE)?.value;
+  const locale = isLocale(requested) ? requested : DEFAULT_LOCALE;
+  return { locale, messages: await loadMessages(locale), timeZone: "Asia/Dubai" };
 });

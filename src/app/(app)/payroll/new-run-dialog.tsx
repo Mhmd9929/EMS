@@ -10,10 +10,14 @@ import { Field } from "@/components/forms/field";
 import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Input, NativeSelect, Textarea } from "@/components/ui/input";
+import { useTranslations } from "next-intl";
 
 type Opt = { value: string; label: string };
 
 export function NewRunDialog({ defaultPeriod, departments, locations }: { defaultPeriod: string; departments: Opt[]; locations: Opt[] }) {
+  const t = useTranslations("payroll.newRun");
+  const tc = useTranslations("common");
+  const te = useTranslations("enums.runScope");
   const [open, setOpen] = useState(false);
   const [scope, setScope] = useState("ALL");
   const { state, onSubmit, pending } = useFormAction(createRunAction);
@@ -22,31 +26,31 @@ export function NewRunDialog({ defaultPeriod, departments, locations }: { defaul
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus aria-hidden /> New payroll run
+          <Plus aria-hidden /> {t("button")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New payroll run</DialogTitle>
-          <DialogDescription>Uses the company proration basis and every approved unpaid leave and adjustment for the month.</DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="grid gap-4">
           <FormError state={state} />
-          <Field label="Month" name="period" error={fieldError(state, "period")} required>
+          <Field label={t("month")} name="period" error={fieldError(state, "period")} required>
             <Input type="month" defaultValue={defaultPeriod} />
           </Field>
-          <Field label="Employees" name="scope" error={fieldError(state, "scope")}>
+          <Field label={t("employees")} name="scope" error={fieldError(state, "scope")}>
             <NativeSelect value={scope} onChange={(e) => setScope(e.target.value)}>
-              <option value="ALL">All employees</option>
-              <option value="DEPARTMENT">One department</option>
-              <option value="LOCATION">One location</option>
+              <option value="ALL">{te("ALL")}</option>
+              <option value="DEPARTMENT">{te("DEPARTMENT")}</option>
+              <option value="LOCATION">{te("LOCATION")}</option>
             </NativeSelect>
           </Field>
           {scope !== "ALL" && (
-            <Field label={scope === "DEPARTMENT" ? "Department" : "Location"} name="scopeId" error={fieldError(state, "scopeId")} required>
+            <Field label={scope === "DEPARTMENT" ? t("department") : t("location")} name="scopeId" error={fieldError(state, "scopeId")} required>
               <NativeSelect defaultValue="">
                 <option value="" disabled>
-                  Choose…
+                  {t("choose")}
                 </option>
                 {(scope === "DEPARTMENT" ? departments : locations).map((o) => (
                   <option key={o.value} value={o.value}>
@@ -57,14 +61,14 @@ export function NewRunDialog({ defaultPeriod, departments, locations }: { defaul
             </Field>
           )}
           {scope === "ALL" && <input type="hidden" name="scopeId" value="" />}
-          <Field label="Notes" name="notes" error={fieldError(state, "notes")}>
+          <Field label={t("notes")} name="notes" error={fieldError(state, "notes")}>
             <Textarea rows={2} />
           </Field>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
-            <SubmitButton pending={pending}>Create run</SubmitButton>
+            <SubmitButton pending={pending}>{t("create")}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

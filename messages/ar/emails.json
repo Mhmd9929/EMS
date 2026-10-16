@@ -1,0 +1,103 @@
+{
+  "layout": {
+    "buttonFallback": "إذا لم يعمل الزر، انسخ هذا الرابط والصقه في المتصفح:",
+    "openPortal": "فتح في {portal}"
+  },
+  "invite": {
+    "subject": "دعوة للانضمام إلى {portal}",
+    "title": "مرحبًا {name}",
+    "body": "تم إنشاء حساب لك على بوابة موظفي {company}. عيّن كلمة المرور للبدء.",
+    "button": "تعيين كلمة المرور",
+    "expires": "تنتهي صلاحية هذا الرابط خلال {hours} ساعة.",
+    "text": "مرحبًا {name}،\n\nعيّن كلمة المرور لبوابة موظفي {company}:\n{link}\n\nتنتهي صلاحية هذا الرابط خلال {hours} ساعة."
+  },
+  "reset": {
+    "subject": "إعادة تعيين كلمة المرور",
+    "title": "إعادة تعيين كلمة المرور",
+    "body": "مرحبًا {name}، تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بك.",
+    "button": "إعادة تعيين كلمة المرور",
+    "expires": "تنتهي صلاحية هذا الرابط خلال ساعة واحدة. إذا لم تطلب ذلك، يمكنك تجاهل هذه الرسالة.",
+    "text": "مرحبًا {name}،\n\nأعد تعيين كلمة المرور: {link}\n\nتنتهي صلاحية هذا الرابط خلال ساعة واحدة. إذا لم تطلب ذلك، تجاهل هذه الرسالة."
+  },
+  "changed": {
+    "subject": "تم تغيير كلمة المرور",
+    "title": "تم تغيير كلمة المرور",
+    "body": "مرحبًا {name}، تم تغيير كلمة المرور الخاصة بك للتو. إذا لم تكن أنت، تواصل مع الموارد البشرية فورًا."
+  },
+  "notifications": {
+    "leaveSubmitted": {
+      "title": "طلب إجازة من {name}",
+      "body": "طلب {name} {days, plural, zero {# يوم} one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}} من {type} ({start} – {end}). يرجى مراجعته."
+    },
+    "leaveSubmittedSelf": {
+      "title": "تم تقديم طلب {type}",
+      "body": "أُرسل طلبك للاعتماد ({chain})."
+    },
+    "leaveAutoApproved": {
+      "title": "تم اعتماد {type}",
+      "body": "تم اعتماد {type} ({start} – {end}) تلقائيًا."
+    },
+    "leaveApproved": {
+      "title": "تم اعتماد {type}",
+      "body": "اعتمد {actor} طلب {type} ({start} – {end})."
+    },
+    "leaveRejected": {
+      "title": "تم رفض {type}",
+      "body": "رفض {actor} طلب {type} ({start} – {end})."
+    },
+    "leaveStepApproved": {
+      "title": "اعتمد مديرك {type}",
+      "body": "اعتمد {actor} طلب {type} ({start} – {end}). يحتاج الطلب الآن إلى اعتماد الموارد البشرية."
+    },
+    "leaveCancellationApproved": {
+      "title": "تم إلغاء {type}",
+      "body": "وافق {actor} على إلغاء {type} ({start} – {end})."
+    },
+    "leaveCancellationDeclined": {
+      "title": "رُفض إلغاء {type}",
+      "body": "رفض {actor} إلغاء {type} ({start} – {end})."
+    },
+    "commentLine": "تعليق: {comment}",
+    "leaveNextApproverHr": {
+      "title": "طلب إجازة من {name} يحتاج إلى اعتماد الموارد البشرية",
+      "body": "تم اعتماد طلب {type} الخاص بـ {name} ({start} – {end}، {days, plural, zero {# يوم} one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}}) في المرحلة السابقة."
+    },
+    "leaveNextApproverYou": {
+      "title": "طلب إجازة من {name} يحتاج إلى اعتمادك",
+      "body": "تم اعتماد طلب {type} الخاص بـ {name} ({start} – {end}، {days, plural, zero {# يوم} one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}}) في المرحلة السابقة."
+    },
+    "leaveWithdrawn": {
+      "title": "سحب {name} طلب إجازة",
+      "body": "لم يعد طلب {type} ({start} – {end}) بحاجة إلى اعتمادك."
+    },
+    "leaveCancellationRequested": {
+      "title": "يرغب {name} في إلغاء إجازة معتمدة",
+      "body": "{type} ({start} – {end}). السبب: {reason}"
+    },
+    "leaveCancelledByHr": {
+      "title": "ألغت الموارد البشرية {type}",
+      "body": "تم إلغاء {type} ({start} – {end}). السبب: {reason}"
+    },
+    "leaveReminder": {
+      "title": "تذكير: طلب إجازة بانتظار القرار منذ {days} يوم",
+      "body": "طلب {type} الخاص بـ {name} ({start} – {end}) لا يزال بانتظار قرارك."
+    },
+    "leaveEscalated": {
+      "title": "تصعيد: طلب إجازة بانتظار القرار منذ {days} يوم",
+      "body": "لم يتخذ المدير قرارًا بشأن طلب {type} الخاص بـ {name} ({start} – {end}). يمكنك اتخاذ الإجراء بصفتك من الموارد البشرية."
+    },
+    "leaveBalanceAdjusted": {
+      "title": "تم تعديل رصيد {type}",
+      "body": "عدّلت الموارد البشرية رصيد {type} لعام {year} بمقدار {days} يوم. السبب: {reason}"
+    },
+    "leaveDelegation": {
+      "title": "فوّض {actor} إليك اعتماد الإجازات",
+      "body": "من {start} إلى {end} يمكنك اعتماد إجازات فريق {actor}."
+    },
+    "noteLine": " ملاحظة: {note}",
+    "payslipReady": {
+      "title": "قسيمة راتب {month} جاهزة",
+      "body": "صدرت قسيمة راتبك لشهر {month}. افتحها لعرضها أو تنزيل ملف PDF."
+    }
+  }
+}

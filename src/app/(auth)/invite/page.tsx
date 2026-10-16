@@ -5,7 +5,9 @@ import { acceptInviteAction } from "@/server/actions/auth.actions";
 import { Alert } from "@/components/ui/alert";
 import { SetPasswordForm } from "../set-password-form";
 
-export const metadata: Metadata = { title: "Activate account" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("auth"))("metaInvite") };
+}
 
 export default async function InvitePage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token = "" } = await searchParams;

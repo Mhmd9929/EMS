@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { EmergencyContact } from "@prisma/client";
 import { deleteEmergencyContactAction, saveEmergencyContactAction } from "@/server/actions/employee.actions";
 import { useFormAction } from "@/components/forms/use-form-action";
@@ -17,10 +18,11 @@ import { ConfirmAction } from "@/components/confirm-action";
 export function EmergencyContacts({ employeeId, contacts, canManage }: { employeeId: string; contacts: EmergencyContact[]; canManage: boolean }) {
   const [editing, setEditing] = useState<EmergencyContact | "new" | null>(null);
   const router = useRouter();
+  const t = useTranslations("employees.contacts");
   return (
     <div className="space-y-3">
       {contacts.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No emergency contacts recorded.</p>
+        <p className="text-muted-foreground text-sm">{t("empty")}</p>
       ) : (
         <ul className="divide-y rounded-lg border">
           {contacts.map((c) => (
@@ -30,24 +32,29 @@ export function EmergencyContacts({ employeeId, contacts, canManage }: { employe
                   {c.name} <span className="text-muted-foreground font-normal">· {c.relationship}</span>
                 </p>
                 <p className="text-muted-foreground truncate">
-                  {c.phone}
-                  {c.email && ` · ${c.email}`}
+                  <span dir="ltr">{c.phone}</span>
+                  {c.email && (
+                    <>
+                      {" · "}
+                      <span dir="ltr">{c.email}</span>
+                    </>
+                  )}
                 </p>
               </div>
               {canManage && (
                 <div className="flex shrink-0 gap-1">
-                  <Button variant="ghost" size="icon" aria-label={`Edit ${c.name}`} onClick={() => setEditing(c)}>
+                  <Button variant="ghost" size="icon" aria-label={t("editAria", { name: c.name })} onClick={() => setEditing(c)}>
                     <Pencil aria-hidden />
                   </Button>
                   <ConfirmAction
                     trigger={
-                      <Button variant="ghost" size="icon" aria-label={`Remove ${c.name}`}>
+                      <Button variant="ghost" size="icon" aria-label={t("removeAria", { name: c.name })}>
                         <Trash2 aria-hidden />
                       </Button>
                     }
-                    title={`Remove ${c.name}?`}
+                    title={t("removeTitle", { name: c.name })}
                     destructive
-                    confirmLabel="Remove"
+                    confirmLabel={t("remove")}
                     action={() => deleteEmergencyContactAction(c.id)}
                     onDone={() => router.refresh()}
                   />
@@ -59,7 +66,7 @@ export function EmergencyContacts({ employeeId, contacts, canManage }: { employe
       )}
       {canManage && contacts.length < 5 && (
         <Button variant="outline" size="sm" onClick={() => setEditing("new")}>
-          <Plus aria-hidden /> Add contact
+          <Plus aria-hidden /> {t("add")}
         </Button>
       )}
       {editing && (
@@ -79,33 +86,35 @@ export function EmergencyContacts({ employeeId, contacts, canManage }: { employe
 function ContactDialog({ employeeId, contact, onClose }: { employeeId: string; contact: EmergencyContact | null; onClose: () => void }) {
   const { state, onSubmit, pending } = useFormAction(saveEmergencyContactAction);
   useActionFeedback(state, { onSuccess: onClose });
+  const t = useTranslations("employees.contacts");
+  const tc = useTranslations("common");
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{contact ? "Edit emergency contact" : "Add emergency contact"}</DialogTitle>
+          <DialogTitle>{contact ? t("editTitle") : t("addTitle")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="grid gap-4">
           <FormError state={state} />
           <input type="hidden" name="employeeId" value={employeeId} />
           {contact && <input type="hidden" name="id" value={contact.id} />}
-          <Field label="Name" name="name" error={fieldError(state, "name")} required>
+          <Field label={tc("name")} name="name" error={fieldError(state, "name")} required>
             <Input defaultValue={contact?.name} />
           </Field>
-          <Field label="Relationship" name="relationship" error={fieldError(state, "relationship")} required>
-            <Input defaultValue={contact?.relationship} placeholder="Spouse, parent, sibling…" />
+          <Field label={t("relationship")} name="relationship" error={fieldError(state, "relationship")} required>
+            <Input defaultValue={contact?.relationship} placeholder={t("relationshipPlaceholder")} />
           </Field>
-          <Field label="Phone" name="phone" error={fieldError(state, "phone")} required>
-            <Input type="tel" defaultValue={contact?.phone} />
+          <Field label={tc("phone")} name="phone" error={fieldError(state, "phone")} required>
+            <Input type="tel" defaultValue={contact?.phone} dir="ltr" />
           </Field>
-          <Field label="Email" name="email" error={fieldError(state, "email")}>
-            <Input type="email" defaultValue={contact?.email ?? ""} />
+          <Field label={tc("email")} name="email" error={fieldError(state, "email")}>
+            <Input type="email" defaultValue={contact?.email ?? ""} dir="ltr" />
           </Field>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {tc("cancel")}
             </Button>
-            <SubmitButton pending={pending}>Save</SubmitButton>
+            <SubmitButton pending={pending}>{tc("save")}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,0 +1,80 @@
+{
+  "meta": { "title": "لوحة المعلومات" },
+  "welcome": "مرحبًا بعودتك، {name}",
+  "me": {
+    "heading": "مساحة عملي",
+    "leaveBalance": "رصيد الإجازات",
+    "noLeaveBalance": "لا يوجد رصيد إجازات بعد.",
+    "daysUnit": "{count, plural, zero {يوم} one {يوم} two {يوم} few {أيام} many {يومًا} other {يوم}}",
+    "pending": "{count} قيد الانتظار",
+    "applyForLeave": "تقديم طلب إجازة",
+    "allBalances": "جميع الأرصدة",
+    "latestPayslip": "أحدث قسيمة راتب",
+    "netPay": "{period} · صافي الراتب",
+    "viewPayslip": "عرض قسيمة الراتب",
+    "allPayslips": "جميع قسائم الرواتب",
+    "noPayslips": "لا توجد قسائم رواتب بعد. ستظهر هنا بمجرد إصدار الرواتب.",
+    "upcomingHolidays": "العطلات القادمة",
+    "noHolidays": "لا توجد عطلات رسمية قادمة في التقويم.",
+    "reportsTo": "يتبع إلى {name}",
+    "probationEnds": "تنتهي فترة التجربة في {date}"
+  },
+  "payroll": {
+    "heading": "الرواتب — {period}",
+    "allRuns": "جميع المسيرات",
+    "noRun": "لا يوجد مسير رواتب لهذا الشهر بعد.",
+    "scopeDepartment": "القسم: {name}",
+    "scopeLocation": "الموقع: {name}",
+    "employees": "{count, plural, zero {لا يوجد موظفون} one {موظف واحد} two {موظفان} few {# موظفين} many {# موظفًا} other {# موظف}}",
+    "waitingForApproval": "بانتظار الاعتماد",
+    "readyToRelease": "جاهز للإصدار",
+    "payslipsIssued": "تم إصدار قسائم الرواتب",
+    "inPreparation": "قيد الإعداد"
+  },
+  "team": {
+    "heading": "فريقي",
+    "viewAll": "عرض الكل",
+    "directReports": "المرؤوسون المباشرون",
+    "wholeTeam": "الفريق بالكامل (بما في ذلك غير المباشرين)",
+    "approvalsWaiting": "طلبات إجازة بانتظار الاعتماد",
+    "probationsEnding": "{count, plural, zero {لا توجد فترات تجربة تنتهي} one {فترة تجربة واحدة تنتهي} two {فترتا تجربة تنتهيان} few {# فترات تجربة تنتهي} many {# فترة تجربة تنتهي} other {# فترة تجربة تنتهي}} خلال 30 يومًا"
+  },
+  "offToday": {
+    "heading": "في إجازة اليوم",
+    "leaveCalendar": "تقويم الإجازات",
+    "back": "يعود {date}"
+  },
+  "hr": {
+    "heading": "نظرة عامة على الموارد البشرية",
+    "headcount": "عدد الموظفين",
+    "onLeave": "{count} في إجازة",
+    "joinersThisMonth": "الملتحقون هذا الشهر",
+    "leaversThisMonth": "المغادرون هذا الشهر",
+    "scheduledTerminations": "{count, plural, zero {لا توجد حالات إنهاء خدمة مجدولة} one {حالة إنهاء خدمة مجدولة واحدة} two {حالتا إنهاء خدمة مجدولتان} few {# حالات إنهاء خدمة مجدولة} many {# حالة إنهاء خدمة مجدولة} other {# حالة إنهاء خدمة مجدولة}}",
+    "pendingInvitations": "الدعوات المعلّقة",
+    "pendingInvitationsHint": "حسابات لم تُفعَّل بعد · {count} في إجازة اليوم",
+    "headcountByDepartment": "عدد الموظفين حسب القسم",
+    "documentsExpiring": "وثائق تنتهي صلاحيتها خلال 60 يومًا",
+    "noDocumentsExpiring": "لا توجد وثائق هوية ستنتهي صلاحيتها قريبًا.",
+    "expiredAgo": "انتهت منذ {days} يوم",
+    "expiresIn": "{date} ({days} يوم)",
+    "noJoiners": "لا يوجد ملتحقون هذا الشهر.",
+    "noLeavers": "لا يوجد مغادرون هذا الشهر.",
+    "probationEnding": "فترات تجربة تنتهي (30 يومًا)",
+    "noProbations": "لا توجد فترات تجربة تنتهي قريبًا.",
+    "unassigned": "غير مُعيَّن",
+    "unknown": "غير معروف",
+    "documents": {
+      "emiratesId": "الهوية الإماراتية",
+      "passport": "جواز السفر",
+      "visa": "التأشيرة",
+      "labourCard": "بطاقة العمل"
+    }
+  },
+  "activity": {
+    "heading": "النشاط الأخير",
+    "auditLog": "سجل التدقيق",
+    "empty": "لا يوجد نشاط بعد",
+    "system": "النظام"
+  }
+}

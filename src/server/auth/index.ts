@@ -1,4 +1,5 @@
 import "server-only";
+import { syncLocaleAtSignIn } from "@/server/locale";
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
@@ -117,6 +118,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             ? await db.user.findUnique({ where: { id: user.id! } })
             : await db.user.findUnique({ where: { email: user.email!.toLowerCase() } });
         if (!dbUser) return null;
+        await syncLocaleAtSignIn(dbUser);
         token.uid = dbUser.id;
         token.sv = dbUser.sessionVersion;
         token.authTime = Math.floor(Date.now() / 1000);

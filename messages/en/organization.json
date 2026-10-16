@@ -1,0 +1,90 @@
+{
+  "active": "Active",
+  "inactive": "Inactive",
+  "people": "People",
+  "code": "Code",
+  "departments": {
+    "title": "Departments",
+    "description": "Hierarchical departments with heads and cost centres.",
+    "new": "New department",
+    "editLabel": "Edit {name}",
+    "viewLabel": "View",
+    "views": {
+      "table": "table",
+      "tree": "tree"
+    },
+    "search": "Search name or code…",
+    "empty": "No departments yet",
+    "noMatch": "No departments match",
+    "emptyDescription": "Create your first department to start building the org structure.",
+    "columns": {
+      "parent": "Parent",
+      "head": "Head",
+      "costCentre": "Cost centre"
+    },
+    "form": {
+      "codeHint": "Used in CSV imports",
+      "parent": "Parent department",
+      "topLevel": "— Top level —",
+      "head": "Department head",
+      "noHead": "— None —",
+      "costCentre": "Cost centre code"
+    },
+    "tree": {
+      "expand": "Expand {name}",
+      "collapse": "Collapse {name}",
+      "head": "Head: {name}",
+      "noHead": "No head"
+    },
+    "saved": "Department saved."
+  },
+  "positions": {
+    "title": "Positions",
+    "description": "Job titles with grade and level.",
+    "new": "New position",
+    "editLabel": "Edit {name}",
+    "search": "Search title, code, grade…",
+    "empty": "No positions yet",
+    "noMatch": "No positions match",
+    "columns": {
+      "title": "Title",
+      "grade": "Grade",
+      "level": "Level"
+    },
+    "saved": "Position saved."
+  },
+  "locations": {
+    "title": "Locations",
+    "description": "Branches and sites. Optional per employee; used for location-specific holidays.",
+    "new": "New location",
+    "editLabel": "Edit {name}",
+    "search": "Search name, code, city…",
+    "empty": "No locations yet",
+    "noMatch": "No locations match",
+    "columns": {
+      "city": "City",
+      "emirate": "Emirate",
+      "address": "Address",
+      "country": "Country"
+    },
+    "countryHint": "ISO code, e.g. AE",
+    "saved": "Location saved."
+  },
+  "errors": {
+    "codeUsed": "Code already used.",
+    "departmentCodeTaken": "Another department uses this code",
+    "positionCodeTaken": "Another position uses this code",
+    "locationCodeTaken": "Another location uses this code",
+    "unknownParent": "Unknown parent.",
+    "unknownDepartment": "Unknown department",
+    "unknownHead": "Unknown head.",
+    "headMustBeActive": "Head must be an active employee",
+    "departmentNotFound": "Department not found.",
+    "positionNotFound": "Position not found.",
+    "locationNotFound": "Location not found.",
+    "invalidParent": "Invalid parent.",
+    "parentCycle": "A department cannot sit under itself or one of its sub-departments",
+    "deactivateChildren": "Deactivate its sub-departments first.",
+    "hasActiveChildren": "Has active sub-departments"
+  }
+}

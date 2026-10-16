@@ -1,4 +1,6 @@
-# HRMS — Employee Management Portal
+# HSA Employee Portal
+
+Employee portal for **Hayel Saeed Anam & Co. (HSA)**.
 
 A multi-tenant-ready HR portal for UAE companies: employees, org structure, role-based access, audit
 trail, leave management and payroll with WPS.
@@ -72,36 +74,110 @@ for the design and [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what's in each c
    - **Salaries**, **Adjustments** and **Payroll settings** (components, WPS IDs, gratuity rules, PDF
      password) are in the sidebar.
 
+## Languages (English / Arabic)
+
+The whole portal is available in **English and Arabic**, with a right-to-left layout for Arabic.
+- Switch from the header, the user menu or the login page. The choice is saved on the user and applies at
+  their next sign-in on any device.
+- Notifications and emails are written in the **recipient's** language. The payslip PDF and Excel exports use
+  the language of the person downloading them.
+- Arabic uses Arabic month names with Western digits (UAE convention), and the payslip shows the net amount in
+  Arabic words.
+- Developers: see [`docs/I18N.md`](docs/I18N.md) for conventions, RTL rules and the Arabic glossary.
+  `tests/unit/i18n-messages.test.ts` fails if a key is missing in either language.
+
+## Branding
+
+All brand values live in **`src/theme/brand.ts`**: palette, light/dark tokens, header style, names, logo
+paths and fonts. The web UI, the payslip PDF and the email templates all read from it, so a change there is one
+edit. `tests/unit/brand-contrast.test.ts` checks every text/background pair against WCAG AA (4.5:1).
+
+- **Logos**: put the files in `public/brand/` and commit them:
+  - `logo-icon.png`: square mark, used in the sidebar, on mobile and when the sidebar is collapsed.
+  - `logo-full.png`: wide logo, used on the login page, in the header on wide screens, in the payslip PDF
+    and in emails (as an inline image).
+  - `favicon.ico`.
+
+  If a file is missing, the UI shows an "HSA" text mark instead of a broken image.
+- **Header**: `HEADER_STYLE = "dark"` (black bar) or `"light"` (white with a thin gold bottom border).
+- **Gold usage**: `#D9B300` is used for text only on dark surfaces. On white, gold text uses `#8A6F00`
+  (the `text-link` utility). Primary buttons are gold with black text, `#FCC917` on hover.
+- **Fonts**: Inter (Latin) and IBM Plex Sans Arabic, self-hosted via `@fontsource`, so there are no calls to
+  Google Fonts.
+
 ## Quick start
 
-### Option A — Docker Compose (everything in containers)
+There are two ways to run the portal:
 
-```bash
-cp .env.example .env            # optional: compose has working defaults
-docker compose up --build
-```
+| Mode | What runs where | Use it for |
+|---|---|---|
+| **Development** | Postgres + Mailpit in Docker; the Next.js app (and worker) **natively** with `npm run dev` | day-to-day work: instant reloads, fast navigation |
+| **Production test** | everything in Docker: `next build` → production server, worker, Postgres, Mailpit | checking real production speed / behaviour with one command |
 
-- App: http://localhost:3000
-- Mailpit (catches all outgoing email): http://localhost:8025
-- The `migrate` service applies migrations, syncs the permission catalogue and seeds the demo company
-  **only if the database is empty**. Use `SEED=false docker compose up` to skip seeding.
+### Development (app runs natively)
 
-### Option B — Local Node + your own Postgres
+Requirements: **Node.js 22 LTS** (20.9+ works) and Docker Desktop.
 
-Requirements: Node 20.9+ (22 recommended), PostgreSQL 14+.
+One-time setup (PowerShell; macOS/Linux use `cp` instead of `Copy-Item`):
 
-```bash
+```powershell
+git pull
+docker compose down --remove-orphans   # only if you ran the old all-in-Docker setup: removes its app/worker containers, keeps your data
+docker compose up -d                    # Postgres on localhost:5432, Mailpit on http://localhost:8025
+Copy-Item .env.example .env             # defaults already point at the Docker Postgres/Mailpit
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"   # paste the output into AUTH_SECRET in .env
 npm install
-cp .env.example .env            # set DATABASE_URL and AUTH_SECRET (openssl rand -base64 48)
-npx prisma migrate deploy       # or: npm run db:migrate (dev)
-npm run db:seed                 # ⚠ resets all data and loads the demo company
-npm run dev                     # http://localhost:3000
-npm run worker                  # optional: background jobs (separate terminal)
+npm run db:setup                        # migrations + permissions + demo data (demo data only if the database is empty)
 ```
 
-With `EMAIL_TRANSPORT=console` emails (invites, resets) are printed to the server log. Outside production
-the "Send invitation" / "Send password reset" buttons also show the link in a toast so you can demo the
-flow without an inbox. To use Mailpit locally: `docker compose up mailpit` and set `EMAIL_TRANSPORT=smtp`.
+Every day:
+
+```powershell
+docker compose up -d       # start Postgres + Mailpit (no-op if already running)
+npm run dev                # http://localhost:3000  (Turbopack; first visit of each page compiles it, ~1–2 s)
+npm run worker             # optional, second terminal: background jobs (accruals, reminders, email retries)
+```
+
+Useful extras:
+
+```powershell
+npm run db:seed            # ⚠ wipe everything and reload the demo company
+docker compose stop        # stop Postgres + Mailpit (data kept)
+docker compose down -v     # ⚠ delete the dev database volume
+```
+
+The dev server compiles pages on demand, so the very first visit to a page is slower than later ones. That
+is normal for `next dev`; use the production mode below to judge real speed. If Turbopack ever misbehaves,
+`npm run dev:webpack` runs the classic bundler.
+
+### Production test (everything in Docker, one command)
+
+```powershell
+docker compose -f docker-compose.prod.yml up --build -d     # or: npm run docker:prod
+```
+
+- App: http://localhost:3000 (stop `npm run dev` first — same port). Mail UI: http://localhost:8026
+- The image is built with `next build` and served by Next's production server (multi-stage `Dockerfile`).
+  A one-off `migrate` container applies migrations, syncs permissions and seeds demo data **only if the
+  database is empty**; the `worker` container runs the background jobs.
+- It is a separate Compose project (`hrms-prod`) with **its own database**, so it never touches your dev
+  data. Its Postgres is not published on the host, so it can run alongside the dev database.
+
+```powershell
+docker compose -f docker-compose.prod.yml logs -f app        # follow the app log
+docker compose -f docker-compose.prod.yml up --build -d      # rebuild after pulling new code
+docker compose -f docker-compose.prod.yml down               # stop (or: npm run docker:prod:down)
+docker compose -f docker-compose.prod.yml down -v            # ⚠ stop and delete the prod-test database
+```
+
+Set `SEED=false` before `up` to start with an empty company, and `AUTH_SECRET` to override the built-in
+local secret. For a real deployment put the app behind HTTPS and set `APP_URL` to the public URL.
+
+### Email
+
+In development, emails (invites, password resets, leave and payroll notifications) go to Mailpit at
+http://localhost:8025. Set `EMAIL_TRANSPORT=console` in `.env` to print them in the terminal instead.
+Outside production the "Send invitation" / "Send password reset" buttons also show the link in a toast.
 
 ## Demo credentials
 
@@ -150,7 +226,11 @@ See [`.env.example`](.env.example) for the full list with comments.
 
 | Command | What it does |
 |---|---|
-| `npm run dev` / `build` / `start` | Next.js dev server / production build / production server |
+| `npm run dev` | Next.js dev server with Turbopack (`dev:webpack` for the classic bundler) |
+| `npm run build` / `start` | Production build / production server (natively) |
+| `npm run docker:dev` | `docker compose up -d`: Postgres + Mailpit for development |
+| `npm run docker:prod` / `docker:prod:down` | Build and start / stop the production stack (`docker-compose.prod.yml`) |
+| `npm run db:setup` | Apply migrations, sync permissions, seed demo data if the database is empty (safe to re-run) |
 | `npm run worker` | Background job runner (pg-boss): accruals, year end, reminders, terminations, email retries. `-- --run-now` runs every job once |
 | `npm run lint` / `typecheck` / `format` | ESLint / `tsc --noEmit` / Prettier |
 | `npm test` | Unit tests (Vitest) — no database needed |

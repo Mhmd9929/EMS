@@ -9,12 +9,14 @@ export class AppError extends Error {
   }
 }
 export class ForbiddenError extends AppError {
-  constructor(message = "You do not have permission to do that.") {
+  static readonly DEFAULT = "You do not have permission to do that.";
+  constructor(message = ForbiddenError.DEFAULT) {
     super(message);
   }
 }
 export class NotFoundError extends AppError {
-  constructor(message = "Not found.") {
+  static readonly DEFAULT = "Not found.";
+  constructor(message = NotFoundError.DEFAULT) {
     super(message);
   }
 }

@@ -6,7 +6,9 @@ import { REQUEST_SORTS, listLeaveRequests } from "@/server/services/leave/reques
 import { listLeaveTypes } from "@/server/services/leave/config.service";
 import { listDepartmentOptions } from "@/server/services/org.service";
 import { first, parseListParams, type SearchParams } from "@/lib/list-params";
-import { formatDate, parseDateOnly } from "@/lib/dates";
+import { parseDateOnly } from "@/lib/dates";
+import { getTranslations } from "next-intl/server";
+import { getFormat } from "@/server/i18n";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,9 +18,11 @@ import { ClearFilters, FilterSelect, SearchInput, Toolbar } from "@/components/d
 import { DateRangeFilter } from "@/app/(app)/admin/audit/date-range-filter";
 import { EmptyState } from "@/components/empty-state";
 import { Avatar } from "@/components/ui/avatar";
-import { LEAVE_STATUSES, LeaveStatusBadge, LeaveTypeLabel } from "@/components/leave/leave-badges";
+import { LEAVE_STATUSES, LEAVE_STATUS_VALUES, LeaveStatusBadge, LeaveTypeLabel } from "@/components/leave/leave-badges";
 
-export const metadata: Metadata = { title: "Leave requests" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("leave"))("meta.requests") };
+}
 
 export default async function AllRequestsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -39,30 +43,32 @@ export default async function AllRequestsPage({ searchParams }: { searchParams: 
     scope === "all" ? listDepartmentOptions(ctx) : [],
   ]);
   const path = "/leave/requests";
+  const [t, tl, tc, te, f] = await Promise.all([getTranslations("leave.requests"), getTranslations("leave"), getTranslations("common"), getTranslations("enums"), getFormat()]);
+  const statusOptions = LEAVE_STATUS_VALUES.map((v) => ({ value: v, label: te(`leaveStatus.${v}`) }));
   return (
     <>
-      <PageHeader title={scope === "all" ? "All leave requests" : "Team leave requests"} description={scope === "all" ? "Every request in the company." : "Requests from your direct and indirect reports."} />
+      <PageHeader title={scope === "all" ? t("titleAll") : t("titleTeam")} description={scope === "all" ? t("descriptionAll") : t("descriptionTeam")} />
       <Toolbar>
-        <SearchInput placeholder="Search employee…" />
-        <FilterSelect param="status" label="Status" options={LEAVE_STATUSES} />
-        <FilterSelect param="type" label="Type" options={types.map((t) => ({ value: t.id, label: t.name }))} />
-        {scope === "all" && <FilterSelect param="department" label="Department" options={departments} />}
+        <SearchInput placeholder={t("searchEmployee")} />
+        <FilterSelect param="status" label={tc("status")} options={statusOptions} />
+        <FilterSelect param="type" label={tc("type")} options={types.map((lt) => ({ value: lt.id, label: lt.name }))} />
+        {scope === "all" && <FilterSelect param="department" label={tc("department")} options={departments} />}
         <DateRangeFilter />
         <ClearFilters params={["q", "status", "type", "department", "from", "to"]} />
       </Toolbar>
       {result.items.length === 0 ? (
-        <EmptyState icon={ListChecks} title="No requests match" />
+        <EmptyState icon={ListChecks} title={t("emptyTitle")} />
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <SortHeader label="Employee" sortKey="employee" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-                <TableHead>Type</TableHead>
-                <SortHeader label="Dates" sortKey="startDate" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-                <SortHeader label="Days" sortKey="days" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-                <TableHead>Status</TableHead>
-                <SortHeader label="Requested" sortKey="createdAt" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden lg:table-cell" />
+                <SortHeader label={tc("employee")} sortKey="employee" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
+                <TableHead>{tc("type")}</TableHead>
+                <SortHeader label={tl("columns.dates")} sortKey="startDate" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
+                <SortHeader label={tl("columns.days")} sortKey="days" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
+                <TableHead>{tc("status")}</TableHead>
+                <SortHeader label={tl("columns.requested")} sortKey="createdAt" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden lg:table-cell" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -83,14 +89,14 @@ export default async function AllRequestsPage({ searchParams }: { searchParams: 
                     <LeaveTypeLabel name={r.leaveType.name} color={r.leaveType.color} />
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    {formatDate(r.startDate)}
-                    {r.endDate.getTime() !== r.startDate.getTime() && ` – ${formatDate(r.endDate)}`}
+                    {f.date(r.startDate)}
+                    {r.endDate.getTime() !== r.startDate.getTime() && ` – ${f.date(r.endDate)}`}
                   </TableCell>
                   <TableCell className="tabular-nums">{r.days}</TableCell>
                   <TableCell>
                     <LeaveStatusBadge status={r.status} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground hidden text-sm lg:table-cell">{formatDate(r.createdAt)}</TableCell>
+                  <TableCell className="text-muted-foreground hidden text-sm lg:table-cell">{f.date(r.createdAt)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

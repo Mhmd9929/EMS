@@ -44,14 +44,17 @@ export type LeaveTypeRules = {
   accrualMethod: "UPFRONT" | "MONTHLY" | "NONE";
 };
 
-/** Effective entitlement and eligibility for one employee and leave type. */
+/**
+ * Effective entitlement and eligibility for one employee and leave type. `reason` is the English text;
+ * `reasonCode` is the key under `leave.ineligible` for translated display.
+ */
 export function effectiveRules(type: LeaveTypeRules, policies: PolicyLike[], e: EmployeeFacts) {
   const policy = matchPolicy(policies, type.id, e);
   if (type.genderEligibility && e.gender !== type.genderEligibility) {
-    return { eligible: false as const, reason: "Not available for your gender", entitlement: 0, policyId: policy?.id ?? null };
+    return { eligible: false as const, reason: "Not available for your gender", reasonCode: "gender" as const, entitlement: 0, policyId: policy?.id ?? null };
   }
   if (policy && !policy.isEligible) {
-    return { eligible: false as const, reason: "Your leave policy does not include this leave type", entitlement: 0, policyId: policy.id };
+    return { eligible: false as const, reason: "Your leave policy does not include this leave type", reasonCode: "policy" as const, entitlement: 0, policyId: policy.id };
   }
-  return { eligible: true as const, reason: null, entitlement: policy?.annualEntitlement ?? type.annualEntitlement, policyId: policy?.id ?? null };
+  return { eligible: true as const, reason: null, reasonCode: null, entitlement: policy?.annualEntitlement ?? type.annualEntitlement, policyId: policy?.id ?? null };
 }

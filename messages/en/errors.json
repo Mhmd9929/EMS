@@ -1,0 +1,6 @@
+{
+  "fixFields": "Please correct the highlighted fields.",
+  "unexpected": "Something went wrong. Please try again.",
+  "forbidden": "You do not have permission to do that.",
+  "notFound": "Not found."
+}

@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { writeAudit, diffSnapshots } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/server/errors";
+import { serverT } from "@/server/i18n";
 import { createsDepartmentCycle } from "@/server/hierarchy";
 import { buildTree } from "@/lib/tree";
 import { paginated, type ListParams } from "@/lib/list-params";
@@ -80,14 +81,15 @@ export async function listDepartmentOptions(ctx: AuthContext) {
 
 export async function upsertDepartment(ctx: AuthContext, input: z.infer<typeof departmentSchema>) {
   assertCan(ctx, "org.manage");
+  const t = await serverT("organization");
   return db.$transaction(async (tx) => {
     const dup = await tx.department.findFirst({ where: { companyId: ctx.companyId, code: input.code, ...(input.id && { id: { not: input.id } }) } });
-    if (dup) throw new ValidationError("Code already used.", { code: ["Another department uses this code"] });
+    if (dup) throw new ValidationError(t("errors.codeUsed"), { code: [t("errors.departmentCodeTaken")] });
     if (input.parentId && !(await tx.department.count({ where: { id: input.parentId, companyId: ctx.companyId } }))) {
-      throw new ValidationError("Unknown parent.", { parentId: ["Unknown department"] });
+      throw new ValidationError(t("errors.unknownParent"), { parentId: [t("errors.unknownDepartment")] });
     }
     if (input.headId && !(await tx.employee.count({ where: { id: input.headId, companyId: ctx.companyId, status: { not: "TERMINATED" } } }))) {
-      throw new ValidationError("Unknown head.", { headId: ["Head must be an active employee"] });
+      throw new ValidationError(t("errors.unknownHead"), { headId: [t("errors.headMustBeActive")] });
     }
     const data = {
       name: input.name,
@@ -100,13 +102,13 @@ export async function upsertDepartment(ctx: AuthContext, input: z.infer<typeof d
     };
     if (input.id) {
       const before = await tx.department.findFirst({ where: { id: input.id, companyId: ctx.companyId } });
-      if (!before) throw new NotFoundError("Department not found.");
+      if (!before) throw new NotFoundError(t("errors.departmentNotFound"));
       if (await createsDepartmentCycle(tx, ctx.companyId, input.id, input.parentId)) {
-        throw new ValidationError("Invalid parent.", { parentId: ["A department cannot sit under itself or one of its sub-departments"] });
+        throw new ValidationError(t("errors.invalidParent"), { parentId: [t("errors.parentCycle")] });
       }
       if (!input.isActive && before.isActive) {
         const activeChildren = await tx.department.count({ where: { parentId: input.id, isActive: true } });
-        if (activeChildren) throw new ValidationError("Deactivate its sub-departments first.", { isActive: ["Has active sub-departments"] });
+        if (activeChildren) throw new ValidationError(t("errors.deactivateChildren"), { isActive: [t("errors.hasActiveChildren")] });
       }
       const after = await tx.department.update({ where: { id: input.id }, data });
       const diff = diffSnapshots(before, after);
@@ -150,13 +152,14 @@ export async function listPositionOptions(ctx: AuthContext) {
 
 export async function upsertPosition(ctx: AuthContext, input: z.infer<typeof positionSchema>) {
   assertCan(ctx, "org.manage");
+  const t = await serverT("organization");
   return db.$transaction(async (tx) => {
     const dup = await tx.position.findFirst({ where: { companyId: ctx.companyId, code: input.code, ...(input.id && { id: { not: input.id } }) } });
-    if (dup) throw new ValidationError("Code already used.", { code: ["Another position uses this code"] });
+    if (dup) throw new ValidationError(t("errors.codeUsed"), { code: [t("errors.positionCodeTaken")] });
     const data = { title: input.title, code: input.code, grade: input.grade, level: input.level, description: input.description, isActive: input.isActive };
     if (input.id) {
       const before = await tx.position.findFirst({ where: { id: input.id, companyId: ctx.companyId } });
-      if (!before) throw new NotFoundError("Position not found.");
+      if (!before) throw new NotFoundError(t("errors.positionNotFound"));
       const after = await tx.position.update({ where: { id: input.id }, data });
       const diff = diffSnapshots(before, after);
       if (diff.keys.length) await writeAudit(ctx, { action: "position.update", entityType: "Position", entityId: after.id, summary: `Updated ${after.title}`, before: diff.before, after: diff.after }, tx);
@@ -199,13 +202,14 @@ export async function listLocationOptions(ctx: AuthContext) {
 
 export async function upsertLocation(ctx: AuthContext, input: z.infer<typeof locationSchema>) {
   assertCan(ctx, "org.manage");
+  const t = await serverT("organization");
   return db.$transaction(async (tx) => {
     const dup = await tx.location.findFirst({ where: { companyId: ctx.companyId, code: input.code, ...(input.id && { id: { not: input.id } }) } });
-    if (dup) throw new ValidationError("Code already used.", { code: ["Another location uses this code"] });
+    if (dup) throw new ValidationError(t("errors.codeUsed"), { code: [t("errors.locationCodeTaken")] });
     const data = { name: input.name, code: input.code, address: input.address, city: input.city, emirate: input.emirate, country: input.country, isActive: input.isActive };
     if (input.id) {
       const before = await tx.location.findFirst({ where: { id: input.id, companyId: ctx.companyId } });
-      if (!before) throw new NotFoundError("Location not found.");
+      if (!before) throw new NotFoundError(t("errors.locationNotFound"));
       const after = await tx.location.update({ where: { id: input.id }, data });
       const diff = diffSnapshots(before, after);
       if (diff.keys.length) await writeAudit(ctx, { action: "location.update", entityType: "Location", entityId: after.id, summary: `Updated ${after.name}`, before: diff.before, after: diff.after }, tx);

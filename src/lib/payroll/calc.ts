@@ -53,7 +53,11 @@ export type CalcLine = {
   sortOrder: number;
 };
 
-export type CalcIssue = { level: "error" | "warning"; message: string };
+/**
+ * A calculation issue. Stored as JSON on PayrollRunEmployee.issues, so it carries a `code` + `params` that the UI
+ * translates (messages: payroll.issues.<code>); `message` is the English text, used as-is for older rows.
+ */
+export type CalcIssue = { level: "error" | "warning"; message: string; code?: string; params?: Record<string, string | number> };
 
 export type CalcResult = {
   payable: boolean;
@@ -122,11 +126,12 @@ export function calculatePay(input: CalcInput): CalcResult {
     if (segEnd >= segStart) segments.push({ start: segStart, end: segEnd, structure: s });
   }
   if (!segments.length) {
-    issues.push({ level: "error", message: "No salary structure in effect for this period" });
+    issues.push({ level: "error", code: "noStructure", message: "No salary structure in effect for this period" });
     return { ...empty(true), calendarDays: windowDays };
   }
   if (segments[0].start > from) {
-    issues.push({ level: "warning", message: `No salary structure before ${segments[0].start.toISOString().slice(0, 10)} — those days are unpaid` });
+    const date = segments[0].start.toISOString().slice(0, 10);
+    issues.push({ level: "warning", code: "noStructureBefore", params: { date }, message: `No salary structure before ${date} — those days are unpaid` });
   }
 
   // ── Paid days per segment ──
@@ -156,7 +161,8 @@ export function calculatePay(input: CalcInput): CalcResult {
     try {
       monthly = structureMonthlyAmounts(seg.structure, input.components, input.currency);
     } catch (e) {
-      issues.push({ level: "error", message: e instanceof Error ? e.message : "Formula error" });
+      const detail = e instanceof Error ? e.message : "Formula error";
+      issues.push({ level: "error", code: "formula", params: { detail }, message: detail });
       monthly = {};
     }
     lastMonthly = monthly;
@@ -198,7 +204,7 @@ export function calculatePay(input: CalcInput): CalcResult {
   for (const a of input.adjustments) {
     const c = byCode.get(a.code);
     if (!c) {
-      issues.push({ level: "error", message: `Unknown component ${a.code} on an adjustment` });
+      issues.push({ level: "error", code: "unknownAdjustmentComponent", params: { code: a.code }, message: `Unknown component ${a.code} on an adjustment` });
       continue;
     }
     oneTime.push({ code: c.code, name: c.name, kind: c.kind, amount: a.amount, note: a.description, isRecurring: false, isFixedPay: false, sortOrder: c.sortOrder });
@@ -209,8 +215,8 @@ export function calculatePay(input: CalcInput): CalcResult {
   const deductions = all.filter((l) => l.kind === "DEDUCTION").reduce((a, l) => a + l.amount, 0);
   const net = gross - deductions;
   const fixedPay = all.filter((l) => l.isFixedPay).reduce((a, l) => a + (l.kind === "EARNING" ? l.amount : -l.amount), 0);
-  if (net < 0) issues.push({ level: "error", message: "Net pay is negative" });
-  if (gross === 0 && !issues.some((i) => i.level === "error")) issues.push({ level: "warning", message: "Gross pay is zero" });
+  if (net < 0) issues.push({ level: "error", code: "negativeNet", message: "Net pay is negative" });
+  if (gross === 0 && !issues.some((i) => i.level === "error")) issues.push({ level: "warning", code: "zeroGross", message: "Gross pay is zero" });
 
   return {
     payable: true,

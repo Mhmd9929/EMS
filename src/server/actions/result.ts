@@ -1,15 +1,18 @@
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import { ZodError, type ZodType, type z } from "zod";
-import { AppError } from "@/server/errors";
+import { AppError, ForbiddenError, NotFoundError } from "@/server/errors";
+import { getAppLocale, serverT } from "@/server/i18n";
+import { translateIssue } from "@/server/validation-i18n";
 import { formDataToObject } from "@/lib/validation/common";
 import type { ActionResult } from "@/lib/action-result";
 
-function zodFieldErrors(error: ZodError): Record<string, string[]> {
+async function zodFieldErrors(error: ZodError): Promise<Record<string, string[]>> {
+  const locale = await getAppLocale();
   const out: Record<string, string[]> = {};
   for (const issue of error.issues) {
     const key = issue.path.join(".") || "_form";
-    (out[key] ??= []).push(issue.message);
+    (out[key] ??= []).push(translateIssue(issue, locale));
   }
   return out;
 }
@@ -22,14 +25,22 @@ export async function runAction<T>(fn: () => Promise<T | ActionResult<T>>, succe
     return { ok: true, data: value as T, message: successMessage };
   } catch (error) {
     unstable_rethrow(error); // let redirect()/notFound()/forbidden() through
+    const t = await serverT("errors");
     if (error instanceof ZodError) {
-      return { ok: false, error: "Please correct the highlighted fields.", fieldErrors: zodFieldErrors(error) };
+      return { ok: false, error: t("fixFields"), fieldErrors: await zodFieldErrors(error) };
     }
     if (error instanceof AppError) {
-      return { ok: false, error: error.message, fieldErrors: error.fieldErrors };
+      // Default messages of the generic errors are translated here; services pass already-translated text.
+      const message =
+        error instanceof ForbiddenError && error.message === ForbiddenError.DEFAULT
+          ? t("forbidden")
+          : error instanceof NotFoundError && error.message === NotFoundError.DEFAULT
+            ? t("notFound")
+            : error.message;
+      return { ok: false, error: message, fieldErrors: error.fieldErrors };
     }
     console.error("[action] unexpected error", error);
-    return { ok: false, error: "Something went wrong. Please try again." };
+    return { ok: false, error: t("unexpected") };
   }
 }
 

@@ -1,0 +1,27 @@
+{
+  "meta": { "title": "Org chart" },
+  "title": "Org chart",
+  "description": "Drag to pan, scroll or use the buttons to zoom. Click anyone to see their card.",
+  "noEmployees": "No employees to show yet.",
+  "chartView": "Chart view",
+  "modes": {
+    "reporting": "Reporting line",
+    "department": "Departments"
+  },
+  "findPerson": "Find a person…",
+  "findDepartment": "Find a department…",
+  "searchLabel": "Search the org chart",
+  "zoomIn": "Zoom in",
+  "zoomOut": "Zoom out",
+  "fit": "Fit to screen",
+  "expandAll": "Expand all",
+  "collapseAll": "Collapse",
+  "expandNode": "Expand ({count})",
+  "collapseNode": "Collapse",
+  "head": "Head: {name}",
+  "noHead": "No head",
+  "members": "{count, plural, one {# person} other {# people}}",
+  "peopleCount": "{count} people",
+  "headBadge": "(Head)",
+  "noDirectMembers": "No one is assigned directly to this department."
+}

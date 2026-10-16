@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ type Node = DepartmentValues & {
 };
 
 export function DepartmentTree({ tree, options }: { tree: TreeNode<Node>[]; options: React.ComponentProps<typeof DepartmentDialog>["options"] }) {
+  const t = useTranslations("organization");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const toggle = (id: string) =>
     setCollapsed((prev) => {
@@ -21,22 +23,22 @@ export function DepartmentTree({ tree, options }: { tree: TreeNode<Node>[]; opti
       return next;
     });
   const render = (nodes: TreeNode<Node>[], depth: number): React.ReactNode => (
-    <ul className={depth ? "ml-5 border-l pl-3" : ""}>
+    <ul className={depth ? "ms-5 border-s ps-3" : ""}>
       {nodes.map((n) => (
         <li key={n.id} className="py-1">
           <div className="hover:bg-accent/50 flex items-center gap-2 rounded-md px-2 py-1.5">
             {n.children.length ? (
-              <button onClick={() => toggle(n.id)} aria-expanded={!collapsed.has(n.id)} aria-label={`${collapsed.has(n.id) ? "Expand" : "Collapse"} ${n.name}`} className="text-muted-foreground">
-                {collapsed.has(n.id) ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+              <button onClick={() => toggle(n.id)} aria-expanded={!collapsed.has(n.id)} aria-label={collapsed.has(n.id) ? t("departments.tree.expand", { name: n.name }) : t("departments.tree.collapse", { name: n.name })} className="text-muted-foreground">
+                {collapsed.has(n.id) ? <ChevronRight className="size-4 rtl:-scale-x-100" /> : <ChevronDown className="size-4" />}
               </button>
             ) : (
               <span className="w-4" />
             )}
             <span className="font-medium">{n.name}</span>
             <span className="text-muted-foreground font-mono text-xs">{n.code}</span>
-            {!n.isActive && <Badge variant="secondary">Inactive</Badge>}
-            <span className="text-muted-foreground ml-auto hidden text-xs sm:inline">
-              {n.head ? `Head: ${n.head.preferredName || n.head.firstName} ${n.head.lastName}` : "No head"}
+            {!n.isActive && <Badge variant="secondary">{t("inactive")}</Badge>}
+            <span className="text-muted-foreground ms-auto hidden text-xs sm:inline">
+              {n.head ? t("departments.tree.head", { name: `${n.head.preferredName || n.head.firstName} ${n.head.lastName}` }) : t("departments.tree.noHead")}
             </span>
             <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
               <Users className="size-3" aria-hidden /> {n._count.employees}

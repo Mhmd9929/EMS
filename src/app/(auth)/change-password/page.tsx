@@ -6,7 +6,9 @@ import { ChangePasswordForm } from "@/components/change-password-form";
 import { logoutAction } from "@/server/actions/auth.actions";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Change password" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("auth"))("metaChange") };
+}
 
 /** Forced first-login password change. */
 export default async function ForcedChangePasswordPage() {

@@ -11,11 +11,12 @@ import { eligibilityDate } from "@/lib/leave/accrual";
 import { effectiveRules } from "@/lib/leave/policy";
 import { formatDays, num, round2 } from "@/lib/leave/numbers";
 import { paginated, type ListParams } from "@/lib/list-params";
+import { getFormat, serverT } from "@/server/i18n";
 import type { LeaveApplyInput } from "@/lib/validation/leave";
 import { BOOKED_STATUSES, displayName, holidaySet, leaveEmployeeSelect, loadPolicies, typeRules, type LeaveEmployee } from "./common";
 import { computeBalances, loadLeaveEmployee, projectedCredits } from "./balance.service";
 import { delegatorsFor, stepRecipients } from "./approvers";
-import { deliverEmailsInBackground, notify } from "../notification.service";
+import { approvalChainParam, deliverEmailsInBackground, notify } from "../notification.service";
 
 const BACKDATE_LIMIT_DAYS = 30;
 
@@ -45,6 +46,8 @@ export async function evaluateLeave(
 ): Promise<LeaveEvaluation & { dayCount: DayCount | null }> {
   const errors: string[] = [];
   const warnings: string[] = [];
+  const [t, tc, f] = await Promise.all([serverT("leave"), serverT("common"), getFormat()]);
+  const days = (n: number) => tc("days", { count: round2(n) });
   const today = todayInTimeZone(opts.timezone);
   const { startDate: start, endDate: end, halfDay } = input;
   const result = (extra: Partial<LeaveEvaluation> & { dayCount?: DayCount | null } = {}) => ({
@@ -60,14 +63,14 @@ export async function evaluateLeave(
     ...extra,
   });
 
-  if (!type.isActive) errors.push(`${type.name} is not available.`);
-  if (e.status === "TERMINATED") errors.push("Terminated employees cannot apply for leave.");
+  if (!type.isActive) errors.push(t("errors.typeUnavailable", { type: type.name }));
+  if (e.status === "TERMINATED") errors.push(t("errors.terminated"));
   if (end < start) {
-    errors.push("The end date is before the start date.");
+    errors.push(t("errors.endBeforeStart"));
     return result();
   }
-  if (halfDay !== "NONE" && start.getTime() !== end.getTime()) errors.push("Half days can only be requested for a single day.");
-  if (halfDay !== "NONE" && !type.allowHalfDay) errors.push(`${type.name} cannot be taken as a half day.`);
+  if (halfDay !== "NONE" && start.getTime() !== end.getTime()) errors.push(t("errors.halfDaySingle"));
+  if (halfDay !== "NONE" && !type.allowHalfDay) errors.push(t("errors.noHalfDay", { type: type.name }));
   if (errors.length) return result();
 
   const policies = await loadPolicies(client, e.companyId);
@@ -78,17 +81,17 @@ export async function evaluateLeave(
     gender: e.gender,
     joinDate: e.joinDate,
   });
-  if (!rules.eligible) errors.push(rules.reason!);
+  if (!rules.eligible) errors.push(t(`ineligible.${rules.reasonCode}`));
   const eligibleFrom = eligibilityDate(type, e.joinDate);
-  if (start < eligibleFrom) errors.push(`${type.name} can be used from ${formatDate(eligibleFrom)} (after ${type.accrualStartAfterMonths} months of service).`);
-  if (start < e.joinDate) errors.push("Leave cannot start before your join date.");
-  if (e.lastWorkingDay && end > e.lastWorkingDay) errors.push(`Leave cannot extend past your last working day (${formatDate(e.lastWorkingDay)}).`);
+  if (start < eligibleFrom) errors.push(t("errors.eligibleFrom", { type: type.name, date: f.date(eligibleFrom), months: type.accrualStartAfterMonths }));
+  if (start < e.joinDate) errors.push(t("errors.beforeJoin"));
+  if (e.lastWorkingDay && end > e.lastWorkingDay) errors.push(t("errors.pastLastDay", { date: f.date(e.lastWorkingDay) }));
 
   if (type.minNoticeDays > 0) {
     const earliest = addDays(today, type.minNoticeDays);
-    if (start < earliest) errors.push(`${type.name} needs ${type.minNoticeDays} days' notice — the earliest start date is ${formatDate(earliest)}.`);
+    if (start < earliest) errors.push(t("errors.notice", { type: type.name, days: type.minNoticeDays, date: f.date(earliest) }));
   } else if (start < addDays(today, -BACKDATE_LIMIT_DAYS)) {
-    errors.push(`${type.name} can be backdated by at most ${BACKDATE_LIMIT_DAYS} days.`);
+    errors.push(t("errors.backdate", { type: type.name, days: BACKDATE_LIMIT_DAYS }));
   }
 
   let dayCount: DayCount;
@@ -96,7 +99,7 @@ export async function evaluateLeave(
     const holidays = await holidaySet(client, e.companyId, e.locationId, start, end);
     dayCount = countLeaveDays({ start, end, halfDay, workWeek: opts.workWeek, holidays, countWeekends: type.countWeekends, countHolidays: type.countHolidays });
   } catch (err) {
-    errors.push(err instanceof RangeError ? err.message : "Invalid date range.");
+    errors.push(err instanceof RangeError && err.message === "Range is too long" ? t("errors.rangeTooLong") : t("errors.invalidRange"));
     return result();
   }
   const count = {
@@ -104,13 +107,17 @@ export async function evaluateLeave(
     byYear: dayCount.byYear,
     skipped: dayCount.skipped.map((s) => ({ date: toDateInput(s.date), reason: s.reason })),
   };
-  if (dayCount.total === 0) errors.push("The selected dates are all weekends or public holidays — there is nothing to book.");
+  if (dayCount.total === 0) errors.push(t("errors.nothingToBook"));
   if (type.maxConsecutiveDays && dayCount.total > type.maxConsecutiveDays) {
-    errors.push(`${type.name} allows at most ${type.maxConsecutiveDays} days in one request.`);
+    errors.push(t("errors.maxConsecutive", { type: type.name, days: type.maxConsecutiveDays }));
   }
   const attachmentRequired = type.requiresAttachmentAfterDays !== null && dayCount.total > type.requiresAttachmentAfterDays;
   if (attachmentRequired && opts.hasAttachment === false) {
-    errors.push(type.requiresAttachmentAfterDays === 0 ? `${type.name} requires a supporting document.` : `A supporting document is required for more than ${type.requiresAttachmentAfterDays} days of ${type.name}.`);
+    errors.push(
+      type.requiresAttachmentAfterDays === 0
+        ? t("errors.documentRequired", { type: type.name })
+        : t("errors.documentAbove", { type: type.name, days: type.requiresAttachmentAfterDays! }),
+    );
   }
 
   // Overlaps with the employee's own booked leave
@@ -125,7 +132,7 @@ export async function evaluateLeave(
     include: { leaveType: { select: { name: true } } },
   });
   for (const o of overlapping) {
-    errors.push(`Overlaps your ${o.leaveType.name} request ${formatDate(o.startDate)} – ${formatDate(o.endDate)} (${o.status.toLowerCase().replace("_", " ")}).`);
+    errors.push(t("errors.overlap", { type: o.leaveType.name, from: f.date(o.startDate), to: f.date(o.endDate), status: t(`statusLower.${o.status}`) }));
   }
 
   // Balance per leave year
@@ -164,8 +171,10 @@ export async function evaluateLeave(
       const after = round2(available + projected - requested);
       balances.push({ year, available, projected, requested, after, tracked });
       if (tracked && after < 0) {
-        if (type.allowNegativeBalance) warnings.push(`This takes your ${type.name} balance for ${year} to ${formatDays(after)}.`);
-        else errors.push(`Not enough ${type.name} balance for ${year}: ${formatDays(round2(available + projected))} available, ${formatDays(requested)} requested.`);
+        if (type.allowNegativeBalance) {
+          // Arabic phrases the negative amount in words ("negative by N days"), so it gets the absolute value.
+          warnings.push(t("errors.negativeWarning", { type: type.name, year: String(year), days: days(f.locale === "ar" ? Math.abs(after) : after) }));
+        } else errors.push(t("errors.notEnough", { type: type.name, year: String(year), available: days(round2(available + projected)), requested: days(requested) }));
       }
     }
   }
@@ -188,19 +197,22 @@ export async function evaluateLeave(
     take: 10,
   });
   const teammatesOff = colleagues.map((c) => ({ name: displayName(c.employee), from: toDateInput(c.startDate), to: toDateInput(c.endDate) }));
-  if (teammatesOff.length) warnings.push(`${teammatesOff.length} ${teammatesOff.length === 1 ? "colleague is" : "colleagues are"} also off during these dates.`);
+  if (teammatesOff.length) warnings.push(t("errors.colleaguesOff", { count: teammatesOff.length }));
 
   return { ...result({ count, balances, attachmentRequired, teammatesOff }), dayCount, ok: errors.length === 0 };
 }
 
 async function contextEmployee(ctx: AuthContext) {
-  if (!ctx.employeeId) throw new ValidationError("Your account is not linked to an employee record.");
+  if (!ctx.employeeId) throw new ValidationError((await serverT("leave"))("errors.notLinked"));
   return loadLeaveEmployee(db, ctx.companyId, ctx.employeeId);
 }
 
 async function loadType(client: DbClient, companyId: string, leaveTypeId: string) {
   const type = await client.leaveType.findFirst({ where: { id: leaveTypeId, companyId } });
-  if (!type) throw new ValidationError("Choose a leave type.", { leaveTypeId: ["Unknown leave type"] });
+  if (!type) {
+    const t = await serverT("leave");
+    throw new ValidationError(t("errors.chooseType"), { leaveTypeId: [t("errors.unknownType")] });
+  }
   return type;
 }
 
@@ -220,6 +232,7 @@ export async function applicableLeaveTypes(ctx: AuthContext) {
     db.leaveType.findMany({ where: { companyId: ctx.companyId, isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     loadPolicies(db, ctx.companyId),
   ]);
+  const tl = await serverT("leave");
   return types.map((t) => {
     const rules = effectiveRules(typeRules(t), policies, { departmentId: e.departmentId, positionId: e.positionId, employmentType: e.employmentType, gender: e.gender, joinDate: e.joinDate });
     return {
@@ -233,7 +246,7 @@ export async function applicableLeaveTypes(ctx: AuthContext) {
       requiresAttachmentAfterDays: t.requiresAttachmentAfterDays,
       isPaid: t.isPaid,
       eligible: rules.eligible,
-      reason: rules.reason,
+      reason: rules.reasonCode ? tl(`ineligible.${rules.reasonCode}`) : null,
     };
   });
 }
@@ -249,7 +262,7 @@ export async function submitLeave(ctx: AuthContext, input: LeaveApplyInput & { a
       const e = await contextEmployee(ctx);
       const type = await loadType(tx, ctx.companyId, input.leaveTypeId);
       const evaluation = await evaluateLeave(tx, e, type, input, { timezone: ctx.timezone, workWeek: ctx.workWeek, hasAttachment: !!input.attachmentPath });
-      if (!evaluation.ok || !evaluation.dayCount) throw new ValidationError(evaluation.errors[0] ?? "This request is not valid.", { _form: evaluation.errors });
+      if (!evaluation.ok || !evaluation.dayCount) throw new ValidationError(evaluation.errors[0] ?? (await serverT("leave"))("errors.invalidRequest"), { _form: evaluation.errors });
 
       const managerUserId = e.manager?.userId && e.manager.user?.isActive ? e.manager.userId : null;
       const chain = type.approvalChain.filter((s) => s === "MANAGER" || s === "HR");
@@ -298,12 +311,17 @@ export async function submitLeave(ctx: AuthContext, input: LeaveApplyInput & { a
         after: { leaveType: type.code, startDate: created.startDate, endDate: created.endDate, halfDay: created.halfDay, days: evaluation.dayCount.total, status: created.status },
       }, tx);
 
-      const summary = `${displayName(e)} requested ${formatDays(evaluation.dayCount.total)} of ${type.name} (${formatDate(created.startDate)} – ${formatDate(created.endDate)}).`;
       if (!autoApprove) {
         const active = created.approvals.find((a) => a.step === firstActive)!;
         const recipients = await stepRecipients(tx, ctx.companyId, active, e.userId, todayInTimeZone(ctx.timezone));
         notificationIds.push(
-          ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.submitted", title: `Leave request from ${displayName(e)}`, body: `${summary} Please review it.`, link: `/leave/requests/${created.id}` })),
+          ...(await notify(tx, {
+            companyId: ctx.companyId,
+            userIds: recipients,
+            type: "leave.submitted",
+            message: { key: "leaveSubmitted", params: { name: displayName(e), days: evaluation.dayCount.total, type: type.name, start: created.startDate, end: created.endDate } },
+            link: `/leave/requests/${created.id}`,
+          })),
         );
       }
       notificationIds.push(
@@ -311,8 +329,9 @@ export async function submitLeave(ctx: AuthContext, input: LeaveApplyInput & { a
           companyId: ctx.companyId,
           userIds: [e.userId],
           type: autoApprove ? "leave.approved" : "leave.submitted_self",
-          title: autoApprove ? `${type.name} approved` : `${type.name} request submitted`,
-          body: autoApprove ? `Your ${type.name} (${formatDate(created.startDate)} – ${formatDate(created.endDate)}) was approved automatically.` : `Your request was sent for approval (${chain.join(" → ")}).`,
+          message: autoApprove
+            ? { key: "leaveAutoApproved", params: { type: type.name, start: created.startDate, end: created.endDate } }
+            : { key: "leaveSubmittedSelf", params: { type: type.name, chain: approvalChainParam(chain) } },
           link: `/leave/requests/${created.id}`,
           email: autoApprove,
         })),
@@ -373,7 +392,7 @@ async function canView(ctx: AuthContext, r: LeaveRequestDetail) {
 
 export async function getLeaveRequest(ctx: AuthContext, id: string) {
   const r = await db.leaveRequest.findFirst({ where: { id, companyId: ctx.companyId }, include: requestInclude });
-  if (!r) throw new NotFoundError("Leave request not found.");
+  if (!r) throw new NotFoundError((await serverT("leave"))("errors.requestNotFound"));
   if (!(await canView(ctx, r))) throw new ForbiddenError();
   const acting = await actingAs(ctx, r);
   const today = todayInTimeZone(ctx.timezone);
@@ -396,12 +415,15 @@ export async function decideLeave(ctx: AuthContext, requestId: string, decision:
   const notificationIds: string[] = [];
   const outcome = await db.$transaction(async (tx) => {
     const r = await tx.leaveRequest.findFirst({ where: { id: requestId, companyId: ctx.companyId }, include: requestInclude });
-    if (!r) throw new NotFoundError("Leave request not found.");
+    if (!r) throw new NotFoundError((await serverT("leave"))("errors.requestNotFound"));
     const approval = currentApproval(r) as LeaveRequestDetail["approvals"][number] | null;
-    if (!approval) throw new ValidationError("This request is no longer waiting for a decision.");
+    if (!approval) throw new ValidationError((await serverT("leave"))("errors.noLongerWaiting"));
     const acting = await actingAs(ctx, r);
-    if (!acting.allowed) throw new ForbiddenError("You are not an approver for this request.");
-    if (decision === "REJECTED" && !comment) throw new ValidationError("Please give a reason when rejecting.", { comment: ["Required when rejecting"] });
+    if (!acting.allowed) throw new ForbiddenError((await serverT("leave"))("errors.notApprover"));
+    if (decision === "REJECTED" && !comment) {
+      const t = await serverT("leave");
+      throw new ValidationError(t("errors.rejectReason"), { comment: [t("errors.requiredWhenRejecting")] });
+    }
 
     const now = new Date();
     // Optimistic lock: only one approver can act on a step.
@@ -409,7 +431,7 @@ export async function decideLeave(ctx: AuthContext, requestId: string, decision:
       where: { id: approval.id, decision: "PENDING" },
       data: { decision, actedById: ctx.userId, onBehalfOfId: acting.onBehalfOfId, comment, actedAt: now },
     });
-    if (updated.count !== 1) throw new ValidationError("Someone else has already acted on this request.");
+    if (updated.count !== 1) throw new ValidationError((await serverT("leave"))("errors.alreadyActed"));
 
     const isCancellation = approval.kind === "CANCELLATION";
     const typeName = r.leaveType.name;
@@ -447,17 +469,16 @@ export async function decideLeave(ctx: AuthContext, requestId: string, decision:
     }, tx);
 
     // Notify the requester at every step, and the next approvers if any.
-    const requesterTitle =
-      isCancellation
-        ? decision === "APPROVED" ? `${typeName} cancelled` : `${typeName} cancellation declined`
-        : status === "APPROVED" ? `${typeName} approved` : status === "REJECTED" ? `${typeName} rejected` : `${typeName} approved by your manager`;
+    const requesterKey = isCancellation
+      ? decision === "APPROVED" ? "leaveCancellationApproved" : "leaveCancellationDeclined"
+      : status === "APPROVED" ? "leaveApproved" : status === "REJECTED" ? "leaveRejected" : "leaveStepApproved";
+    const leaveParams = { type: typeName, start: r.startDate, end: r.endDate };
     notificationIds.push(
       ...(await notify(tx, {
         companyId: ctx.companyId,
         userIds: [r.employee.userId],
         type: isCancellation ? "leave.cancellation_decided" : status === "PENDING" ? "leave.step_approved" : `leave.${status.toLowerCase()}`,
-        title: requesterTitle,
-        body: `${ctx.employeeName ?? ctx.name} ${verb} your ${typeName} (${range}).${status === "PENDING" ? " It now needs HR approval." : ""}${comment ? `\nComment: ${comment}` : ""}`,
+        message: { key: requesterKey, params: { ...leaveParams, actor: ctx.employeeName ?? ctx.name }, comment },
         link: `/leave/requests/${r.id}`,
       })),
     );
@@ -469,8 +490,7 @@ export async function decideLeave(ctx: AuthContext, requestId: string, decision:
           companyId: ctx.companyId,
           userIds: recipients,
           type: "leave.submitted",
-          title: `Leave request from ${displayName(r.employee)} needs ${next.approverRole === "HR" ? "HR" : "your"} approval`,
-          body: `${displayName(r.employee)}'s ${typeName} (${range}, ${formatDays(num(r.days))}) was approved at the previous step.`,
+          message: { key: next.approverRole === "HR" ? "leaveNextApproverHr" : "leaveNextApproverYou", params: { ...leaveParams, name: displayName(r.employee), days: num(r.days) } },
           link: `/leave/requests/${r.id}`,
         })),
       );
@@ -488,7 +508,7 @@ export async function decideMany(ctx: AuthContext, requestIds: string[], decisio
       await decideLeave(ctx, id, decision, comment);
       results.push({ id, ok: true });
     } catch (e) {
-      results.push({ id, ok: false, error: e instanceof Error ? e.message : "Failed" });
+      results.push({ id, ok: false, error: e instanceof Error ? e.message : (await serverT("leave"))("errors.failed") });
     }
   }
   return results;
@@ -501,9 +521,9 @@ export async function withdrawLeave(ctx: AuthContext, requestId: string) {
   const notificationIds: string[] = [];
   await db.$transaction(async (tx) => {
     const r = await tx.leaveRequest.findFirst({ where: { id: requestId, companyId: ctx.companyId }, include: requestInclude });
-    if (!r) throw new NotFoundError("Leave request not found.");
+    if (!r) throw new NotFoundError((await serverT("leave"))("errors.requestNotFound"));
     if (r.employeeId !== ctx.employeeId) throw new ForbiddenError();
-    if (r.status !== "PENDING") throw new ValidationError("Only pending requests can be withdrawn. Ask to cancel approved leave instead.");
+    if (r.status !== "PENDING") throw new ValidationError((await serverT("leave"))("errors.onlyPendingWithdraw"));
     const current = currentApproval(r) as LeaveRequestDetail["approvals"][number] | null;
     await tx.leaveRequest.update({ where: { id: r.id }, data: { status: "CANCELLED", cancellationReason: "Withdrawn by employee", decidedAt: new Date() } });
     await tx.leaveApproval.updateMany({ where: { requestId: r.id, decision: "PENDING" }, data: { decision: "SKIPPED" } });
@@ -511,7 +531,7 @@ export async function withdrawLeave(ctx: AuthContext, requestId: string) {
     if (current) {
       const recipients = await stepRecipients(tx, ctx.companyId, current, r.employee.userId, todayInTimeZone(ctx.timezone));
       notificationIds.push(
-        ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.withdrawn", title: `${displayName(r.employee)} withdrew a leave request`, body: `${r.leaveType.name} ${formatDate(r.startDate)} – ${formatDate(r.endDate)} no longer needs your approval.`, link: `/leave/requests/${r.id}`, email: false })),
+        ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.withdrawn", message: { key: "leaveWithdrawn", params: { name: displayName(r.employee), type: r.leaveType.name, start: r.startDate, end: r.endDate } }, link: `/leave/requests/${r.id}`, email: false })),
       );
     }
   });
@@ -520,14 +540,17 @@ export async function withdrawLeave(ctx: AuthContext, requestId: string) {
 
 /** Employee asks to cancel approved leave; the manager (or HR) decides. Days stay booked until then. */
 export async function requestCancellation(ctx: AuthContext, requestId: string, reason: string | null) {
-  if (!reason) throw new ValidationError("Please give a reason.", { reason: ["Required"] });
+  if (!reason) {
+    const t = await serverT("leave");
+    throw new ValidationError(t("errors.giveReason"), { reason: [t("errors.required")] });
+  }
   const notificationIds: string[] = [];
   await db.$transaction(async (tx) => {
     const r = await tx.leaveRequest.findFirst({ where: { id: requestId, companyId: ctx.companyId }, include: requestInclude });
-    if (!r) throw new NotFoundError("Leave request not found.");
+    if (!r) throw new NotFoundError((await serverT("leave"))("errors.requestNotFound"));
     if (r.employeeId !== ctx.employeeId) throw new ForbiddenError();
-    if (r.status !== "APPROVED") throw new ValidationError("Only approved leave can be cancelled this way.");
-    if (r.endDate < todayInTimeZone(ctx.timezone)) throw new ValidationError("This leave has already ended. Contact HR to correct past leave.");
+    if (r.status !== "APPROVED") throw new ValidationError((await serverT("leave"))("errors.onlyApprovedCancel"));
+    if (r.endDate < todayInTimeZone(ctx.timezone)) throw new ValidationError((await serverT("leave"))("errors.alreadyEnded"));
     const managerUserId = r.employee.manager?.userId && r.employee.manager.user?.isActive ? r.employee.manager.userId : null;
     const step = (await tx.leaveApproval.count({ where: { requestId: r.id, kind: "CANCELLATION" } })) + 0;
     const approval = await tx.leaveApproval.create({
@@ -537,7 +560,7 @@ export async function requestCancellation(ctx: AuthContext, requestId: string, r
     await writeAudit(ctx, { action: "leave.cancellation.request", entityType: "LeaveRequest", entityId: r.id, summary: `Asked to cancel ${r.leaveType.name} ${toDateInput(r.startDate)} → ${toDateInput(r.endDate)}: ${reason}`, before: { status: r.status }, after: { status: "CANCELLATION_REQUESTED", reason } }, tx);
     const recipients = await stepRecipients(tx, ctx.companyId, approval, r.employee.userId, todayInTimeZone(ctx.timezone));
     notificationIds.push(
-      ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.cancellation_requested", title: `${displayName(r.employee)} wants to cancel approved leave`, body: `${r.leaveType.name} ${formatDate(r.startDate)} – ${formatDate(r.endDate)}. Reason: ${reason}`, link: `/leave/requests/${r.id}` })),
+      ...(await notify(tx, { companyId: ctx.companyId, userIds: recipients, type: "leave.cancellation_requested", message: { key: "leaveCancellationRequested", params: { name: displayName(r.employee), type: r.leaveType.name, start: r.startDate, end: r.endDate, reason } }, link: `/leave/requests/${r.id}` })),
     );
   });
   deliverEmailsInBackground(notificationIds);
@@ -546,18 +569,21 @@ export async function requestCancellation(ctx: AuthContext, requestId: string, r
 /** HR cancels any booked leave directly (e.g. employee returned early). Audited, reason required. */
 export async function hrCancelLeave(ctx: AuthContext, requestId: string, reason: string | null) {
   if (!ctx.permissions.has("leave.approve.all")) throw new ForbiddenError();
-  if (!reason) throw new ValidationError("Please give a reason.", { reason: ["Required"] });
+  if (!reason) {
+    const t = await serverT("leave");
+    throw new ValidationError(t("errors.giveReason"), { reason: [t("errors.required")] });
+  }
   const notificationIds: string[] = [];
   await db.$transaction(async (tx) => {
     const r = await tx.leaveRequest.findFirst({ where: { id: requestId, companyId: ctx.companyId }, include: requestInclude });
-    if (!r) throw new NotFoundError("Leave request not found.");
-    if (r.employeeId === ctx.employeeId) throw new ForbiddenError("Use the normal cancellation flow for your own leave.");
-    if (!["PENDING", "APPROVED", "CANCELLATION_REQUESTED"].includes(r.status)) throw new ValidationError("This request is already closed.");
+    if (!r) throw new NotFoundError((await serverT("leave"))("errors.requestNotFound"));
+    if (r.employeeId === ctx.employeeId) throw new ForbiddenError((await serverT("leave"))("errors.ownLeaveHr"));
+    if (!["PENDING", "APPROVED", "CANCELLATION_REQUESTED"].includes(r.status)) throw new ValidationError((await serverT("leave"))("errors.alreadyClosed"));
     await tx.leaveRequest.update({ where: { id: r.id }, data: { status: "CANCELLED", cancellationReason: reason, decidedAt: new Date() } });
     await tx.leaveApproval.updateMany({ where: { requestId: r.id, decision: "PENDING" }, data: { decision: "SKIPPED" } });
     await writeAudit(ctx, { action: "leave.cancel.hr", entityType: "LeaveRequest", entityId: r.id, summary: `HR cancelled ${displayName(r.employee)}'s ${r.leaveType.name} ${toDateInput(r.startDate)} → ${toDateInput(r.endDate)}: ${reason}`, before: { status: r.status }, after: { status: "CANCELLED", reason } }, tx);
     notificationIds.push(
-      ...(await notify(tx, { companyId: ctx.companyId, userIds: [r.employee.userId], type: "leave.cancelled", title: `${r.leaveType.name} cancelled by HR`, body: `Your ${r.leaveType.name} (${formatDate(r.startDate)} – ${formatDate(r.endDate)}) was cancelled. Reason: ${reason}`, link: `/leave/requests/${r.id}` })),
+      ...(await notify(tx, { companyId: ctx.companyId, userIds: [r.employee.userId], type: "leave.cancelled", message: { key: "leaveCancelledByHr", params: { type: r.leaveType.name, start: r.startDate, end: r.endDate, reason } }, link: `/leave/requests/${r.id}` })),
     );
   });
   deliverEmailsInBackground(notificationIds);

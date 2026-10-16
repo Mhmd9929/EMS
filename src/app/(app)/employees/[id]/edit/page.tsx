@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { notFound, forbidden } from "next/navigation";
 import { requireAuth, requirePermission } from "@/server/auth/context";
 import { getEmployeeForEdit, listEmployeeOptions } from "@/server/services/employee.service";
@@ -7,7 +8,9 @@ import { ForbiddenError, NotFoundError } from "@/server/errors";
 import { PageHeader } from "@/components/page-header";
 import { EmployeeForm } from "@/components/employees/employee-form";
 
-export const metadata: Metadata = { title: "Edit employee" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("employees"))("meta.edit") };
+}
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireAuth();
@@ -24,9 +27,13 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
     listLocationOptions(ctx),
     listEmployeeOptions(ctx),
   ]);
+  const t = await getTranslations("employees");
   return (
     <>
-      <PageHeader title={`Edit ${employee.firstName} ${employee.lastName}`} description={`${employee.employeeNumber} · changes are recorded in the audit log`} />
+      <PageHeader
+        title={t("edit.title", { name: `${employee.firstName} ${employee.lastName}` })}
+        description={t("edit.description", { number: employee.employeeNumber })}
+      />
       <EmployeeForm employee={employee} options={{ departments, positions, locations, managers }} />
     </>
   );

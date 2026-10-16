@@ -1,4 +1,5 @@
 import "server-only";
+import { brand } from "@/theme/brand";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { assertCan, type AuthContext } from "@/server/auth/permissions";
@@ -7,6 +8,7 @@ import { ForbiddenError } from "@/server/errors";
 import { toDateInput } from "@/lib/dates";
 import { num, round2 } from "@/lib/leave/numbers";
 import { displayName } from "./common";
+import { serverT } from "@/server/i18n";
 
 export type CalendarScope = "mine" | "team" | "company";
 
@@ -53,14 +55,15 @@ export async function leaveCalendar(ctx: AuthContext, input: { year: number; mon
     db.publicHoliday.findMany({ where: { companyId: ctx.companyId, date: { gte: from, lte: to } }, select: { date: true, name: true, locationId: true } }),
   ]);
 
+  const onLeave = (await serverT("leave"))("calendar.onLeave");
   const cells = new Map<string, Record<string, CalendarCell>>();
   for (const d of days) {
     const own = showTypes(d.request.employeeId);
     const row = cells.get(d.request.employeeId) ?? {};
     row[toDateInput(d.date)] = {
       requestId: own || input.scope !== "mine" ? d.request.id : null,
-      label: own ? d.request.leaveType.name : "On leave",
-      color: own ? d.request.leaveType.color : "#64748b",
+      label: own ? d.request.leaveType.name : onLeave,
+      color: own ? d.request.leaveType.color : brand.neutralLeaveColor,
       status: d.request.status === "PENDING" ? "PENDING" : "APPROVED",
       amount: num(d.amount),
     };

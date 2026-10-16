@@ -1,0 +1,30 @@
+{
+  "payslip": {
+    "title": "PAYSLIP",
+    "employee": "Employee",
+    "employeeNo": "Employee no.",
+    "position": "Position",
+    "department": "Department",
+    "joinDate": "Join date",
+    "payPeriod": "Pay period",
+    "paidDays": "Paid days",
+    "basis30": "30-day basis",
+    "basisCalendar": "calendar days",
+    "unpaidLeaveDays": "Unpaid leave days",
+    "bankIban": "Bank / IBAN",
+    "earnings": "Earnings",
+    "deductions": "Deductions",
+    "amount": "Amount",
+    "totalEarnings": "Total earnings",
+    "totalDeductions": "Total deductions",
+    "netPay": "Net pay",
+    "ytd": "Year to date (from {month})",
+    "grossYtd": "Gross YTD",
+    "deductionsYtd": "Deductions YTD",
+    "netYtd": "Net YTD",
+    "tradeLicence": "TL {number}",
+    "footer": "Computer-generated payslip — no signature required. Released {date}. Confidential.",
+    "docTitle": "Payslip {number}",
+    "docSubject": "Payslip {month}"
+  }
+}

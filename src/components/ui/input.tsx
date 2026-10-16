@@ -15,7 +15,7 @@ export function Textarea({ className, ...props }: React.ComponentProps<"textarea
 /** Styled native <select>: accessible, keyboard friendly and works with FormData. */
 export function NativeSelect({ className, children, ...props }: React.ComponentProps<"select">) {
   return (
-    <select data-slot="select" className={cn(inputClass, "appearance-auto pr-8", className)} {...props}>
+    <select data-slot="select" className={cn(inputClass, "appearance-auto pe-8", className)} {...props}>
       {children}
     </select>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { CalendarDays, FileWarning, Mail, UserMinus, UserPlus, Users, Wallet, Plane } from "lucide-react";
 import { requireAuth, can } from "@/server/auth/context";
@@ -6,19 +7,23 @@ import { getEmployeeDashboard, getHrDashboard, getManagerDashboard, getRecentAct
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listPayslips } from "@/server/services/payroll/payslip.service";
 import { currentRunSummary } from "@/server/services/payroll/run.service";
-import { periodLabel } from "@/lib/payroll/calc";
 import { Money, RunStatusBadge } from "@/components/payroll/badges";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { daysBetween, formatDate, formatDateTime } from "@/lib/dates";
-import { labelOf, EMPLOYMENT_TYPES } from "@/lib/constants";
+import { daysBetween } from "@/lib/dates";
+import { getFormat } from "@/server/i18n";
+import type { ExpiringDocument } from "@/server/services/dashboard.service";
 import { EmptyState } from "@/components/empty-state";
 import { getEmployeeBalances } from "@/server/services/leave/balance.service";
 import { approvalInbox, whoIsOff } from "@/server/services/leave/request.service";
 import { LeaveTypeLabel } from "@/components/leave/leave-badges";
 import { CheckSquare } from "lucide-react";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("dashboard"))("meta.title") };
+}
+
+const DOCUMENT_KEYS = { "Emirates ID": "emiratesId", Passport: "passport", Visa: "visa", "Labour card": "labourCard" } as const satisfies Record<ExpiringDocument["document"], string>;
 
 function Stat({ label, value, icon: Icon, hint, href }: { label: string; value: number | string; icon: React.ComponentType<{ className?: string }>; hint?: string; href?: string }) {
   const body = (
@@ -58,50 +63,65 @@ export default async function DashboardPage() {
     ctx.employeeId ? listPayslips(ctx, ctx.employeeId).then((p) => p[0] ?? null) : null,
     currentRunSummary(ctx, period),
   ]);
+  const t = await getTranslations("dashboard");
+  const tEnums = await getTranslations("enums");
+  const f = await getFormat();
+  const scopeName = (label: string) => label.slice(label.indexOf(": ") + 2);
+  const runScope = (r: { scope: string; scopeLabel: string }) =>
+    r.scope === "ALL"
+      ? tEnums("runScope.ALL")
+      : r.scopeLabel.includes(": ")
+        ? t(r.scope === "DEPARTMENT" ? "payroll.scopeDepartment" : "payroll.scopeLocation", { name: scopeName(r.scopeLabel) })
+        : r.scopeLabel;
+  const runState = (status: string) =>
+    status === "UNDER_REVIEW" ? t("payroll.waitingForApproval") : status === "APPROVED" ? t("payroll.readyToRelease") : status === "RELEASED" ? t("payroll.payslipsIssued") : t("payroll.inPreparation");
   const shownBalances = (balances ?? []).filter((b) => b.eligible && b.tracked && b.accrued + b.carriedForward + b.adjustments > 0).slice(0, 3);
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {firstName}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("welcome", { name: firstName })}</h1>
         <p className="text-muted-foreground text-sm">
-          {ctx.companyName} · {formatDate(me.today)}
+          {ctx.companyName} · {f.date(me.today)}
         </p>
       </div>
 
       {/* ── Employee self-service ── */}
       <section aria-labelledby="me-heading" className="space-y-3">
         <h2 id="me-heading" className="text-lg font-semibold">
-          My workspace
+          {t("me.heading")}
         </h2>
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Plane className="size-4" aria-hidden /> Leave balance
+                <Plane className="size-4" aria-hidden /> {t("me.leaveBalance")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {shownBalances.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No leave balance yet.</p>
+                <p className="text-muted-foreground text-sm">{t("me.noLeaveBalance")}</p>
               ) : (
                 <ul className="space-y-2 text-sm">
                   {shownBalances.map((b) => (
                     <li key={b.leaveType.id} className="flex justify-between gap-2">
                       <LeaveTypeLabel name={b.leaveType.name} color={b.leaveType.color} />
                       <span className="tabular-nums">
-                        <strong>{b.available}</strong> <span className="text-muted-foreground">days{b.pending ? ` · ${b.pending} pending` : ""}</span>
+                        <strong>{b.available}</strong> <span className="text-muted-foreground">
+                          {t("me.daysUnit", { count: b.available })}
+                          {b.pending ? ` · ${t("me.pending", { count: b.pending })}` : ""}
+                        </span>
                       </span>
                     </li>
                   ))}
                 </ul>
               )}
               <div className="mt-3 flex gap-3 text-sm">
-                <Link href="/leave/apply" className="text-primary hover:underline">
-                  Apply for leave
+                <Link href="/leave/apply" className="text-link hover:underline">
+                  {t("me.applyForLeave")}
                 </Link>
-                <Link href="/leave" className="text-primary hover:underline">
-                  All balances
+                <Link href="/leave" className="text-link hover:underline">
+                  {t("me.allBalances")}
                 </Link>
               </div>
             </CardContent>
@@ -109,45 +129,45 @@ export default async function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Wallet className="size-4" aria-hidden /> Latest payslip
+                <Wallet className="size-4" aria-hidden /> {t("me.latestPayslip")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {latestPayslip ? (
                 <>
-                  <p className="text-muted-foreground text-sm">{periodLabel(latestPayslip.period)} · net pay</p>
+                  <p className="text-muted-foreground text-sm">{t("me.netPay", { period: f.month(latestPayslip.period) })}</p>
                   <p className="text-2xl font-semibold">
                     <Money minor={latestPayslip.net} currency={latestPayslip.currency} showCode />
                   </p>
                   <div className="mt-3 flex gap-3 text-sm">
-                    <Link href={`/payslips/${latestPayslip.id}`} className="text-primary hover:underline">
-                      View payslip
+                    <Link href={`/payslips/${latestPayslip.id}`} className="text-link hover:underline">
+                      {t("me.viewPayslip")}
                     </Link>
-                    <Link href="/payslips" className="text-primary hover:underline">
-                      All payslips
+                    <Link href="/payslips" className="text-link hover:underline">
+                      {t("me.allPayslips")}
                     </Link>
                   </div>
                 </>
               ) : (
-                <p className="text-muted-foreground text-sm">No payslips yet. They appear here once payroll is released.</p>
+                <p className="text-muted-foreground text-sm">{t("me.noPayslips")}</p>
               )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <CalendarDays className="size-4" aria-hidden /> Upcoming holidays
+                <CalendarDays className="size-4" aria-hidden /> {t("me.upcomingHolidays")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {me.holidays.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No upcoming public holidays on the calendar.</p>
+                <p className="text-muted-foreground text-sm">{t("me.noHolidays")}</p>
               ) : (
                 <ul className="space-y-2 text-sm">
                   {me.holidays.map((h) => (
                     <li key={h.id} className="flex justify-between gap-2">
                       <span>{h.name}</span>
-                      <span className="text-muted-foreground tabular-nums">{formatDate(h.date)}</span>
+                      <span className="text-muted-foreground tabular-nums">{f.date(h.date)}</span>
                     </li>
                   ))}
                 </ul>
@@ -161,10 +181,10 @@ export default async function DashboardPage() {
             {me.employee.manager && (
               <>
                 {" "}
-                · Reports to {me.employee.manager.preferredName || me.employee.manager.firstName} {me.employee.manager.lastName}
+                · {t("me.reportsTo", { name: `${me.employee.manager.preferredName || me.employee.manager.firstName} ${me.employee.manager.lastName}` })}
               </>
             )}
-            {me.employee.probationEndDate && me.employee.probationEndDate >= me.today && <> · Probation ends {formatDate(me.employee.probationEndDate)}</>}
+            {me.employee.probationEndDate && me.employee.probationEndDate >= me.today && <> · {t("me.probationEnds", { date: f.date(me.employee.probationEndDate) })}</>}
           </p>
         )}
       </section>
@@ -174,15 +194,15 @@ export default async function DashboardPage() {
         <section aria-labelledby="payroll-heading" className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 id="payroll-heading" className="text-lg font-semibold">
-              Payroll — {periodLabel(period)}
+              {t("payroll.heading", { period: f.month(period) })}
             </h2>
-            <Link href="/payroll" className="text-primary text-sm hover:underline">
-              All runs
+            <Link href="/payroll" className="text-link text-sm hover:underline">
+              {t("payroll.allRuns")}
             </Link>
           </div>
           {payrollRuns.length === 0 ? (
             <Card>
-              <CardContent className="text-muted-foreground text-sm">No payroll run for this month yet.</CardContent>
+              <CardContent className="text-muted-foreground text-sm">{t("payroll.noRun")}</CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -191,7 +211,7 @@ export default async function DashboardPage() {
                   <Card className="hover:bg-accent/40 h-full gap-2 transition-colors">
                     <CardHeader>
                       <CardDescription className="flex items-center justify-between gap-2">
-                        {r.scopeLabel} <RunStatusBadge status={r.status} />
+                        {runScope(r)} <RunStatusBadge status={r.status} />
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -199,7 +219,7 @@ export default async function DashboardPage() {
                         <Money minor={r.totalNet} currency={r.currency} showCode />
                       </p>
                       <p className="text-muted-foreground text-xs">
-                        {r.employeeCount} employees · {r.status === "UNDER_REVIEW" ? "waiting for approval" : r.status === "APPROVED" ? "ready to release" : r.status === "RELEASED" ? "payslips issued" : "in preparation"}
+                        {t("payroll.employees", { count: r.employeeCount })} · {runState(r.status)}
                       </p>
                     </CardContent>
                   </Card>
@@ -215,16 +235,16 @@ export default async function DashboardPage() {
         <section aria-labelledby="team-heading" className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 id="team-heading" className="text-lg font-semibold">
-              My team
+              {t("team.heading")}
             </h2>
-            <Link href="/employees" className="text-primary text-sm hover:underline">
-              View all
+            <Link href="/employees" className="text-link text-sm hover:underline">
+              {t("team.viewAll")}
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Stat label="Direct reports" value={mgr.direct.length} icon={Users} />
-            <Stat label="Whole team (incl. indirect)" value={mgr.totalTeam} icon={Users} />
-            <Stat label="Leave approvals waiting" value={inbox?.length ?? 0} icon={CheckSquare} href="/leave/approvals" hint={`${mgr.probation.length} probation(s) ending in 30 days`} />
+            <Stat label={t("team.directReports")} value={mgr.direct.length} icon={Users} />
+            <Stat label={t("team.wholeTeam")} value={mgr.totalTeam} icon={Users} />
+            <Stat label={t("team.approvalsWaiting")} value={inbox?.length ?? 0} icon={CheckSquare} href="/leave/approvals" hint={t("team.probationsEnding", { count: mgr.probation.length })} />
           </div>
           <Card>
             <CardContent>
@@ -252,10 +272,10 @@ export default async function DashboardPage() {
         <section aria-labelledby="off-heading" className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 id="off-heading" className="text-lg font-semibold">
-              Off today
+              {t("offToday.heading")}
             </h2>
-            <Link href="/leave/calendar" className="text-primary text-sm hover:underline">
-              Leave calendar
+            <Link href="/leave/calendar" className="text-link text-sm hover:underline">
+              {t("offToday.leaveCalendar")}
             </Link>
           </div>
           <Card>
@@ -267,7 +287,7 @@ export default async function DashboardPage() {
                       {r.employee.preferredName || r.employee.firstName} {r.employee.lastName}
                     </Link>
                     <span className="text-muted-foreground text-xs">
-                      <LeaveTypeLabel name={r.leaveType.name} color={r.leaveType.color} /> · back {formatDate(new Date(r.endDate.getTime() + 86_400_000))}
+                      <LeaveTypeLabel name={r.leaveType.name} color={r.leaveType.color} /> · {t("offToday.back", { date: f.date(new Date(r.endDate.getTime() + 86_400_000)) })}
                     </span>
                   </li>
                 ))}
@@ -281,18 +301,18 @@ export default async function DashboardPage() {
       {hr && (
         <section aria-labelledby="hr-heading" className="space-y-3">
           <h2 id="hr-heading" className="text-lg font-semibold">
-            HR overview
+            {t("hr.heading")}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Headcount" value={hr.headcount} icon={Users} hint={`${hr.onLeave} on leave`} href="/employees" />
-            <Stat label="Joiners this month" value={hr.joiners.length} icon={UserPlus} />
-            <Stat label="Leavers this month" value={hr.leavers.length} icon={UserMinus} hint={`${hr.scheduledTerminations} scheduled terminations`} />
-            <Stat label="Pending invitations" value={hr.pendingInvites} icon={Mail} hint={`Accounts not yet activated · ${offToday?.length ?? 0} off today`} href="/admin/users?state=pending" />
+            <Stat label={t("hr.headcount")} value={hr.headcount} icon={Users} hint={t("hr.onLeave", { count: hr.onLeave })} href="/employees" />
+            <Stat label={t("hr.joinersThisMonth")} value={hr.joiners.length} icon={UserPlus} />
+            <Stat label={t("hr.leaversThisMonth")} value={hr.leavers.length} icon={UserMinus} hint={t("hr.scheduledTerminations", { count: hr.scheduledTerminations })} />
+            <Stat label={t("hr.pendingInvitations")} value={hr.pendingInvites} icon={Mail} hint={t("hr.pendingInvitationsHint", { count: offToday?.length ?? 0 })} href="/admin/users?state=pending" />
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-1">
               <CardHeader>
-                <CardTitle className="text-base">Headcount by department</CardTitle>
+                <CardTitle className="text-base">{t("hr.headcountByDepartment")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2.5">
@@ -309,9 +329,9 @@ export default async function DashboardPage() {
                   ))}
                 </ul>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {hr.headcountByType.map((t) => (
-                    <Badge key={t.type} variant="secondary">
-                      {labelOf(EMPLOYMENT_TYPES, t.type)}: {t.count}
+                  {hr.headcountByType.map((g) => (
+                    <Badge key={g.type} variant="secondary">
+                      {tEnums(`employmentType.${g.type}`)}: {g.count}
                     </Badge>
                   ))}
                 </div>
@@ -320,13 +340,13 @@ export default async function DashboardPage() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <FileWarning className="size-4" aria-hidden /> Documents expiring within 60 days
+                  <FileWarning className="size-4" aria-hidden /> {t("hr.documentsExpiring")}
                   <Badge variant={hr.expiringTotal ? "warning" : "secondary"}>{hr.expiringTotal}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {hr.expiring.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No identity documents are expiring soon.</p>
+                  <p className="text-muted-foreground text-sm">{t("hr.noDocumentsExpiring")}</p>
                 ) : (
                   <ul className="divide-y text-sm">
                     {hr.expiring.map((x) => {
@@ -334,10 +354,10 @@ export default async function DashboardPage() {
                       return (
                         <li key={`${x.employeeId}-${x.document}`} className="flex items-center justify-between gap-2 py-2">
                           <Link href={`/employees/${x.employeeId}?tab=documents`} className="hover:underline">
-                            {x.name} <span className="text-muted-foreground">· {x.document}</span>
+                            {x.name} <span className="text-muted-foreground">· {t(`hr.documents.${DOCUMENT_KEYS[x.document]}`)}</span>
                           </Link>
                           <Badge variant={days < 0 ? "destructive" : days <= 30 ? "warning" : "secondary"}>
-                            {days < 0 ? `expired ${-days}d ago` : `${formatDate(x.expiry)} (${days}d)`}
+                            {days < 0 ? t("hr.expiredAgo", { days: -days }) : t("hr.expiresIn", { date: f.date(x.expiry), days })}
                           </Badge>
                         </li>
                       );
@@ -348,9 +368,9 @@ export default async function DashboardPage() {
             </Card>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
-            <ListCard title="Joiners this month" empty="No joiners this month." items={hr.joiners.map((j) => ({ id: j.id, name: `${j.preferredName || j.firstName} ${j.lastName}`, meta: formatDate(j.joinDate) }))} />
-            <ListCard title="Leavers this month" empty="No leavers this month." items={hr.leavers.map((j) => ({ id: j.id, name: `${j.preferredName || j.firstName} ${j.lastName}`, meta: formatDate(j.lastWorkingDay) }))} />
-            <ListCard title="Probation ending (30 days)" empty="No probations ending soon." items={hr.probationEnding.map((j) => ({ id: j.id, name: `${j.preferredName || j.firstName} ${j.lastName}`, meta: formatDate(j.probationEndDate) }))} />
+            <ListCard title={t("hr.joinersThisMonth")} empty={t("hr.noJoiners")} items={hr.joiners.map((j) => ({ id: j.id, name: `${j.preferredName || j.firstName} ${j.lastName}`, meta: f.date(j.joinDate) }))} />
+            <ListCard title={t("hr.leaversThisMonth")} empty={t("hr.noLeavers")} items={hr.leavers.map((j) => ({ id: j.id, name: `${j.preferredName || j.firstName} ${j.lastName}`, meta: f.date(j.lastWorkingDay) }))} />
+            <ListCard title={t("hr.probationEnding")} empty={t("hr.noProbations")} items={hr.probationEnding.map((j) => ({ id: j.id, name: `${j.preferredName || j.firstName} ${j.lastName}`, meta: f.date(j.probationEndDate) }))} />
           </div>
         </section>
       )}
@@ -359,24 +379,24 @@ export default async function DashboardPage() {
         <section aria-labelledby="activity-heading" className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 id="activity-heading" className="text-lg font-semibold">
-              Recent activity
+              {t("activity.heading")}
             </h2>
-            <Link href="/admin/audit" className="text-primary text-sm hover:underline">
-              Audit log
+            <Link href="/admin/audit" className="text-link text-sm hover:underline">
+              {t("activity.auditLog")}
             </Link>
           </div>
           <Card>
             <CardContent>
               {activity.length === 0 ? (
-                <EmptyState title="No activity yet" />
+                <EmptyState title={t("activity.empty")} />
               ) : (
                 <ul className="divide-y text-sm">
                   {activity.map((a) => (
                     <li key={a.id} className="flex flex-col justify-between gap-1 py-2 sm:flex-row">
                       <span>
-                        <span className="font-medium">{a.actor?.name ?? "System"}</span> <span className="text-muted-foreground">{a.action}</span> {a.summary && `— ${a.summary}`}
+                        <span className="font-medium">{a.actor?.name ?? t("activity.system")}</span> <span className="text-muted-foreground">{a.action}</span> {a.summary && `— ${a.summary}`}
                       </span>
-                      <span className="text-muted-foreground shrink-0 text-xs">{formatDateTime(a.createdAt, ctx.timezone)}</span>
+                      <span className="text-muted-foreground shrink-0 text-xs">{f.dateTime(a.createdAt, ctx.timezone)}</span>
                     </li>
                   ))}
                 </ul>

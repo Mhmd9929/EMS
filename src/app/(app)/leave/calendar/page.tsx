@@ -5,7 +5,6 @@ import { requireAuth } from "@/server/auth/context";
 import { leaveCalendar, type CalendarScope } from "@/server/services/leave/calendar.service";
 import { listDepartmentOptions } from "@/server/services/org.service";
 import { first, type SearchParams } from "@/lib/list-params";
-import { MONTHS } from "@/lib/constants";
 import { todayInTimeZone, toDateInput } from "@/lib/dates";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
@@ -14,8 +13,12 @@ import { hrefWith } from "@/components/data-table/url";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 import { CalendarGrid } from "./calendar-grid";
+import { getTranslations } from "next-intl/server";
+import { getFormat } from "@/server/i18n";
 
-export const metadata: Metadata = { title: "Leave calendar" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("leave"))("meta.calendar") };
+}
 
 export default async function LeaveCalendarPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -23,14 +26,15 @@ export default async function LeaveCalendarPage({ searchParams }: { searchParams
   const today = todayInTimeZone(ctx.timezone);
   const monthParam = first(sp.month); // YYYY-MM
   const [y, m] = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam.split("-").map(Number) : [today.getUTCFullYear(), today.getUTCMonth() + 1];
+  const [t, tc, f] = await Promise.all([getTranslations("leave.calendar"), getTranslations("common"), getFormat()]);
   const scopes: { value: CalendarScope; label: string }[] = [
-    ...(ctx.employeeId ? [{ value: "mine" as const, label: "My team" }] : []),
-    ...(ctx.employeeId && (ctx.permissions.has("leave.approve.team") || ctx.permissions.has("leave.request.read.all")) ? [{ value: "team" as const, label: "My reports" }] : []),
-    ...(ctx.permissions.has("leave.request.read.all") ? [{ value: "company" as const, label: "Company" }] : []),
+    ...(ctx.employeeId ? [{ value: "mine" as const, label: t("scope.mine") }] : []),
+    ...(ctx.employeeId && (ctx.permissions.has("leave.approve.team") || ctx.permissions.has("leave.request.read.all")) ? [{ value: "team" as const, label: t("scope.team") }] : []),
+    ...(ctx.permissions.has("leave.request.read.all") ? [{ value: "company" as const, label: t("scope.company") }] : []),
   ];
   const requested = first(sp.scope) as CalendarScope | undefined;
   const scope = scopes.find((s) => s.value === requested)?.value ?? (scopes.find((s) => s.value === "team") ?? scopes.find((s) => s.value === "company") ?? scopes[0])?.value;
-  if (!scope) return <EmptyState title="No calendar available" description="Your account is not linked to an employee record." />;
+  if (!scope) return <EmptyState title={t("noCalendarTitle")} description={t("noCalendarDescription")} />;
   const departmentId = scope === "company" ? first(sp.department) : undefined;
   const [data, departments] = await Promise.all([leaveCalendar(ctx, { year: y, month: m - 1, scope, departmentId }), scope === "company" ? listDepartmentOptions(ctx) : []]);
   const prev = new Date(Date.UTC(y, m - 2, 1));
@@ -39,25 +43,25 @@ export default async function LeaveCalendarPage({ searchParams }: { searchParams
   const path = "/leave/calendar";
   return (
     <>
-      <PageHeader title="Leave calendar" description="Approved leave is solid, pending is striped. Weekends and public holidays are shaded." />
+      <PageHeader title={t("title")} description={t("description")} />
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <Link href={hrefWith(path, sp, { month: ym(prev) })} className={buttonVariants({ variant: "outline", size: "icon" })} aria-label="Previous month">
-            <ChevronLeft aria-hidden />
+          <Link href={hrefWith(path, sp, { month: ym(prev) })} className={buttonVariants({ variant: "outline", size: "icon" })} aria-label={t("previousMonth")}>
+            <ChevronLeft className="rtl:-scale-x-100" aria-hidden />
           </Link>
           <h2 className="w-44 text-center text-lg font-semibold">
-            {MONTHS[m - 1]} {y}
+            {f.month(new Date(Date.UTC(y, m - 1, 1)))}
           </h2>
-          <Link href={hrefWith(path, sp, { month: ym(next) })} className={buttonVariants({ variant: "outline", size: "icon" })} aria-label="Next month">
-            <ChevronRight aria-hidden />
+          <Link href={hrefWith(path, sp, { month: ym(next) })} className={buttonVariants({ variant: "outline", size: "icon" })} aria-label={t("nextMonth")}>
+            <ChevronRight className="rtl:-scale-x-100" aria-hidden />
           </Link>
           <Link href={hrefWith(path, sp, { month: undefined })} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-            Today
+            {t("today")}
           </Link>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {scopes.length > 1 && (
-            <nav className="flex gap-1 rounded-lg border p-0.5 text-sm" aria-label="Whose leave">
+            <nav className="flex gap-1 rounded-lg border p-0.5 text-sm" aria-label={t("scopeNav")}>
               {scopes.map((s) => (
                 <Link key={s.value} href={hrefWith(path, sp, { scope: s.value, department: undefined })} aria-current={scope === s.value ? "page" : undefined} className={cn("rounded-md px-3 py-1", scope === s.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
                   {s.label}
@@ -67,13 +71,13 @@ export default async function LeaveCalendarPage({ searchParams }: { searchParams
           )}
           {scope === "company" && (
             <Toolbar>
-              <FilterSelect param="department" label="Department" options={departments} />
+              <FilterSelect param="department" label={tc("department")} options={departments} />
             </Toolbar>
           )}
         </div>
       </div>
       {data.rows.length === 0 ? (
-        <EmptyState title="No one to show" />
+        <EmptyState title={t("emptyRows")} />
       ) : (
         <CalendarGrid
           year={y}

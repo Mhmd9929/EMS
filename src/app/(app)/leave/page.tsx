@@ -7,7 +7,9 @@ import { getEmployeeBalances } from "@/server/services/leave/balance.service";
 import { REQUEST_SORTS, listLeaveRequests } from "@/server/services/leave/request.service";
 import { listLeaveTypes } from "@/server/services/leave/config.service";
 import { first, parseListParams, type SearchParams } from "@/lib/list-params";
-import { formatDate, todayInTimeZone } from "@/lib/dates";
+import { todayInTimeZone } from "@/lib/dates";
+import { getTranslations } from "next-intl/server";
+import { getFormat } from "@/server/i18n";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,10 +21,12 @@ import { ClearFilters, FilterSelect, Toolbar } from "@/components/data-table/too
 import { hrefWith } from "@/components/data-table/url";
 import { EmptyState } from "@/components/empty-state";
 import { BalanceCards } from "@/components/leave/balance-cards";
-import { LEAVE_STATUSES, LeaveStatusBadge, LeaveTypeLabel } from "@/components/leave/leave-badges";
+import { LEAVE_STATUSES, LEAVE_STATUS_VALUES, LeaveStatusBadge, LeaveTypeLabel } from "@/components/leave/leave-badges";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "My leave" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("leave"))("meta.myLeave") };
+}
 
 export default async function MyLeavePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -38,22 +42,24 @@ export default async function MyLeavePage({ searchParams }: { searchParams: Prom
     listLeaveTypes(ctx),
   ]);
   const path = "/leave";
+  const [t, tc, te, f] = await Promise.all([getTranslations("leave"), getTranslations("common"), getTranslations("enums"), getFormat()]);
+  const statusOptions = LEAVE_STATUS_VALUES.map((v) => ({ value: v, label: te(`leaveStatus.${v}`) }));
 
   return (
     <>
       <PageHeader
-        title="My leave"
-        description="Your balances and requests. Balances are per calendar year."
+        title={t("my.title")}
+        description={t("my.description")}
         actions={
           <Link href="/leave/apply" className={buttonVariants()}>
-            <CalendarPlus aria-hidden /> Apply for leave
+            <CalendarPlus aria-hidden /> {t("my.applyForLeave")}
           </Link>
         }
       />
-      {sp.withdrawn && <Alert variant="success" className="mb-4">Request withdrawn.</Alert>}
+      {sp.withdrawn && <Alert variant="success" className="mb-4">{t("my.withdrawn")}</Alert>}
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Balances {year}</h2>
-        <nav aria-label="Year" className="flex gap-1 rounded-lg border p-0.5 text-sm">
+        <h2 className="text-lg font-semibold">{t("my.balancesYear", { year: String(year) })}</h2>
+        <nav aria-label={tc("year")} className="flex gap-1 rounded-lg border p-0.5 text-sm">
           {[thisYear - 1, thisYear, thisYear + 1].map((y) => (
             <Link key={y} href={hrefWith(path, sp, { year: y === thisYear ? undefined : y, page: undefined })} aria-current={y === year ? "page" : undefined} className={cn("rounded-md px-3 py-1", y === year ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
               {y}
@@ -63,24 +69,24 @@ export default async function MyLeavePage({ searchParams }: { searchParams: Prom
       </div>
       <BalanceCards balances={balances} />
 
-      <h2 className="mt-10 mb-3 text-lg font-semibold">My requests</h2>
+      <h2 className="mt-10 mb-3 text-lg font-semibold">{t("my.myRequests")}</h2>
       <Toolbar>
-        <FilterSelect param="status" label="Status" options={LEAVE_STATUSES} />
-        <FilterSelect param="type" label="Type" options={types.map((t) => ({ value: t.id, label: t.name }))} />
+        <FilterSelect param="status" label={tc("status")} options={statusOptions} />
+        <FilterSelect param="type" label={tc("type")} options={types.map((lt) => ({ value: lt.id, label: lt.name }))} />
         <ClearFilters params={["status", "type"]} />
       </Toolbar>
       {requests.items.length === 0 ? (
-        <EmptyState icon={Plane} title={`No requests in ${year}`} description="When you apply for leave it shows up here with its approval status." action={<Link href="/leave/apply" className={buttonVariants({ variant: "outline" })}>Apply for leave</Link>} />
+        <EmptyState icon={Plane} title={t("my.emptyTitle", { year: String(year) })} description={t("my.emptyDescription")} action={<Link href="/leave/apply" className={buttonVariants({ variant: "outline" })}>{t("my.applyForLeave")}</Link>} />
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
-                <SortHeader label="Dates" sortKey="startDate" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-                <SortHeader label="Days" sortKey="days" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-                <TableHead>Status</TableHead>
-                <SortHeader label="Requested" sortKey="createdAt" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden md:table-cell" />
+                <TableHead>{tc("type")}</TableHead>
+                <SortHeader label={t("columns.dates")} sortKey="startDate" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
+                <SortHeader label={t("columns.days")} sortKey="days" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
+                <TableHead>{tc("status")}</TableHead>
+                <SortHeader label={t("columns.requested")} sortKey="createdAt" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden md:table-cell" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,15 +98,15 @@ export default async function MyLeavePage({ searchParams }: { searchParams: Prom
                     </Link>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    {formatDate(r.startDate)}
-                    {r.endDate.getTime() !== r.startDate.getTime() && ` – ${formatDate(r.endDate)}`}
-                    {r.halfDay !== "NONE" && <span className="text-muted-foreground"> ({r.halfDay === "FIRST_HALF" ? "morning" : "afternoon"})</span>}
+                    {f.date(r.startDate)}
+                    {r.endDate.getTime() !== r.startDate.getTime() && ` – ${f.date(r.endDate)}`}
+                    {r.halfDay !== "NONE" && <span className="text-muted-foreground"> ({t(`halfDayPart.${r.halfDay}`)})</span>}
                   </TableCell>
                   <TableCell className="tabular-nums">{r.days}</TableCell>
                   <TableCell>
                     <LeaveStatusBadge status={r.status} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground hidden text-sm md:table-cell">{formatDate(r.createdAt)}</TableCell>
+                  <TableCell className="text-muted-foreground hidden text-sm md:table-cell">{f.date(r.createdAt)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

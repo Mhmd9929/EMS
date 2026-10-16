@@ -22,28 +22,32 @@ import { createAdjustment, deleteAdjustment } from "@/server/services/payroll/ad
 import { approveRun, calculateRun, cancelRun, createRun, releaseRun, reopenRun, returnRun, setEntryStatus, submitRun } from "@/server/services/payroll/run.service";
 import { approveSettlement, saveSettlement } from "@/server/services/payroll/settlement.service";
 import type { ActionResult } from "@/lib/action-result";
+import { serverT } from "@/server/i18n";
 
 const id = z.string().min(1).max(64);
 const refresh = () => revalidatePath("/payroll", "layout");
 
 export async function savePayComponentAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await upsertPayComponent(ctx, parseInput(payComponentSchema, fd));
     refresh();
-  }, "Pay component saved.");
+  }, t("success.componentSaved"));
 }
 
 export async function savePayrollSettingsAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await updatePayrollSettings(ctx, parseInput(payrollSettingsSchema, fd));
     refresh();
-  }, "Payroll settings saved.");
+  }, t("success.settingsSaved"));
 }
 
 export async function saveSalaryAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     const input = parseInput(salaryStructureSchema, fd);
     const r = await createSalaryStructure(ctx, input);
@@ -51,35 +55,36 @@ export async function saveSalaryAction(_prev: ActionResult | null, fd: FormData)
     refresh();
     return {
       ok: true,
-      message: r.backdatedOverReleased
-        ? `Salary saved. It is backdated over released payroll (${r.backdatedOverReleased}) — add an arrears adjustment if the difference must be paid.`
-        : "Salary saved.",
+      message: r.backdatedOverReleased ? t("success.salaryBackdated", { period: r.backdatedOverReleased }) : t("success.salarySaved"),
     };
   });
 }
 
 export async function deleteSalaryAction(structureId: string, employeeId: string): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await deleteSalaryStructure(ctx, id.parse(structureId));
     revalidatePath(`/employees/${employeeId}`);
-  }, "Scheduled salary change deleted.");
+  }, t("success.salaryDeleted"));
 }
 
 export async function saveAdjustmentAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await createAdjustment(ctx, parseInput(adjustmentSchema, fd));
     refresh();
-  }, "Adjustment added.");
+  }, t("success.adjustmentAdded"));
 }
 
 export async function deleteAdjustmentAction(adjustmentId: string): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await deleteAdjustment(ctx, id.parse(adjustmentId));
     refresh();
-  }, "Adjustment deleted.");
+  }, t("success.adjustmentDeleted"));
 }
 
 export async function createRunAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
@@ -97,90 +102,103 @@ export async function createRunAction(_prev: ActionResult | null, fd: FormData):
 
 export async function calculateRunAction(runId: string): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     const r = await calculateRun(ctx, id.parse(runId));
     refresh();
-    return { ok: true, message: `Calculated ${r.calculated} employees.${r.skipped.length ? ` Skipped ${r.skipped.length} already in another run for this month.` : ""}` };
+    return {
+      ok: true,
+      message: r.skipped.length ? t("success.calculatedSkipped", { count: r.calculated, skipped: r.skipped.length }) : t("success.calculated", { count: r.calculated }),
+    };
   });
 }
 
 export async function setEntryStatusAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await setEntryStatus(ctx, parseInput(entryStatusSchema, fd));
     refresh();
-  }, "Updated.");
+  }, t("success.entryUpdated"));
 }
 
 export async function submitRunAction(runId: string): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await submitRun(ctx, id.parse(runId));
     refresh();
-  }, "Submitted for approval.");
+  }, t("success.submitted"));
 }
 
 export async function approveRunAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     const input = parseInput(runCommentSchema, fd);
     await approveRun(ctx, input.runId, input.comment);
     refresh();
-  }, "Payroll approved.");
+  }, t("success.approved"));
 }
 
 export async function returnRunAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     const input = parseInput(runCommentSchema, fd);
     await returnRun(ctx, input.runId, input.comment);
     refresh();
-  }, "Sent back for changes.");
+  }, t("success.returned"));
 }
 
 export async function releaseRunAction(runId: string): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await releaseRun(ctx, id.parse(runId));
     refresh();
     revalidatePath("/payslips");
-  }, "Released. Payslips are available to employees.");
+  }, t("success.released"));
 }
 
 export async function cancelRunAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     const input = parseInput(runReasonSchema, fd);
     await cancelRun(ctx, input.runId, input.reason);
     refresh();
-  }, "Run cancelled.");
+  }, t("success.cancelled"));
 }
 
 export async function reopenRunAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     const input = parseInput(runReasonSchema, fd);
     await reopenRun(ctx, input.runId, input.reason);
     refresh();
     revalidatePath("/payslips");
-  }, "Run reopened. Its payslips are withdrawn until it is released again.");
+  }, t("success.reopened"));
 }
 
 export async function saveSettlementAction(_prev: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     const input = parseInput(settlementSchema, fd);
     await saveSettlement(ctx, input);
     revalidatePath(`/employees/${input.employeeId}`);
     refresh();
-  }, "Final settlement saved as draft.");
+  }, t("success.settlementSaved"));
 }
 
 export async function approveSettlementAction(settlementId: string, employeeId: string): Promise<ActionResult> {
   const ctx = await requireAuth();
+  const t = await serverT("payroll");
   return runAction(async () => {
     await approveSettlement(ctx, id.parse(settlementId));
     revalidatePath(`/employees/${employeeId}`);
     refresh();
-  }, "Final settlement approved.");
+  }, t("success.settlementApproved"));
 }

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Mail, MapPin, Building2, UserRound } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar } from "@/components/ui/avatar";
@@ -22,6 +23,7 @@ export type PersonCardData = {
 /** Non-sensitive employee card shown from the directory and the org chart. */
 export function PersonCardDialog({ person, onClose, extra }: { person: PersonCardData | null; onClose: () => void; extra?: React.ReactNode }) {
   const [first, ...rest] = (person?.name ?? "").split(" ");
+  const t = useTranslations("directory.personCard");
   return (
     <Dialog open={!!person} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
@@ -35,7 +37,7 @@ export function PersonCardDialog({ person, onClose, extra }: { person: PersonCar
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2">
                 <Mail className="text-muted-foreground size-4" aria-hidden />
-                <a href={`mailto:${person.email}`} className="hover:underline">
+                <a href={`mailto:${person.email}`} dir="ltr" className="hover:underline">
                   {person.email}
                 </a>
               </li>
@@ -52,14 +54,14 @@ export function PersonCardDialog({ person, onClose, extra }: { person: PersonCar
               {person.manager !== undefined && (
                 <li className="flex items-center gap-2">
                   <UserRound className="text-muted-foreground size-4" aria-hidden />
-                  Reports to {person.manager ?? "—"}
+                  {t("reportsTo", { name: person.manager ?? "—" })}
                 </li>
               )}
             </ul>
             {extra}
             {person.canOpenProfile && (
               <Link href={`/employees/${person.id}`} className={buttonVariants({ variant: "outline", className: "w-full" })}>
-                Open full profile
+                {t("openProfile")}
               </Link>
             )}
           </>

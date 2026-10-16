@@ -3,7 +3,23 @@
  * No server imports so it can be unit-tested directly.
  */
 import Papa from "papaparse";
+import type { ZodError } from "zod";
 import { employeeCreateSchema, type EmployeeCreateInput } from "@/lib/validation/employee";
+import enMessages from "../../../messages/en/employees.json";
+
+/** Keys of the import report messages (messages/<locale>/employees.json → import.errors). */
+export type ImportMessageKey = keyof (typeof enMessages)["import"]["errors"];
+/** Translates an import report message; the server passes the request locale's translator. */
+export type ImportTranslate = (key: ImportMessageKey, values?: Record<string, string | number>) => string;
+export type ImportI18n = {
+  t?: ImportTranslate;
+  /** Translates a Zod issue's message (defaults to the English message). */
+  issueMessage?: (issue: ZodError["issues"][number]) => string;
+};
+
+/** English fallback (keeps this module free of server imports so it stays unit-testable). */
+const englishT: ImportTranslate = (key, values = {}) =>
+  enMessages.import.errors[key].replace(/\{(\w+)\}/g, (m, name: string) => (name in values ? String(values[name]) : m));
 
 export const IMPORT_COLUMNS = [
   { key: "employeeNumber", required: false, example: "", help: "Blank = auto-generate" },
@@ -66,24 +82,27 @@ export type ImportValidation = {
   fileErrors: string[];
 };
 
-export function parseCsv(text: string): { records: Record<string, string>[]; headers: string[]; errors: string[] } {
+export function parseCsv(text: string, i18n: ImportI18n = {}): { records: Record<string, string>[]; headers: string[]; errors: string[] } {
   const parsed = Papa.parse<Record<string, string>>(text.replace(/^﻿/, ""), {
     header: true,
     skipEmptyLines: "greedy",
     transformHeader: (h) => h.trim(),
     transform: (v) => v.trim(),
   });
-  const errors = parsed.errors.slice(0, 10).map((e) => `Row ${(e.row ?? 0) + 1}: ${e.message}`);
+  const t = i18n.t ?? englishT;
+  const errors = parsed.errors.slice(0, 10).map((e) => t("rowParse", { row: (e.row ?? 0) + 1, message: e.message }));
   return { records: parsed.data, headers: parsed.meta.fields ?? [], errors };
 }
 
-export function validateImport(records: Record<string, string>[], headers: string[], lookups: ImportLookups): ImportValidation {
+export function validateImport(records: Record<string, string>[], headers: string[], lookups: ImportLookups, i18n: ImportI18n = {}): ImportValidation {
+  const t = i18n.t ?? englishT;
+  const issueMessage = i18n.issueMessage ?? ((issue: ZodError["issues"][number]) => issue.message);
   const fileErrors: string[] = [];
   const headerMap = new Map(headers.map((h) => [h.toLowerCase(), h]));
   const missing = IMPORT_COLUMNS.filter((c) => c.required && !headerMap.has(c.key.toLowerCase())).map((c) => c.key);
-  if (missing.length) fileErrors.push(`Missing required columns: ${missing.join(", ")}`);
-  if (records.length === 0) fileErrors.push("The file has no data rows.");
-  if (records.length > MAX_IMPORT_ROWS) fileErrors.push(`Too many rows (max ${MAX_IMPORT_ROWS}).`);
+  if (missing.length) fileErrors.push(t("missingColumns", { columns: missing.join(", ") }));
+  if (records.length === 0) fileErrors.push(t("noRows"));
+  if (records.length > MAX_IMPORT_ROWS) fileErrors.push(t("tooManyRows", { max: MAX_IMPORT_ROWS }));
   if (fileErrors.length) return { rows: [], creationOrder: [], errorCount: fileErrors.length, fileErrors };
 
   const get = (rec: Record<string, string>, key: string) => {
@@ -100,26 +119,26 @@ export function validateImport(records: Record<string, string>[], headers: strin
     const name = `${get(rec, "firstName")} ${get(rec, "lastName")}`.trim();
 
     if (email) {
-      if (lookups.existingEmails.has(email)) errors.push(`workEmail ${email} already exists`);
-      if (emailRow.has(email)) errors.push(`workEmail duplicates row ${emailRow.get(email)! + 1}`);
+      if (lookups.existingEmails.has(email)) errors.push(t("emailExists", { email }));
+      if (emailRow.has(email)) errors.push(t("emailDuplicate", { row: emailRow.get(email)! + 1 }));
       else emailRow.set(email, i);
     }
     if (number) {
-      if (lookups.existingNumbers.has(number)) errors.push(`employeeNumber ${number} already exists`);
-      if (numberRow.has(number)) errors.push(`employeeNumber duplicates row ${numberRow.get(number)! + 1}`);
+      if (lookups.existingNumbers.has(number)) errors.push(t("numberExists", { number }));
+      if (numberRow.has(number)) errors.push(t("numberDuplicate", { row: numberRow.get(number)! + 1 }));
       else numberRow.set(number, i);
     }
 
-    const lookup = (field: string, map: Map<string, string>, label: string) => {
+    const lookup = (field: string, map: Map<string, string>, unknownKey: ImportMessageKey) => {
       const code = get(rec, field).toUpperCase();
       if (!code) return null;
       const id = map.get(code);
-      if (!id) errors.push(`Unknown ${label} code "${code}"`);
+      if (!id) errors.push(t(unknownKey, { code }));
       return id ?? null;
     };
-    const departmentId = lookup("departmentCode", lookups.departments, "department");
-    const positionId = lookup("positionCode", lookups.positions, "position");
-    const locationId = lookup("locationCode", lookups.locations, "location");
+    const departmentId = lookup("departmentCode", lookups.departments, "unknownDepartment");
+    const positionId = lookup("positionCode", lookups.positions, "unknownPosition");
+    const locationId = lookup("locationCode", lookups.locations, "unknownLocation");
 
     const parsed = employeeCreateSchema.safeParse({
       employeeNumber: number,
@@ -156,7 +175,7 @@ export function validateImport(records: Record<string, string>[], headers: strin
       sendInvite: "false",
     });
     if (!parsed.success) {
-      for (const issue of parsed.error.issues) errors.push(`${issue.path.join(".") || "row"}: ${issue.message}`);
+      for (const issue of parsed.error.issues) errors.push(t("fieldIssue", { field: issue.path.join(".") || t("rowField"), message: issueMessage(issue) }));
     }
     return { row: i + 1, name, email, errors, input: parsed.success ? parsed.data : undefined };
   });
@@ -166,13 +185,13 @@ export function validateImport(records: Record<string, string>[], headers: strin
     const managerEmail = get(records[i], "managerEmail").toLowerCase();
     if (!managerEmail) return;
     if (managerEmail === row.email) {
-      row.errors.push("An employee cannot be their own manager");
+      row.errors.push(t("ownManager"));
       return;
     }
     const inFile = emailRow.get(managerEmail);
     if (inFile !== undefined) row.manager = { rowIndex: inFile };
     else if (lookups.activeEmployeesByEmail.has(managerEmail)) row.manager = { existingId: lookups.activeEmployeesByEmail.get(managerEmail)! };
-    else row.errors.push(`managerEmail ${managerEmail} is not an active employee or a row in this file`);
+    else row.errors.push(t("managerNotFound", { email: managerEmail }));
   });
 
   // Topological order: in-file managers before their reports. Rows left over are in a cycle.
@@ -192,13 +211,13 @@ export function validateImport(records: Record<string, string>[], headers: strin
     });
   }
   rows.forEach((row, i) => {
-    if (!placed.has(i)) row.errors.push("Reporting line forms a loop within the file");
+    if (!placed.has(i)) row.errors.push(t("loop"));
   });
   // A row whose in-file manager is invalid can't be created either.
   for (const i of order) {
     const m = rows[i].manager;
     if (m && "rowIndex" in m && rows[m.rowIndex].errors.length && !rows[i].errors.length) {
-      rows[i].errors.push(`Manager (row ${m.rowIndex + 1}) has errors`);
+      rows[i].errors.push(t("managerHasErrors", { row: m.rowIndex + 1 }));
     }
   }
 

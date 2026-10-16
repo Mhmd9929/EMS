@@ -25,6 +25,7 @@ import { copyHolidays, deleteHoliday, updateLeaveSettings, upsertHoliday, upsert
 import { createDelegation, revokeDelegation } from "@/server/services/leave/delegation.service";
 import { markAllRead, markRead } from "@/server/services/notification.service";
 import type { ActionResult } from "@/lib/action-result";
+import { serverT } from "@/server/i18n";
 
 const id = z.string().min(1).max(64);
 
@@ -71,16 +72,19 @@ export async function applyLeaveAction(_prev: ActionResult | null, formData: For
 
 export async function decideLeaveAction(_prev: ActionResult<{ approved: number; failed: string[] }> | null, formData: FormData): Promise<ActionResult<{ approved: number; failed: string[] }>> {
   const ctx = await requireAuth();
+  const t = await serverT("leave");
   return runAction(async () => {
     const input = parseInput(leaveDecisionSchema, formData);
-    if (input.decision === "REJECTED" && !input.comment) throw new ValidationError("Please give a reason when rejecting.", { comment: ["Required when rejecting"] });
+    if (input.decision === "REJECTED" && !input.comment) throw new ValidationError(t("errors.rejectReason"), { comment: [t("errors.requiredWhenRejecting")] });
     const results = await decideMany(ctx, input.requestIds, input.decision, input.comment);
     revalidatePath("/leave", "layout");
     const ok = results.filter((r) => r.ok).length;
     const failed = results.filter((r) => !r.ok).map((r) => r.error!);
-    if (!ok) throw new ValidationError(failed[0] ?? "Nothing was updated.");
-    const verb = input.decision === "APPROVED" ? "Approved" : "Rejected";
-    return { ok: true, data: { approved: ok, failed }, message: `${verb} ${ok} request${ok === 1 ? "" : "s"}${failed.length ? ` (${failed.length} failed)` : ""}.` };
+    if (!ok) throw new ValidationError(failed[0] ?? t("errors.nothingUpdated"));
+    const message = failed.length
+      ? t(input.decision === "APPROVED" ? "toasts.approvedCountFailed" : "toasts.rejectedCountFailed", { count: ok, failed: failed.length })
+      : t(input.decision === "APPROVED" ? "toasts.approvedCount" : "toasts.rejectedCount", { count: ok });
+    return { ok: true, data: { approved: ok, failed }, message };
   });
 }
 
@@ -89,7 +93,7 @@ export async function withdrawLeaveAction(requestId: string): Promise<ActionResu
   return runAction(async () => {
     await withdrawLeave(ctx, id.parse(requestId));
     revalidatePath("/leave", "layout");
-  }, "Request withdrawn.");
+  }, (await serverT("leave"))("toasts.withdrawn"));
 }
 
 export async function requestCancellationAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -98,7 +102,7 @@ export async function requestCancellationAction(_prev: ActionResult | null, form
     const input = parseInput(leaveCancelSchema, formData);
     await requestCancellation(ctx, input.requestId, input.reason);
     revalidatePath("/leave", "layout");
-  }, "Cancellation requested. Your approver has been notified.");
+  }, (await serverT("leave"))("toasts.cancellationRequested"));
 }
 
 export async function hrCancelLeaveAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -107,7 +111,7 @@ export async function hrCancelLeaveAction(_prev: ActionResult | null, formData: 
     const input = parseInput(leaveCancelSchema, formData);
     await hrCancelLeave(ctx, input.requestId, input.reason);
     revalidatePath("/leave", "layout");
-  }, "Leave cancelled.");
+  }, (await serverT("leave"))("toasts.cancelled"));
 }
 
 export async function adjustBalanceAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -115,7 +119,7 @@ export async function adjustBalanceAction(_prev: ActionResult | null, formData: 
   return runAction(async () => {
     await adjustBalance(ctx, parseInput(balanceAdjustSchema, formData));
     revalidatePath("/leave", "layout");
-  }, "Balance adjusted.");
+  }, (await serverT("leave"))("toasts.balanceAdjusted"));
 }
 
 export async function saveLeaveTypeAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -123,7 +127,7 @@ export async function saveLeaveTypeAction(_prev: ActionResult | null, formData: 
   return runAction(async () => {
     await upsertLeaveType(ctx, parseInput(leaveTypeSchema, formData));
     revalidatePath("/leave", "layout");
-  }, "Leave type saved.");
+  }, (await serverT("leave"))("toasts.typeSaved"));
 }
 
 export async function saveLeavePolicyAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -131,7 +135,7 @@ export async function saveLeavePolicyAction(_prev: ActionResult | null, formData
   return runAction(async () => {
     await upsertLeavePolicy(ctx, parseInput(leavePolicySchema, formData));
     revalidatePath("/leave/settings");
-  }, "Policy saved.");
+  }, (await serverT("leave"))("toasts.policySaved"));
 }
 
 export async function saveHolidayAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -139,7 +143,8 @@ export async function saveHolidayAction(_prev: ActionResult | null, formData: Fo
   return runAction(async () => {
     const n = await upsertHoliday(ctx, parseInput(holidaySchema, formData));
     revalidatePath("/leave", "layout");
-    return { ok: true, message: n > 1 ? `Added ${n} holiday days.` : "Holiday saved." };
+    const t = await serverT("leave");
+    return { ok: true, message: n > 1 ? t("toasts.holidayDaysAdded", { count: n }) : t("toasts.holidaySaved") };
   });
 }
 
@@ -148,7 +153,7 @@ export async function deleteHolidayAction(holidayId: string): Promise<ActionResu
   return runAction(async () => {
     await deleteHoliday(ctx, id.parse(holidayId));
     revalidatePath("/leave", "layout");
-  }, "Holiday removed.");
+  }, (await serverT("leave"))("toasts.holidayRemoved"));
 }
 
 export async function copyHolidaysAction(fromYear: number, toYear: number): Promise<ActionResult> {
@@ -156,7 +161,7 @@ export async function copyHolidaysAction(fromYear: number, toYear: number): Prom
   return runAction(async () => {
     const n = await copyHolidays(ctx, z.number().int().parse(fromYear), z.number().int().parse(toYear));
     revalidatePath("/leave/settings");
-    return { ok: true, message: `Copied ${n} holidays. Adjust the lunar (Islamic) holidays to the announced dates.` };
+    return { ok: true, message: (await serverT("leave"))("toasts.holidaysCopied", { count: n }) };
   });
 }
 
@@ -165,7 +170,7 @@ export async function saveLeaveSettingsAction(_prev: ActionResult | null, formDa
   return runAction(async () => {
     await updateLeaveSettings(ctx, parseInput(leaveSettingsSchema, formData));
     revalidatePath("/leave/settings");
-  }, "Settings saved.");
+  }, (await serverT("leave"))("toasts.settingsSaved"));
 }
 
 export async function createDelegationAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -173,7 +178,7 @@ export async function createDelegationAction(_prev: ActionResult | null, formDat
   return runAction(async () => {
     await createDelegation(ctx, parseInput(delegationSchema, formData));
     revalidatePath("/leave/approvals");
-  }, "Delegation created.");
+  }, (await serverT("leave"))("toasts.delegationCreated"));
 }
 
 export async function revokeDelegationAction(delegationId: string): Promise<ActionResult> {
@@ -181,7 +186,7 @@ export async function revokeDelegationAction(delegationId: string): Promise<Acti
   return runAction(async () => {
     await revokeDelegation(ctx, id.parse(delegationId));
     revalidatePath("/leave/approvals");
-  }, "Delegation ended.");
+  }, (await serverT("leave"))("toasts.delegationEnded"));
 }
 
 export async function markNotificationReadAction(notificationId: string): Promise<ActionResult<{ link: string | null }>> {
@@ -198,5 +203,5 @@ export async function markAllNotificationsReadAction(): Promise<ActionResult> {
   return runAction(async () => {
     await markAllRead(ctx);
     revalidatePath("/", "layout");
-  }, "All caught up.");
+  }, (await serverT("leave"))("toasts.allRead"));
 }

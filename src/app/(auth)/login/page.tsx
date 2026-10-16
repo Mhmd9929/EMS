@@ -8,7 +8,9 @@ import { LoginForm } from "./login-form";
 import { ssoLoginAction } from "@/server/actions/auth.actions";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Sign in" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("auth"))("metaSignIn") };
+}
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;

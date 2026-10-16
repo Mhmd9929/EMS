@@ -1,9 +1,12 @@
+import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/dates";
+import { createFormat } from "@/lib/format";
 
 export function EmployeeStatusBadge({ status, lastWorkingDay }: { status: string; lastWorkingDay?: Date | null }) {
-  if (status === "TERMINATED") return <Badge variant="destructive">Terminated</Badge>;
-  if (lastWorkingDay) return <Badge variant="warning">Leaving {formatDate(lastWorkingDay)}</Badge>;
-  if (status === "ON_LEAVE") return <Badge variant="secondary">On leave</Badge>;
-  return <Badge variant="success">Active</Badge>;
+  const t = useTranslations("enums.employeeStatus");
+  const f = createFormat(useLocale());
+  if (status === "TERMINATED") return <Badge variant="destructive">{t("TERMINATED")}</Badge>;
+  if (lastWorkingDay) return <Badge variant="warning">{t("leaving", { date: f.date(lastWorkingDay) })}</Badge>;
+  if (status === "ON_LEAVE") return <Badge variant="secondary">{t("ON_LEAVE")}</Badge>;
+  return <Badge variant="success">{t("ACTIVE")}</Badge>;
 }

@@ -3,14 +3,15 @@ import { db } from "@/server/db";
 import type { AuthContext } from "@/server/auth/permissions";
 import { writeAudit } from "@/server/audit";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
-import { formatDate, todayInTimeZone, toDateInput } from "@/lib/dates";
+import { todayInTimeZone, toDateInput } from "@/lib/dates";
 import { deliverEmailsInBackground, notify } from "../notification.service";
+import { serverT } from "@/server/i18n";
 
 /** Anyone who approves leave (has reports, or the approval permission) can delegate while away. */
 async function assertCanDelegate(ctx: AuthContext) {
   if (ctx.permissions.has("leave.approve.team") || ctx.permissions.has("leave.approve.all")) return;
   if (ctx.employeeId && (await db.employee.count({ where: { managerId: ctx.employeeId, status: { not: "TERMINATED" } } }))) return;
-  throw new ForbiddenError("Only approvers can delegate approvals.");
+  throw new ForbiddenError((await serverT("leave"))("errors.onlyApprovers"));
 }
 
 export async function listMyDelegations(ctx: AuthContext) {
@@ -32,14 +33,15 @@ export async function delegateOptions(ctx: AuthContext) {
 
 export async function createDelegation(ctx: AuthContext, input: { delegateId: string; startDate: Date; endDate: Date; reason: string | null }) {
   await assertCanDelegate(ctx);
-  if (input.delegateId === ctx.userId) throw new ValidationError("You cannot delegate to yourself.", { delegateId: ["Choose someone else"] });
-  if (input.endDate < todayInTimeZone(ctx.timezone)) throw new ValidationError("The delegation would already be over.", { endDate: ["Must be today or later"] });
+  const t = await serverT("leave");
+  if (input.delegateId === ctx.userId) throw new ValidationError(t("errors.selfDelegate"), { delegateId: [t("errors.chooseSomeoneElse")] });
+  if (input.endDate < todayInTimeZone(ctx.timezone)) throw new ValidationError(t("errors.delegationOver"), { endDate: [t("errors.todayOrLater")] });
   const delegate = await db.user.findFirst({ where: { id: input.delegateId, companyId: ctx.companyId, isActive: true } });
-  if (!delegate) throw new ValidationError("Choose an active colleague.", { delegateId: ["Unknown user"] });
+  if (!delegate) throw new ValidationError(t("errors.chooseActive"), { delegateId: [t("errors.unknownUser")] });
   const overlap = await db.approvalDelegation.findFirst({
     where: { delegatorId: ctx.userId, isActive: true, startDate: { lte: input.endDate }, endDate: { gte: input.startDate } },
   });
-  if (overlap) throw new ValidationError("You already have a delegation in that period.", { startDate: ["Overlaps an existing delegation"] });
+  if (overlap) throw new ValidationError(t("errors.delegationOverlap"), { startDate: [t("errors.overlapsDelegation")] });
   const ids: string[] = [];
   const created = await db.$transaction(async (tx) => {
     const d = await tx.approvalDelegation.create({ data: { companyId: ctx.companyId, delegatorId: ctx.userId, ...input } });
@@ -49,8 +51,7 @@ export async function createDelegation(ctx: AuthContext, input: { delegateId: st
         companyId: ctx.companyId,
         userIds: [delegate.id],
         type: "leave.delegation",
-        title: `${ctx.employeeName ?? ctx.name} delegated leave approvals to you`,
-        body: `From ${formatDate(input.startDate)} to ${formatDate(input.endDate)} you can approve leave for ${ctx.employeeName ?? ctx.name}'s team.${input.reason ? ` Note: ${input.reason}` : ""}`,
+        message: { key: "leaveDelegation", params: { actor: ctx.employeeName ?? ctx.name, start: input.startDate, end: input.endDate }, note: input.reason },
         link: "/leave/approvals",
       })),
     );
@@ -62,7 +63,7 @@ export async function createDelegation(ctx: AuthContext, input: { delegateId: st
 
 export async function revokeDelegation(ctx: AuthContext, id: string) {
   const d = await db.approvalDelegation.findFirst({ where: { id, delegatorId: ctx.userId } });
-  if (!d) throw new NotFoundError("Delegation not found.");
+  if (!d) throw new NotFoundError((await serverT("leave"))("errors.delegationNotFound"));
   await db.$transaction(async (tx) => {
     await tx.approvalDelegation.update({ where: { id }, data: { isActive: false } });
     await writeAudit(ctx, { action: "leave.delegation.revoke", entityType: "ApprovalDelegation", entityId: id, before: { isActive: true }, after: { isActive: false } }, tx);

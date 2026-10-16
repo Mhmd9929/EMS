@@ -6,7 +6,9 @@ import { resetPasswordAction } from "@/server/actions/auth.actions";
 import { Alert } from "@/components/ui/alert";
 import { SetPasswordForm } from "../set-password-form";
 
-export const metadata: Metadata = { title: "Reset password" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("auth"))("metaReset") };
+}
 
 export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token = "" } = await searchParams;
@@ -24,7 +26,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
       ) : (
         <>
           <Alert variant="error">{t("invalidLink")}</Alert>
-          <Link href="/forgot-password" className="text-primary text-sm hover:underline">
+          <Link href="/forgot-password" className="text-link text-sm hover:underline">
             {t("forgotTitle")}
           </Link>
         </>

@@ -6,8 +6,9 @@ export type NavIcon =
   | "leave" | "approvals" | "calendar" | "requests" | "balances" | "reports" | "leaveSettings"
   | "payslips" | "payrollRuns" | "salaries" | "adjustments" | "settlements" | "payrollSettings";
 
-export type NavItem = { href: string; labelKey: string; icon: NavIcon; anyOf?: PermissionKey[]; requiresEmployee?: boolean; badge?: "approvals" };
-export type NavGroup = { labelKey: string; items: NavItem[] };
+export type NavKey = keyof typeof import("../../../messages/en/nav.json");
+export type NavItem = { href: string; labelKey: NavKey; icon: NavIcon; anyOf?: PermissionKey[]; requiresEmployee?: boolean; badge?: "approvals" };
+export type NavGroup = { labelKey: NavKey; items: NavItem[] };
 
 export const NAV: NavGroup[] = [
   {

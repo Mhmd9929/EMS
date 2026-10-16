@@ -1,0 +1,26 @@
+{
+  "meta": { "title": "دليل الموظفين" },
+  "title": "دليل موظفي الشركة",
+  "description": "ابحث عن زملائك بالاسم أو الدور أو القسم.",
+  "searchPlaceholder": "ابحث بالاسم أو المسمى الوظيفي أو القسم…",
+  "emptyTitle": "لم يتم العثور على أحد",
+  "emptyDescription": "جرّب اسمًا آخر أو امسح عوامل التصفية.",
+  "sortLabel": "الترتيب:",
+  "sort": {
+    "name": "الاسم",
+    "department": "القسم"
+  },
+  "cardView": "عرض البطاقات",
+  "tableView": "عرض الجدول",
+  "columns": {
+    "name": "الاسم",
+    "title": "المسمى الوظيفي",
+    "department": "القسم",
+    "location": "الموقع",
+    "email": "البريد الإلكتروني"
+  },
+  "personCard": {
+    "reportsTo": "يتبع إلى {name}",
+    "openProfile": "فتح الملف الكامل"
+  }
+}
