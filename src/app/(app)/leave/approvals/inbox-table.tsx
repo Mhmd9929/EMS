@@ -18,7 +18,7 @@ import { SubmitButton } from "@/components/forms/submit-button";
 import { EmptyState } from "@/components/empty-state";
 import { LeaveTypeLabel } from "@/components/leave/leave-badges";
 import { formatDate, parseDateOnly } from "@/lib/dates";
-import { timeAgo } from "@/components/layout/notification-bell";
+import { useTimeAgo } from "@/components/layout/notification-bell";
 
 type Item = {
   id: string;
@@ -39,6 +39,7 @@ type Item = {
 const fd = (s: string) => formatDate(parseDateOnly(s));
 
 export function InboxTable({ items, readOnly }: { items: Item[]; readOnly?: boolean }) {
+  const timeAgo = useTimeAgo();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialog, setDialog] = useState<null | "APPROVED" | "REJECTED">(null);
   const toggle = (id: string) =>

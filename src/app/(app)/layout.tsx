@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { SIDEBAR_COOKIE } from "@/components/layout/sidebar-cookie";
 import { HEADER_STYLE } from "@/theme/brand";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { UserMenu } from "@/components/layout/user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { pendingApprovalCount } from "@/server/services/leave/request.service";
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       labels={{ openMenu: t("openMenu"), collapse: t("collapseSidebar"), expand: t("expandSidebar"), skip: t("skipToContent"), portal: t("portal") }}
       controls={
         <>
+          <LanguageSwitcher className="hidden sm:inline-flex" />
           <ThemeToggle label={t("toggleTheme")} />
           <NotificationBell
             unread={notifications.unread}
@@ -54,7 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             roles={ctx.roles.map((r) => r.name)}
             employeeId={ctx.employeeId}
             photoPath={ctx.photoPath}
-            labels={{ profile: t("profile"), changePassword: t("changePassword"), signOut: t("signOut") }}
+            labels={{ profile: t("profile"), changePassword: t("changePassword"), signOut: t("signOut"), accountMenu: t("accountMenu") }}
           />
         </>
       }

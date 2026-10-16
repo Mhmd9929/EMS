@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { Providers } from "@/components/layout/providers";
-import { RTL_LOCALES } from "@/i18n/request";
+import { isRtl } from "@/i18n/config";
 import { brand, brandCss } from "@/theme/brand";
 import "@fontsource-variable/inter";
 import "@fontsource/ibm-plex-sans-arabic/400.css";
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   return (
-    <html lang={locale} dir={RTL_LOCALES.includes(locale) ? "rtl" : "ltr"} suppressHydrationWarning>
+    <html lang={locale} dir={isRtl(locale) ? "rtl" : "ltr"} suppressHydrationWarning>
       <head>
         {/* Brand colours (src/theme/brand.ts) as CSS variables for both themes. */}
         <style dangerouslySetInnerHTML={{ __html: brandCss() }} />

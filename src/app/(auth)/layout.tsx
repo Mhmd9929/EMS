@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { BrandLogo } from "@/components/brand/logo";
 import { BrandWaves } from "@/components/brand/waves";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 
 /** Split layout: black brand panel with the HSA logo and gold waves, white panel with the form. */
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -16,7 +17,8 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           <p className="text-sidebar-muted max-w-xs text-sm">{t("tagline")}</p>
         </div>
       </section>
-      <section className="bg-background flex items-center justify-center px-4 py-10 sm:px-8">
+      <section className="bg-background relative flex items-center justify-center px-4 py-14 sm:px-8">
+        <LanguageSwitcher variant="outline" className="absolute end-4 top-4" />
         <main className="w-full max-w-sm">{children}</main>
       </section>
     </div>

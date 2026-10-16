@@ -1,0 +1,101 @@
+{
+  "employmentType": {
+    "FULL_TIME": "Full-time",
+    "PART_TIME": "Part-time",
+    "CONTRACT": "Contract"
+  },
+  "employeeStatus": {
+    "ACTIVE": "Active",
+    "ON_LEAVE": "On leave",
+    "TERMINATED": "Terminated",
+    "leaving": "Leaving {date}"
+  },
+  "gender": {
+    "MALE": "Male",
+    "FEMALE": "Female"
+  },
+  "terminationReason": {
+    "Resignation": "Resignation",
+    "End of contract": "End of contract",
+    "Termination by employer": "Termination by employer",
+    "Termination during probation": "Termination during probation",
+    "Retirement": "Retirement",
+    "Absconding": "Absconding",
+    "Death": "Death",
+    "Other": "Other"
+  },
+  "emirate": {
+    "Abu Dhabi": "Abu Dhabi",
+    "Dubai": "Dubai",
+    "Sharjah": "Sharjah",
+    "Ajman": "Ajman",
+    "Umm Al Quwain": "Umm Al Quwain",
+    "Ras Al Khaimah": "Ras Al Khaimah",
+    "Fujairah": "Fujairah"
+  },
+  "leaveStatus": {
+    "PENDING": "Pending",
+    "APPROVED": "Approved",
+    "REJECTED": "Rejected",
+    "CANCELLED": "Cancelled",
+    "CANCELLATION_REQUESTED": "Cancellation requested"
+  },
+  "approvalRole": {
+    "MANAGER": "Manager",
+    "HR": "HR"
+  },
+  "halfDay": {
+    "NONE": "Full day",
+    "FIRST_HALF": "First half",
+    "SECOND_HALF": "Second half"
+  },
+  "accrualMethod": {
+    "UPFRONT": "Yearly, up front",
+    "MONTHLY": "Monthly accrual",
+    "NONE": "No balance"
+  },
+  "runStatus": {
+    "DRAFT": "Draft",
+    "CALCULATED": "Calculated",
+    "UNDER_REVIEW": "Under review",
+    "APPROVED": "Approved",
+    "RELEASED": "Released",
+    "CANCELLED": "Cancelled"
+  },
+  "entryStatus": {
+    "INCLUDED": "Included",
+    "HELD": "Held",
+    "EXCLUDED": "Excluded"
+  },
+  "settlementStatus": {
+    "DRAFT": "Draft",
+    "APPROVED": "Approved",
+    "CANCELLED": "Cancelled"
+  },
+  "componentKind": {
+    "EARNING": "Earning",
+    "DEDUCTION": "Deduction"
+  },
+  "calcType": {
+    "FIXED": "Fixed amount",
+    "FORMULA": "Formula"
+  },
+  "prorationBasis": {
+    "CALENDAR_DAYS": "Calendar days",
+    "THIRTY_DAYS": "30-day month"
+  },
+  "runScope": {
+    "ALL": "All employees",
+    "DEPARTMENT": "One department",
+    "LOCATION": "One location"
+  },
+  "weekday": {
+    "1": "Monday",
+    "2": "Tuesday",
+    "3": "Wednesday",
+    "4": "Thursday",
+    "5": "Friday",
+    "6": "Saturday",
+    "7": "Sunday"
+  }
+}

@@ -4,13 +4,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { ActionResult } from "@/lib/action-result";
+import { useTranslations } from "next-intl";
 
 /** Button that asks for confirmation, then runs a server action and toasts the result. */
 export function ConfirmAction({
   trigger,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel,
   destructive,
   action,
   onDone,
@@ -23,6 +24,7 @@ export function ConfirmAction({
   action: () => Promise<ActionResult<unknown>>;
   onDone?: (result: ActionResult<unknown>) => void;
 }) {
+  const t = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   return (
@@ -35,7 +37,7 @@ export function ConfirmAction({
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
@@ -50,7 +52,7 @@ export function ConfirmAction({
               })
             }
           >
-            {pending ? "Working…" : confirmLabel}
+            {pending ? t("working") : (confirmLabel ?? t("confirm"))}
           </Button>
         </DialogFooter>
       </DialogContent>

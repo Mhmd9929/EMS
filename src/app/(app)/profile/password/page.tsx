@@ -6,7 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { Alert } from "@/components/ui/alert";
 
-export const metadata: Metadata = { title: "Change password" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("auth"))("metaChange") };
+}
 
 export default async function ChangePasswordPage({ searchParams }: { searchParams: Promise<{ changed?: string }> }) {
   const { changed } = await searchParams;
@@ -14,7 +16,7 @@ export default async function ChangePasswordPage({ searchParams }: { searchParam
   const t = await getTranslations("auth");
   return (
     <>
-      <PageHeader title="Change password" description="Changing your password signs you out on every other device." />
+      <PageHeader title={t("forcedChangeTitle")} description={t("changePasswordDescription")} />
       {changed && <Alert variant="success" className="mb-4 max-w-md">Password changed. Other sessions have been signed out.</Alert>}
       <Card className="max-w-md">
         <CardContent>

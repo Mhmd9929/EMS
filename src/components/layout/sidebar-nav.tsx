@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { NavIcon } from "./nav";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 const ICONS: Record<NavIcon, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
@@ -42,13 +43,14 @@ export type SidebarGroup = { label: string; items: { href: string; label: string
 
 export function SidebarNav({ groups, onNavigate, collapsed = false }: { groups: SidebarGroup[]; onNavigate?: () => void; collapsed?: boolean }) {
   const pathname = usePathname();
+  const t = useTranslations("nav");
   // Longest matching prefix wins, so /employees/import doesn't also highlight /employees.
   const all = groups.flatMap((g) => g.items.map((i) => i.href));
   const active = all
     .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
     .sort((a, b) => b.length - a.length)[0];
   return (
-    <nav aria-label="Main" className={cn("flex flex-col py-4", collapsed ? "gap-3 px-2" : "gap-5 px-3")}>
+    <nav aria-label={t("main")} className={cn("flex flex-col py-4", collapsed ? "gap-3 px-2" : "gap-5 px-3")}>
       {groups.map((g) => (
         <div key={g.label} className="space-y-0.5">
           {collapsed ? (
@@ -79,9 +81,9 @@ export function SidebarNav({ groups, onNavigate, collapsed = false }: { groups: 
                 {!collapsed && item.label}
                 {!!item.badge &&
                   (collapsed ? (
-                    <span className="bg-primary absolute end-1.5 top-1.5 size-2 rounded-full" aria-label={`${item.badge} waiting`} />
+                    <span className="bg-primary absolute end-1.5 top-1.5 size-2 rounded-full" aria-label={t("waiting", { count: item.badge })} />
                   ) : (
-                    <span className="bg-primary text-primary-foreground ms-auto rounded-full px-1.5 text-[11px] leading-5 font-semibold tabular-nums" aria-label={`${item.badge} waiting`}>
+                    <span className="bg-primary text-primary-foreground ms-auto rounded-full px-1.5 text-[11px] leading-5 font-semibold tabular-nums" aria-label={t("waiting", { count: item.badge })}>
                       {item.badge}
                     </span>
                   ))}
