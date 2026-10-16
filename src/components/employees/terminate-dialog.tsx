@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserX } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cancelTerminationAction, terminateEmployeeAction } from "@/server/actions/employee.actions";
 import { useFormAction } from "@/components/forms/use-form-action";
 import { useActionFeedback, fieldError } from "@/components/forms/use-action-feedback";
@@ -17,6 +18,9 @@ import { TERMINATION_REASONS } from "@/lib/constants";
 export function TerminateDialog({ employeeId, name, minDate }: { employeeId: string; name: string; minDate: string }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const t = useTranslations("employees.terminate");
+  const tc = useTranslations("common");
+  const te = useTranslations("enums.terminationReason");
   const { state, onSubmit, pending } = useFormAction(terminateEmployeeAction);
   useActionFeedback(state, {
     onSuccess: () => {
@@ -28,41 +32,41 @@ export function TerminateDialog({ employeeId, name, minDate }: { employeeId: str
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="destructive">
-          <UserX aria-hidden /> Terminate
+          <UserX aria-hidden /> {t("button")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Terminate {name}</DialogTitle>
-          <DialogDescription>
-            The record is kept (never deleted). Sign-in is blocked after the last working day; if that date has already passed it takes effect immediately.
-          </DialogDescription>
+          <DialogTitle>{t("title", { name })}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="grid gap-4">
           <FormError state={state} />
           <input type="hidden" name="id" value={employeeId} />
-          <Field label="Last working day" name="lastWorkingDay" error={fieldError(state, "lastWorkingDay")} required>
+          <Field label={t("lastWorkingDay")} name="lastWorkingDay" error={fieldError(state, "lastWorkingDay")} required>
             <Input type="date" min={minDate} />
           </Field>
-          <Field label="Reason" name="reason" error={fieldError(state, "reason")} required>
+          <Field label={tc("reason")} name="reason" error={fieldError(state, "reason")} required>
             <NativeSelect defaultValue="">
               <option value="" disabled>
-                Select a reason
+                {t("selectReason")}
               </option>
               {TERMINATION_REASONS.map((r) => (
-                <option key={r}>{r}</option>
+                <option key={r} value={r}>
+                  {te(r)}
+                </option>
               ))}
             </NativeSelect>
           </Field>
-          <Field label="Notes" name="notes" error={fieldError(state, "notes")}>
+          <Field label={tc("notes")} name="notes" error={fieldError(state, "notes")}>
             <Textarea rows={3} />
           </Field>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <SubmitButton variant="destructive" pending={pending}>
-              Confirm termination
+              {t("confirm")}
             </SubmitButton>
           </DialogFooter>
         </form>
@@ -73,11 +77,12 @@ export function TerminateDialog({ employeeId, name, minDate }: { employeeId: str
 
 export function CancelTerminationButton({ employeeId }: { employeeId: string }) {
   const router = useRouter();
+  const t = useTranslations("employees.terminate");
   return (
     <ConfirmAction
-      trigger={<Button variant="outline">Cancel termination</Button>}
-      title="Cancel the scheduled termination?"
-      description="The employee stays active with no last working day."
+      trigger={<Button variant="outline">{t("cancelButton")}</Button>}
+      title={t("cancelTitle")}
+      description={t("cancelDescription")}
       action={() => cancelTerminationAction(employeeId)}
       onDone={() => router.refresh()}
     />

@@ -6,8 +6,12 @@ import { requireAuth, can } from "@/server/auth/context";
 import { getEmployeeDetail, getReportingChain, type EmployeeDetail } from "@/server/services/employee.service";
 import { ForbiddenError, NotFoundError } from "@/server/errors";
 import { first, type SearchParams } from "@/lib/list-params";
-import { daysBetween, formatDate, formatDateTime, todayInTimeZone, yearsBetween } from "@/lib/dates";
-import { EMPLOYMENT_TYPES, GENDERS, labelOf } from "@/lib/constants";
+import { useLocale, useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
+import { daysBetween, todayInTimeZone, yearsBetween } from "@/lib/dates";
+import { TERMINATION_REASONS } from "@/lib/constants";
+import { createFormat } from "@/lib/format";
+import { getFormat } from "@/server/i18n";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -25,7 +29,12 @@ import { BalanceCards } from "@/components/leave/balance-cards";
 import { LeaveStatusBadge, LeaveTypeLabel } from "@/components/leave/leave-badges";
 import { PayrollSection } from "./payroll-section";
 
-export const metadata: Metadata = { title: "Employee" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("employees"))("meta.detail") };
+}
+
+const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed"] as const;
+const isOneOf = <T extends string>(list: readonly T[], v: string): v is T => (list as readonly string[]).includes(v);
 
 function DL({ items }: { items: [string, React.ReactNode][] }) {
   return (
@@ -41,30 +50,33 @@ function DL({ items }: { items: [string, React.ReactNode][] }) {
 }
 
 function ExpiryBadge({ date, today }: { date: Date | null; today: Date }) {
+  const t = useTranslations("employees.detail.documents");
+  const f = createFormat(useLocale());
   if (!date) return <>—</>;
   const days = daysBetween(today, date);
   return (
     <span className="inline-flex items-center gap-2">
-      {formatDate(date)}
-      {days < 0 ? <Badge variant="destructive">Expired</Badge> : days <= 60 ? <Badge variant="warning">{days}d left</Badge> : null}
+      {f.date(date)}
+      {days < 0 ? <Badge variant="destructive">{t("expired")}</Badge> : days <= 60 ? <Badge variant="warning">{t("daysLeft", { count: days })}</Badge> : null}
     </span>
   );
 }
 
 async function LeaveSection({ ctx, employeeId, year }: { ctx: Awaited<ReturnType<typeof requireAuth>>; employeeId: string; year: number }) {
   const [balances, requests] = await Promise.all([getEmployeeBalances(ctx, employeeId, year), recentRequestsFor(ctx, employeeId).catch(() => null)]);
+  const [t, f] = await Promise.all([getTranslations("employees.detail.leave"), getFormat()]);
   return (
     <div className="space-y-4">
-      <h2 className="text-base font-semibold">Balances {year}</h2>
+      <h2 className="text-base font-semibold">{t("balances", { year: String(year) })}</h2>
       <BalanceCards balances={balances} />
       {requests && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent requests</CardTitle>
+            <CardTitle className="text-base">{t("recentRequests")}</CardTitle>
           </CardHeader>
           <CardContent>
             {requests.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No leave requests yet.</p>
+              <p className="text-muted-foreground text-sm">{t("noRequests")}</p>
             ) : (
               <ul className="divide-y text-sm">
                 {requests.map((r) => (
@@ -73,8 +85,8 @@ async function LeaveSection({ ctx, employeeId, year }: { ctx: Awaited<ReturnType
                       <LeaveTypeLabel name={r.leaveType.name} color={r.leaveType.color} />
                     </Link>
                     <span className="text-muted-foreground">
-                      {formatDate(r.startDate)}
-                      {r.endDate.getTime() !== r.startDate.getTime() && ` – ${formatDate(r.endDate)}`} · {r.days}d
+                      {f.date(r.startDate)}
+                      {r.endDate.getTime() !== r.startDate.getTime() && ` – ${f.date(r.endDate)}`} · {t("days", { count: Number(r.days) })}
                     </span>
                     <LeaveStatusBadge status={r.status} />
                   </li>
@@ -99,27 +111,30 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   });
   const chain = await getReportingChain(ctx, id);
   const today = todayInTimeZone(ctx.timezone);
+  const [t, tc, te, f] = await Promise.all([getTranslations("employees"), getTranslations("common"), getTranslations("enums"), getFormat()]);
+  const reasonLabel = (r: string | null) => (r && isOneOf(TERMINATION_REASONS, r) ? te(`terminationReason.${r}`) : r);
+  const maritalLabel = (m: string | null) => (m && isOneOf(MARITAL_STATUSES, m) ? t(`maritalStatus.${m}`) : m);
 
   // Tabs are gated on the server: only permitted tabs are listed and rendered.
   const tabs = [
-    { key: "overview", label: "Overview" },
-    { key: "job", label: "Job" },
-    ...(e.access !== "team" ? [{ key: "documents", label: "Documents" }] : []),
-    { key: "leave", label: "Leave" },
-    ...(e.access === "self" || (e.access === "all" && (can(ctx, "employee.sensitive.read") || can(ctx, "payroll.salary.read"))) ? [{ key: "payroll", label: "Payroll" }] : []),
+    { key: "overview", label: t("detail.tabs.overview") },
+    { key: "job", label: t("detail.tabs.job") },
+    ...(e.access !== "team" ? [{ key: "documents", label: t("detail.tabs.documents") }] : []),
+    { key: "leave", label: t("detail.tabs.leave") },
+    ...(e.access === "self" || (e.access === "all" && (can(ctx, "employee.sensitive.read") || can(ctx, "payroll.salary.read"))) ? [{ key: "payroll", label: t("detail.tabs.payroll") }] : []),
   ];
   const requested = first(sp.tab) ?? "overview";
-  const tab = tabs.some((t) => t.key === requested) ? requested : "overview";
+  const tab = tabs.some((x) => x.key === requested) ? requested : "overview";
   const name = `${e.preferredName || e.firstName} ${e.lastName}`;
   const LeaveTab = () => <LeaveSection ctx={ctx} employeeId={e.id} year={today.getUTCFullYear()} />;
   const serviceYears = yearsBetween(e.joinDate, e.lastWorkingDay && e.lastWorkingDay < today ? e.lastWorkingDay : today);
 
   return (
     <div className="space-y-6">
-      {sp.created && <Alert variant="success">Employee created.{e.account && !e.account.activated && " An invitation can be (re)sent from the Account card."}</Alert>}
-      {sp.updated && <Alert variant="success">Changes saved.</Alert>}
+      {sp.created && <Alert variant="success">{e.account && !e.account.activated ? t("detail.createdInviteAlert") : t("detail.createdAlert")}</Alert>}
+      {sp.updated && <Alert variant="success">{t("detail.updatedAlert")}</Alert>}
 
-      <nav aria-label="Reporting chain" className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs">
+      <nav aria-label={t("detail.reportingChain")} className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs">
         {chain
           .slice()
           .reverse()
@@ -128,7 +143,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               <Link href={`/employees/${m.id}`} className="hover:text-foreground hover:underline">
                 {m.name}
               </Link>
-              <ChevronRight className="size-3" aria-hidden />
+              <ChevronRight className="size-3 rtl:-scale-x-100" aria-hidden />
             </span>
           ))}
         <span className="text-foreground">{name}</span>
@@ -143,15 +158,18 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               <EmployeeStatusBadge status={e.status} lastWorkingDay={e.lastWorkingDay} />
             </div>
             <p className="text-muted-foreground text-sm">
-              {e.position?.title ?? "No position"} · {e.department?.name ?? "No department"} · <span className="font-mono">{e.employeeNumber}</span>
+              {e.position?.title ?? t("detail.noPosition")} · {e.department?.name ?? t("detail.noDepartment")} ·{" "}
+              <span className="font-mono" dir="ltr">
+                {e.employeeNumber}
+              </span>
             </p>
             <p className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
               <a href={`mailto:${e.workEmail}`} className="hover:text-foreground inline-flex items-center gap-1">
-                <Mail className="size-3.5" aria-hidden /> {e.workEmail}
+                <Mail className="size-3.5" aria-hidden /> <span dir="ltr">{e.workEmail}</span>
               </a>
               {e.phone && (
                 <span className="inline-flex items-center gap-1">
-                  <Phone className="size-3.5" aria-hidden /> {e.phone}
+                  <Phone className="size-3.5" aria-hidden /> <span dir="ltr">{e.phone}</span>
                 </span>
               )}
               {e.location && (
@@ -165,7 +183,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
         <div className="flex flex-wrap gap-2">
           {e.canEdit && (
             <Link href={`/employees/${e.id}/edit`} className={buttonVariants({ variant: "outline" })}>
-              <Pencil aria-hidden /> Edit
+              <Pencil aria-hidden /> {tc("edit")}
             </Link>
           )}
           {e.canTerminate && !e.lastWorkingDay && <TerminateDialog employeeId={e.id} name={name} minDate={e.joinDate.toISOString().slice(0, 10)} />}
@@ -174,8 +192,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
       </div>
 
       {e.lastWorkingDay && (
-        <Alert variant={e.status === "TERMINATED" ? "error" : "warning"} title={e.status === "TERMINATED" ? "Terminated" : "Termination scheduled"}>
-          Last working day {formatDate(e.lastWorkingDay)} · {e.terminationReason}
+        <Alert variant={e.status === "TERMINATED" ? "error" : "warning"} title={e.status === "TERMINATED" ? t("detail.terminated") : t("detail.terminationScheduled")}>
+          {t("detail.lastWorkingDayLine", { date: f.date(e.lastWorkingDay), reason: reasonLabel(e.terminationReason) ?? "" })}
           {e.terminationNotes && ` — ${e.terminationNotes}`}
         </Alert>
       )}
@@ -186,20 +204,20 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base">Personal information</CardTitle>
+              <CardTitle className="text-base">{t("detail.personal.title")}</CardTitle>
             </CardHeader>
             <CardContent>
               <DL
                 items={[
-                  ["Full name", `${e.firstName} ${e.lastName}`],
-                  ["Preferred name", e.preferredName],
-                  ["Date of birth", e.dateOfBirth ? `${formatDate(e.dateOfBirth)} (${yearsBetween(e.dateOfBirth, today)} yrs)` : null],
-                  ["Gender", e.gender ? labelOf(GENDERS, e.gender) : null],
-                  ["Nationality", e.nationality],
-                  ["Marital status", e.maritalStatus],
-                  ["Personal email", e.personalEmail],
-                  ["Mobile", e.phone],
-                  ["Address", e.address],
+                  [t("detail.personal.fullName"), `${e.firstName} ${e.lastName}`],
+                  [t("detail.personal.preferredName"), e.preferredName],
+                  [t("detail.personal.dateOfBirth"), e.dateOfBirth ? t("detail.personal.dateWithAge", { date: f.date(e.dateOfBirth), years: yearsBetween(e.dateOfBirth, today) }) : null],
+                  [t("detail.personal.gender"), e.gender ? te(`gender.${e.gender}`) : null],
+                  [t("detail.personal.nationality"), e.nationality],
+                  [t("detail.personal.maritalStatus"), maritalLabel(e.maritalStatus)],
+                  [t("detail.personal.personalEmail"), e.personalEmail ? <span key="pe" dir="ltr">{e.personalEmail}</span> : null],
+                  [t("detail.personal.mobile"), e.phone ? <span key="ph" dir="ltr">{e.phone}</span> : null],
+                  [t("detail.personal.address"), e.address],
                 ]}
               />
             </CardContent>
@@ -208,7 +226,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
             {(e.access === "all" && e.canEdit) || e.access === "self" ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Photo</CardTitle>
+                  <CardTitle className="text-base">{t("detail.photo")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <PhotoUpload employeeId={e.id} hasPhoto={!!e.photoPath} />
@@ -218,18 +236,24 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
             {e.account && can(ctx, "user.manage") && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Account</CardTitle>
+                  <CardTitle className="text-base">{t("detail.account.title")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div className="flex flex-wrap gap-1">
-                    {!e.account.isActive ? <Badge variant="destructive">Disabled</Badge> : e.account.activated ? <Badge variant="success">Active</Badge> : <Badge variant="warning">Invitation pending</Badge>}
+                    {!e.account.isActive ? (
+                      <Badge variant="destructive">{t("detail.account.disabled")}</Badge>
+                    ) : e.account.activated ? (
+                      <Badge variant="success">{t("detail.account.active")}</Badge>
+                    ) : (
+                      <Badge variant="warning">{t("detail.account.invitationPending")}</Badge>
+                    )}
                     {e.account.roles.map((r) => (
                       <Badge key={r.id} variant="secondary">
                         {r.name}
                       </Badge>
                     ))}
                   </div>
-                  <p className="text-muted-foreground">Last sign-in: {formatDateTime(e.account.lastLoginAt, ctx.timezone)}</p>
+                  <p className="text-muted-foreground">{t("detail.account.lastSignIn", { date: f.dateTime(e.account.lastLoginAt, ctx.timezone) })}</p>
                   {e.account.isActive && <AccountActions userId={e.account.id} activated={e.account.activated} />}
                 </CardContent>
               </Card>
@@ -238,7 +262,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
           {e.access !== "team" && (
             <Card className="lg:col-span-3">
               <CardHeader>
-                <CardTitle className="text-base">Emergency contacts</CardTitle>
+                <CardTitle className="text-base">{t("detail.emergencyContacts")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <EmergencyContacts employeeId={e.id} contacts={e.emergencyContacts} canManage={e.canEdit || e.access === "self"} />
@@ -252,36 +276,36 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base">Employment</CardTitle>
+              <CardTitle className="text-base">{t("detail.job.employment")}</CardTitle>
             </CardHeader>
             <CardContent>
               <DL
                 items={[
-                  ["Employee number", <span key="n" className="font-mono">{e.employeeNumber}</span>],
-                  ["Employment type", labelOf(EMPLOYMENT_TYPES, e.employmentType)],
-                  ["Position", e.position ? `${e.position.title}${e.position.grade ? ` · ${e.position.grade}` : ""}` : null],
-                  ["Department", e.department?.name],
-                  ["Location", e.location?.name],
-                  ["Join date", formatDate(e.joinDate)],
-                  ["Years of service", `${serviceYears} ${serviceYears === 1 ? "year" : "years"}`],
-                  ["Probation end", e.probationEndDate ? (
+                  [t("detail.job.employeeNumber"), <span key="n" className="font-mono" dir="ltr">{e.employeeNumber}</span>],
+                  [t("detail.job.employmentType"), te(`employmentType.${e.employmentType}`)],
+                  [tc("position"), e.position ? `${e.position.title}${e.position.grade ? ` · ${e.position.grade}` : ""}` : null],
+                  [tc("department"), e.department?.name],
+                  [tc("location"), e.location?.name],
+                  [t("detail.job.joinDate"), f.date(e.joinDate)],
+                  [t("detail.job.yearsOfService"), t("detail.job.years", { count: serviceYears })],
+                  [t("detail.job.probationEnd"), e.probationEndDate ? (
                     <span key="p" className="inline-flex items-center gap-2">
-                      {formatDate(e.probationEndDate)}
-                      {e.probationEndDate >= today ? <Badge variant="secondary">On probation</Badge> : <Badge variant="success">Confirmed</Badge>}
+                      {f.date(e.probationEndDate)}
+                      {e.probationEndDate >= today ? <Badge variant="secondary">{t("detail.job.onProbation")}</Badge> : <Badge variant="success">{t("detail.job.confirmed")}</Badge>}
                     </span>
                   ) : null],
-                  ["Last working day", e.lastWorkingDay ? formatDate(e.lastWorkingDay) : null],
+                  [t("detail.job.lastWorkingDay"), e.lastWorkingDay ? f.date(e.lastWorkingDay) : null],
                 ]}
               />
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Reporting line</CardTitle>
+              <CardTitle className="text-base">{t("detail.job.reportingLine")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div>
-                <p className="text-muted-foreground mb-1 text-xs">Manager</p>
+                <p className="text-muted-foreground mb-1 text-xs">{tc("manager")}</p>
                 {e.manager ? (
                   <Link href={`/employees/${e.manager.id}`} className="hover:underline">
                     {e.manager.preferredName || e.manager.firstName} {e.manager.lastName}
@@ -292,7 +316,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 )}
               </div>
               <div>
-                <p className="text-muted-foreground mb-1 text-xs">Direct reports ({e.directReports.length})</p>
+                <p className="text-muted-foreground mb-1 text-xs">{t("detail.job.directReports", { count: e.directReports.length })}</p>
                 {e.directReports.length === 0 ? (
                   "—"
                 ) : (
@@ -316,23 +340,23 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
       {tab === "documents" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">UAE identity documents</CardTitle>
+            <CardTitle className="text-base">{t("detail.documents.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!e.canSeeSensitive && <Alert>Document numbers are masked. You need the &ldquo;view sensitive data&rdquo; permission to see them in full.</Alert>}
+            {!e.canSeeSensitive && <Alert>{t("detail.documents.masked")}</Alert>}
             <DL
               items={[
-                ["Emirates ID", <span key="eid" className="font-mono">{e.emiratesIdNumber ?? "—"}</span>],
-                ["Emirates ID expiry", <ExpiryBadge key="eidx" date={e.emiratesIdExpiry} today={today} />],
-                ["Passport", <span key="pp" className="font-mono">{e.passportNumber ?? "—"}</span>],
-                ["Passport expiry", <ExpiryBadge key="ppx" date={e.passportExpiry} today={today} />],
-                ["Visa", <span key="v" className="font-mono">{e.visaNumber ?? "—"}</span>],
-                ["Visa expiry", <ExpiryBadge key="vx" date={e.visaExpiry} today={today} />],
-                ["Labour card", <span key="lc" className="font-mono">{e.labourCardNumber ?? "—"}</span>],
-                ["Labour card expiry", <ExpiryBadge key="lcx" date={e.labourCardExpiry} today={today} />],
+                [t("detail.documents.emiratesId"), <span key="eid" className="font-mono" dir="ltr">{e.emiratesIdNumber ?? "—"}</span>],
+                [t("detail.documents.emiratesIdExpiry"), <ExpiryBadge key="eidx" date={e.emiratesIdExpiry} today={today} />],
+                [t("detail.documents.passport"), <span key="pp" className="font-mono" dir="ltr">{e.passportNumber ?? "—"}</span>],
+                [t("detail.documents.passportExpiry"), <ExpiryBadge key="ppx" date={e.passportExpiry} today={today} />],
+                [t("detail.documents.visa"), <span key="v" className="font-mono" dir="ltr">{e.visaNumber ?? "—"}</span>],
+                [t("detail.documents.visaExpiry"), <ExpiryBadge key="vx" date={e.visaExpiry} today={today} />],
+                [t("detail.documents.labourCard"), <span key="lc" className="font-mono" dir="ltr">{e.labourCardNumber ?? "—"}</span>],
+                [t("detail.documents.labourCardExpiry"), <ExpiryBadge key="lcx" date={e.labourCardExpiry} today={today} />],
               ]}
             />
-            <p className="text-muted-foreground text-xs">Document uploads and automatic expiry alerts arrive in Phase 4.</p>
+            <p className="text-muted-foreground text-xs">{t("detail.documents.comingSoon")}</p>
           </CardContent>
         </Card>
       )}

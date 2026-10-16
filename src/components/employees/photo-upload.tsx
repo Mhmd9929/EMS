@@ -2,6 +2,7 @@
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { removePhotoAction, uploadPhotoAction } from "@/server/actions/employee.actions";
 import { useFormAction } from "@/components/forms/use-form-action";
 import { useActionFeedback } from "@/components/forms/use-action-feedback";
@@ -10,6 +11,7 @@ import { ConfirmAction } from "@/components/confirm-action";
 
 export function PhotoUpload({ employeeId, hasPhoto }: { employeeId: string; hasPhoto: boolean }) {
   const router = useRouter();
+  const t = useTranslations("employees.photo");
   const formRef = useRef<HTMLFormElement>(null);
   const { state, onSubmit, pending } = useFormAction(uploadPhotoAction);
   useActionFeedback(state, { onSuccess: () => router.refresh() });
@@ -18,7 +20,7 @@ export function PhotoUpload({ employeeId, hasPhoto }: { employeeId: string; hasP
       <form ref={formRef} onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="employeeId" value={employeeId} />
         <label className="sr-only" htmlFor={`photo-${employeeId}`}>
-          Profile photo
+          {t("label")}
         </label>
         <input
           id={`photo-${employeeId}`}
@@ -31,21 +33,21 @@ export function PhotoUpload({ employeeId, hasPhoto }: { employeeId: string; hasP
         />
         <noscript>
           <Button type="submit" size="sm">
-            <Upload aria-hidden /> Upload
+            <Upload aria-hidden /> {t("upload")}
           </Button>
         </noscript>
       </form>
-      <p className="text-muted-foreground text-xs">PNG, JPG or WebP, up to 2 MB.</p>
+      <p className="text-muted-foreground text-xs">{t("hint")}</p>
       {hasPhoto && (
         <ConfirmAction
           trigger={
             <Button variant="link" size="sm" className="h-auto px-0">
-              Remove photo
+              {t("remove")}
             </Button>
           }
-          title="Remove photo?"
+          title={t("removeTitle")}
           destructive
-          confirmLabel="Remove"
+          confirmLabel={t("removeConfirm")}
           action={() => removePhotoAction(employeeId)}
           onDone={() => router.refresh()}
         />

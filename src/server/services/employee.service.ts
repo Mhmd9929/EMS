@@ -14,6 +14,10 @@ import { todayInTimeZone } from "@/lib/dates";
 import { SYSTEM_ROLES } from "@/server/rbac/catalogue";
 import type { EmployeeCreateInput, EmployeeUpdateInput } from "@/lib/validation/employee";
 import { sendInvite } from "./user.service";
+import { serverT } from "@/server/i18n";
+
+/** Translator for user-facing error messages (request locale; English outside requests). */
+const tErr = () => serverT("employees");
 
 // ───────────────────────────── Listing ─────────────────────────────
 
@@ -180,7 +184,7 @@ export async function getDirectoryCard(ctx: AuthContext, id: string) {
     where: { id, companyId: ctx.companyId, status: { not: "TERMINATED" } },
     select: { ...directorySelect, _count: { select: { directReports: { where: { status: { not: "TERMINATED" } } } } } },
   });
-  if (!e) throw new NotFoundError("Employee not found.");
+  if (!e) throw new NotFoundError((await tErr())("errors.employeeNotFound"));
   return e;
 }
 
@@ -258,7 +262,7 @@ export async function getEmployeeDetail(ctx: AuthContext, id: string): Promise<E
   const access = await getEmployeeAccess(ctx, id);
   if (access === "none") throw new ForbiddenError();
   const e = await db.employee.findFirst({ where: { id, companyId: ctx.companyId }, include: detailInclude });
-  if (!e) throw new NotFoundError("Employee not found.");
+  if (!e) throw new NotFoundError((await tErr())("errors.employeeNotFound"));
 
   const canSeeSensitive = access === "self" || (access === "all" && ctx.permissions.has("employee.sensitive.read"));
   const { user, ...rest } = e;
@@ -303,7 +307,7 @@ export async function getEmployeeForEdit(ctx: AuthContext, id: string) {
   assertCan(ctx, "employee.update");
   if ((await getEmployeeAccess(ctx, id)) !== "all") throw new ForbiddenError();
   const e = await db.employee.findFirst({ where: { id, companyId: ctx.companyId } });
-  if (!e) throw new NotFoundError("Employee not found.");
+  if (!e) throw new NotFoundError((await tErr())("errors.employeeNotFound"));
   return e;
 }
 
@@ -335,11 +339,12 @@ async function assertReferences(tx: DbClient, companyId: string, input: { depart
     input.managerId ? tx.employee.count({ where: { id: input.managerId, companyId, status: { not: "TERMINATED" } } }) : 1,
   ]);
   const fieldErrors: Record<string, string[]> = {};
-  if (!checks[0]) fieldErrors.departmentId = ["Unknown department"];
-  if (!checks[1]) fieldErrors.positionId = ["Unknown position"];
-  if (!checks[2]) fieldErrors.locationId = ["Unknown location"];
-  if (!checks[3]) fieldErrors.managerId = ["Manager must be an active employee"];
-  if (Object.keys(fieldErrors).length) throw new ValidationError("Please correct the highlighted fields.", fieldErrors);
+  const t = await tErr();
+  if (!checks[0]) fieldErrors.departmentId = [t("errors.unknownDepartment")];
+  if (!checks[1]) fieldErrors.positionId = [t("errors.unknownPosition")];
+  if (!checks[2]) fieldErrors.locationId = [t("errors.unknownLocation")];
+  if (!checks[3]) fieldErrors.managerId = [t("errors.managerInactive")];
+  if (Object.keys(fieldErrors).length) throw new ValidationError(t("errors.correctFields"), fieldErrors);
 }
 
 /** Atomically reserve the next employee number (skipping any taken manually). */
@@ -354,7 +359,7 @@ export async function nextEmployeeNumber(tx: DbClient, companyId: string): Promi
     const taken = await tx.employee.count({ where: { companyId, employeeNumber: candidate } });
     if (!taken) return candidate;
   }
-  throw new ConflictError("Could not allocate an employee number.");
+  throw new ConflictError((await tErr())("errors.numberAllocation"));
 }
 
 /** Give the manager role to anyone who now has direct reports. */
@@ -415,12 +420,18 @@ export async function createEmployee(ctx: AuthContext, input: EmployeeCreateInpu
     await assertReferences(client, ctx.companyId, input);
     const emailTaken = await client.user.findUnique({ where: { email: input.workEmail } });
     const employeeEmailTaken = await client.employee.count({ where: { companyId: ctx.companyId, workEmail: input.workEmail } });
-    if (emailTaken || employeeEmailTaken) throw new ValidationError("Email already in use.", { workEmail: ["This email is already in use"] });
+    if (emailTaken || employeeEmailTaken) {
+      const t = await tErr();
+      throw new ValidationError(t("errors.emailInUse"), { workEmail: [t("errors.emailInUseField")] });
+    }
 
     let employeeNumber = input.employeeNumber;
     if (employeeNumber) {
       const taken = await client.employee.count({ where: { companyId: ctx.companyId, employeeNumber } });
-      if (taken) throw new ValidationError("Employee number already in use.", { employeeNumber: ["Already in use"] });
+      if (taken) {
+        const t = await tErr();
+        throw new ValidationError(t("errors.numberInUse"), { employeeNumber: [t("errors.alreadyInUse")] });
+      }
     } else {
       employeeNumber = await nextEmployeeNumber(client, ctx.companyId);
     }
@@ -451,16 +462,20 @@ export async function updateEmployee(ctx: AuthContext, input: EmployeeUpdateInpu
   if ((await getEmployeeAccess(ctx, input.id)) !== "all") throw new ForbiddenError();
   return db.$transaction(async (tx) => {
     const before = await tx.employee.findFirst({ where: { id: input.id, companyId: ctx.companyId } });
-    if (!before) throw new NotFoundError("Employee not found.");
+    if (!before) throw new NotFoundError((await tErr())("errors.employeeNotFound"));
     await assertReferences(tx, ctx.companyId, input);
     if (await createsManagerCycle(tx, ctx.companyId, input.id, input.managerId)) {
-      throw new ValidationError("Invalid reporting line.", { managerId: ["This would create a reporting loop (the manager reports to this employee)"] });
+      const t = await tErr();
+      throw new ValidationError(t("errors.invalidReportingLine"), { managerId: [t("errors.reportingLoop")] });
     }
     if (input.workEmail !== before.workEmail) {
       const conflict =
         (await tx.employee.count({ where: { companyId: ctx.companyId, workEmail: input.workEmail, id: { not: input.id } } })) ||
         (await tx.user.count({ where: { email: input.workEmail, ...(before.userId && { id: { not: before.userId } }) } }));
-      if (conflict) throw new ValidationError("Email already in use.", { workEmail: ["This email is already in use"] });
+      if (conflict) {
+      const t = await tErr();
+      throw new ValidationError(t("errors.emailInUse"), { workEmail: [t("errors.emailInUseField")] });
+    }
     }
     const after = await tx.employee.update({ where: { id: input.id }, data: employeeData(input) });
     if (before.userId) {
@@ -485,14 +500,15 @@ export async function terminateEmployee(
   input: { id: string; lastWorkingDay: Date; reason: string; notes: string | null },
 ) {
   assertCan(ctx, "employee.terminate");
-  if (input.id === ctx.employeeId) throw new ValidationError("You cannot terminate yourself.");
+  if (input.id === ctx.employeeId) throw new ValidationError((await tErr())("errors.cannotTerminateSelf"));
   if ((await getEmployeeAccess(ctx, input.id)) !== "all") throw new ForbiddenError();
   const result = await db.$transaction(async (tx) => {
     const before = await tx.employee.findFirst({ where: { id: input.id, companyId: ctx.companyId } });
-    if (!before) throw new NotFoundError("Employee not found.");
-    if (before.status === "TERMINATED") throw new ValidationError("Employee is already terminated.");
+    if (!before) throw new NotFoundError((await tErr())("errors.employeeNotFound"));
+    if (before.status === "TERMINATED") throw new ValidationError((await tErr())("errors.alreadyTerminated"));
     if (input.lastWorkingDay < before.joinDate) {
-      throw new ValidationError("Invalid date.", { lastWorkingDay: ["Must be on or after the join date"] });
+      const t = await tErr();
+      throw new ValidationError(t("errors.invalidDate"), { lastWorkingDay: [t("errors.onOrAfterJoinDate")] });
     }
     const today = todayInTimeZone(ctx.timezone);
     const effectiveNow = input.lastWorkingDay < today;
@@ -523,8 +539,8 @@ export async function cancelTermination(ctx: AuthContext, id: string) {
   if ((await getEmployeeAccess(ctx, id)) !== "all") throw new ForbiddenError();
   return db.$transaction(async (tx) => {
     const before = await tx.employee.findFirst({ where: { id, companyId: ctx.companyId } });
-    if (!before) throw new NotFoundError("Employee not found.");
-    if (before.status === "TERMINATED" || !before.lastWorkingDay) throw new ValidationError("There is no scheduled termination to cancel.");
+    if (!before) throw new NotFoundError((await tErr())("errors.employeeNotFound"));
+    if (before.status === "TERMINATED" || !before.lastWorkingDay) throw new ValidationError((await tErr())("errors.noScheduledTermination"));
     const after = await tx.employee.update({
       where: { id },
       data: { lastWorkingDay: null, terminationReason: null, terminationNotes: null, terminatedAt: null, terminatedById: null },
@@ -541,7 +557,7 @@ export async function updateOwnProfile(
   ctx: AuthContext,
   input: { preferredName: string | null; personalEmail: string | null; phone: string | null; address: string | null; maritalStatus: string | null },
 ) {
-  if (!ctx.employeeId) throw new ValidationError("Your account is not linked to an employee record.");
+  if (!ctx.employeeId) throw new ValidationError((await tErr())("errors.accountNotLinked"));
   return db.$transaction(async (tx) => {
     const before = await tx.employee.findUniqueOrThrow({ where: { id: ctx.employeeId! } });
     const after = await tx.employee.update({ where: { id: ctx.employeeId! }, data: input });
@@ -565,18 +581,18 @@ export async function upsertEmergencyContact(
 ) {
   await assertCanManageContacts(ctx, input.employeeId);
   const employee = await db.employee.findFirst({ where: { id: input.employeeId, companyId: ctx.companyId }, select: { id: true } });
-  if (!employee) throw new NotFoundError("Employee not found.");
+  if (!employee) throw new NotFoundError((await tErr())("errors.employeeNotFound"));
   const data = { name: input.name, relationship: input.relationship, phone: input.phone, email: input.email };
   return db.$transaction(async (tx) => {
     if (input.id) {
       const before = await tx.emergencyContact.findFirst({ where: { id: input.id, employeeId: input.employeeId } });
-      if (!before) throw new NotFoundError("Contact not found.");
+      if (!before) throw new NotFoundError((await tErr())("errors.contactNotFound"));
       const after = await tx.emergencyContact.update({ where: { id: input.id }, data });
       await writeAudit(ctx, { action: "emergency_contact.update", entityType: "Employee", entityId: input.employeeId, before, after }, tx);
       return after;
     }
     const count = await tx.emergencyContact.count({ where: { employeeId: input.employeeId } });
-    if (count >= 5) throw new ValidationError("A maximum of 5 emergency contacts is allowed.");
+    if (count >= 5) throw new ValidationError((await tErr())("errors.maxContacts", { max: 5 }));
     const after = await tx.emergencyContact.create({ data: { ...data, employeeId: input.employeeId, companyId: ctx.companyId } });
     await writeAudit(ctx, { action: "emergency_contact.create", entityType: "Employee", entityId: input.employeeId, after }, tx);
     return after;
@@ -585,7 +601,7 @@ export async function upsertEmergencyContact(
 
 export async function deleteEmergencyContact(ctx: AuthContext, contactId: string) {
   const contact = await db.emergencyContact.findFirst({ where: { id: contactId, companyId: ctx.companyId } });
-  if (!contact) throw new NotFoundError("Contact not found.");
+  if (!contact) throw new NotFoundError((await tErr())("errors.contactNotFound"));
   await assertCanManageContacts(ctx, contact.employeeId);
   await db.$transaction(async (tx) => {
     await tx.emergencyContact.delete({ where: { id: contactId } });
@@ -600,7 +616,7 @@ export async function setEmployeePhoto(ctx: AuthContext, employeeId: string, pho
   }
   return db.$transaction(async (tx) => {
     const before = await tx.employee.findFirst({ where: { id: employeeId, companyId: ctx.companyId }, select: { photoPath: true } });
-    if (!before) throw new NotFoundError("Employee not found.");
+    if (!before) throw new NotFoundError((await tErr())("errors.employeeNotFound"));
     await tx.employee.update({ where: { id: employeeId }, data: { photoPath } });
     await writeAudit(ctx, { action: "employee.photo", entityType: "Employee", entityId: employeeId, before, after: { photoPath } }, tx);
     return before.photoPath;
