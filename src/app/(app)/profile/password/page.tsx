@@ -17,7 +17,7 @@ export default async function ChangePasswordPage({ searchParams }: { searchParam
   return (
     <>
       <PageHeader title={t("forcedChangeTitle")} description={t("changePasswordDescription")} />
-      {changed && <Alert variant="success" className="mb-4 max-w-md">Password changed. Other sessions have been signed out.</Alert>}
+      {changed && <Alert variant="success" className="mb-4 max-w-md">{t("passwordChangedOthers")}</Alert>}
       <Card className="max-w-md">
         <CardContent>
           <ChangePasswordForm

@@ -91,5 +91,6 @@
     "unread": "{label} ({count} unread)",
     "unreadDot": "Unread"
   },
-  "loadingLabel": "Loading"
+  "loadingLabel": "Loading",
+  "sections": "Sections"
 }

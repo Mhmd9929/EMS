@@ -91,5 +91,6 @@
     "unread": "{label} ({count} غير مقروءة)",
     "unreadDot": "غير مقروء"
   },
-  "loadingLabel": "جارٍ التحميل"
+  "loadingLabel": "جارٍ التحميل",
+  "sections": "الأقسام"
 }

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /** URL-driven tabs: only the active tab's content is rendered (and authorised) on the server. */
 export function LinkTabs({ tabs, active, baseHref }: { tabs: { key: string; label: string }[]; active: string; baseHref: string }) {
+  const t = useTranslations("common");
   return (
-    <nav aria-label="Sections" className="flex gap-1 overflow-x-auto border-b">
+    <nav aria-label={t("sections")} className="flex gap-1 overflow-x-auto border-b">
       {tabs.map((t) => (
         <Link
           key={t.key}

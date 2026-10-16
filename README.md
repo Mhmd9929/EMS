@@ -74,6 +74,18 @@ for the design and [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what's in each c
    - **Salaries**, **Adjustments** and **Payroll settings** (components, WPS IDs, gratuity rules, PDF
      password) are in the sidebar.
 
+## Languages (English / Arabic)
+
+The whole portal is available in **English and Arabic**, with a right-to-left layout for Arabic.
+- Switch from the header, the user menu or the login page. The choice is saved on the user and applies at
+  their next sign-in on any device.
+- Notifications and emails are written in the **recipient's** language. The payslip PDF and Excel exports use
+  the language of the person downloading them.
+- Arabic uses Arabic month names with Western digits (UAE convention), and the payslip shows the net amount in
+  Arabic words.
+- Developers: see [`docs/I18N.md`](docs/I18N.md) for conventions, RTL rules and the Arabic glossary.
+  `tests/unit/i18n-messages.test.ts` fails if a key is missing in either language.
+
 ## Branding
 
 All brand values live in **`src/theme/brand.ts`**: palette, light/dark tokens, header style, names, logo

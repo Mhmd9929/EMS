@@ -13,7 +13,7 @@ stack, structure, data model and access model. It is updated at every checkpoint
 | Password hashing   | `bcryptjs` (cost 12)                                                       | pure JS: no native build step in Docker/CI |
 | UI                 | Tailwind CSS v4 + shadcn/ui components (Radix primitives), `next-themes`   | components vendored in `src/components/ui` |
 | Validation         | Zod 4 — every Server Action / route handler parses its input               | schemas in `src/lib/validation` shared with forms |
-| i18n               | `next-intl` (no locale routing; locale from cookie) + `dir` on `<html>`    | `messages/en.json`; Arabic/RTL in Phase 4 |
+| i18n               | `next-intl` (no locale routing; locale from cookie + saved `User.locale`) + `dir` on `<html>` | English + Arabic (RTL); see docs/I18N.md |
 | Jobs / cron        | `pg-boss` (Postgres-backed, no Redis) in a separate `worker` process       | |
 | Email              | Nodemailer; `EMAIL_TRANSPORT=console` logs in dev, `smtp` → Mailpit/real SMTP | templates in `src/server/mail/templates` |
 | PDF (Phase 3)      | `@react-pdf/renderer` (no headless browser needed in production image)     | |
@@ -51,7 +51,7 @@ prisma/
   migrations/            # generated SQL migrations (committed)
   seed.ts                # demo company, roles/permissions, ~40 employees
   seed-data/             # deterministic seed fixtures
-messages/en.json         # i18n strings
+messages/<locale>/<ns>.json  # i18n strings (en, ar), one file per namespace
 src/
   app/
     (auth)/              # login, forgot/reset password, invite acceptance, forced password change
@@ -412,8 +412,11 @@ The employee page shows an estimate for current staff and a save/approve flow fo
 * **403 pages return HTTP 200.** The `(app)/loading.tsx` skeleton streams the shell before the page calls
   `forbidden()`, so the status code can no longer change. The 403 UI renders and no data is sent; APIs return
   real 401/403 codes. Moving skeletons to per-segment `loading.tsx` files would restore the status codes.
-* **i18n coverage.** Navigation, auth screens and common labels use `messages/en.json`; most page body
-  copy is still inline English. Extraction happens with the Arabic/RTL work in Phase 4.
+* **Translations are machine-drafted.** The Arabic text follows the glossary in `docs/I18N.md` but should be
+  reviewed by a native HR/payroll reader before go-live.
+* **Stored text stays in its original language**: audit summaries, ledger reasons ("Carried forward…"),
+  payroll line notes typed by users, and notifications already sent before a user switched language.
+* **Bank transfer CSV and the WPS SIF are always English/ASCII** (they are read by bank systems).
 * **CSP** allows `'unsafe-inline'` scripts (Next.js inline bootstrap) — a nonce-based CSP via middleware is a
   hardening follow-up.
 * **File storage** is local disk (`STORAGE_DIR`); the `Storage` interface is ready for an S3 implementation.

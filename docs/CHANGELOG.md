@@ -1,5 +1,35 @@
 # Changelog
 
+## Phase 4e — Arabic and right-to-left
+
+### Added
+- **Languages**: the whole portal in English and Arabic.
+  - The language is chosen from the header, the user menu or the login page, saved on the user
+    (`User.locale`) and applied at sign-in.
+  - `<html lang dir>` switches to RTL; logical CSS properties throughout; direction-aware icons, the org chart
+    and calendars mirror.
+- **Message files**: one file per namespace and language (`messages/en|ar/*.json`, about 2,000 keys each),
+  typed against English, with a parity test for keys and placeholders.
+- **Formatting**: `ar-AE` for Arabic (Arabic month names, Western digits) for dates, months and money.
+- **Server text**: errors, validation messages (including Zod's built-ins), toasts, Excel and CSV headers and
+  import reports are in the user's language.
+- **Notifications and emails** are rendered in each recipient's saved language from templates; Arabic emails
+  are right-to-left.
+- **Payslip PDF** in the downloader's language: IBM Plex Sans (Latin and Arabic), RTL layout, net amount in
+  Arabic words.
+- **Payroll**: calculation issues now carry codes and are translated when displayed; older stored rows fall
+  back to their English text.
+- **Docs**: `docs/I18N.md` covers conventions, RTL rules and the HR/payroll Arabic glossary.
+
+### Fixed
+- The seed and worker failed after the i18n change; they now use the framework-free translator from
+  `use-intl/core`.
+
+### Notes
+- The bank transfer CSV and the WPS SIF stay English for bank systems.
+- Audit summaries and other stored text stay as recorded.
+- The Arabic wording should be reviewed by a native speaker before go-live.
+
 ## Unreleased — HSA rebrand (UI only)
 
 ### Changed
