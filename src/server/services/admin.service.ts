@@ -5,6 +5,7 @@ import { db } from "@/server/db";
 import { assertCan, type AuthContext } from "@/server/auth/permissions";
 import { writeAudit, diffSnapshots } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/server/errors";
+import { serverT } from "@/server/i18n";
 import { ALL_PERMISSION_KEYS, PERMISSIONS, SYSTEM_ROLES } from "@/server/rbac/catalogue";
 import { paginated, type ListParams } from "@/lib/list-params";
 import { parseDateOnly, addDays } from "@/lib/dates";
@@ -38,17 +39,18 @@ export function permissionCatalogue() {
 
 export async function upsertRole(ctx: AuthContext, input: z.infer<typeof roleSchema>) {
   assertCan(ctx, "role.manage");
+  const t = await serverT("admin");
   const unknown = input.permissions.filter((p) => !(ALL_PERMISSION_KEYS as string[]).includes(p));
-  if (unknown.length) throw new ValidationError(`Unknown permissions: ${unknown.join(", ")}`);
+  if (unknown.length) throw new ValidationError(t("errors.unknownPermissions", { list: unknown.join(", ") }));
   return db.$transaction(async (tx) => {
     const nameTaken = await tx.role.findFirst({ where: { companyId: ctx.companyId, name: { equals: input.name, mode: "insensitive" }, ...(input.id && { id: { not: input.id } }) } });
-    if (nameTaken) throw new ValidationError("Name already used.", { name: ["Another role has this name"] });
+    if (nameTaken) throw new ValidationError(t("errors.roleNameUsed"), { name: [t("errors.roleNameTaken")] });
     const perms = await tx.permission.findMany({ where: { key: { in: input.permissions } } });
 
     if (input.id) {
       const before = await tx.role.findFirst({ where: { id: input.id, companyId: ctx.companyId }, include: { permissions: { include: { permission: true } } } });
-      if (!before) throw new NotFoundError("Role not found.");
-      if (before.key === SYSTEM_ROLES.SUPER_ADMIN) throw new ValidationError("The Super Admin role is locked and always has every permission.");
+      if (!before) throw new NotFoundError(t("errors.roleNotFound"));
+      if (before.key === SYSTEM_ROLES.SUPER_ADMIN) throw new ValidationError(t("errors.superAdminLocked"));
       await tx.role.update({ where: { id: before.id }, data: { name: input.name, description: input.description } });
       await tx.rolePermission.deleteMany({ where: { roleId: before.id } });
       if (perms.length) await tx.rolePermission.createMany({ data: perms.map((p) => ({ roleId: before.id, permissionId: p.id })) });
@@ -77,11 +79,12 @@ export async function upsertRole(ctx: AuthContext, input: z.infer<typeof roleSch
 
 export async function deleteRole(ctx: AuthContext, roleId: string) {
   assertCan(ctx, "role.manage");
+  const t = await serverT("admin");
   return db.$transaction(async (tx) => {
     const role = await tx.role.findFirst({ where: { id: roleId, companyId: ctx.companyId }, include: { _count: { select: { users: true } } } });
-    if (!role) throw new NotFoundError("Role not found.");
-    if (role.isSystem) throw new ValidationError("System roles cannot be deleted.");
-    if (role._count.users) throw new ValidationError("Remove this role from all users before deleting it.");
+    if (!role) throw new NotFoundError(t("errors.roleNotFound"));
+    if (role.isSystem) throw new ValidationError(t("errors.systemRoleDelete"));
+    if (role._count.users) throw new ValidationError(t("errors.roleInUse"));
     await tx.role.delete({ where: { id: roleId } });
     await writeAudit(ctx, { action: "role.delete", entityType: "Role", entityId: roleId, summary: `Deleted role ${role.name}`, before: { name: role.name } }, tx);
   });
@@ -91,7 +94,7 @@ export async function deleteRole(ctx: AuthContext, roleId: string) {
 
 export async function getCompany(ctx: AuthContext) {
   const company = await db.company.findUnique({ where: { id: ctx.companyId } });
-  if (!company) throw new NotFoundError("Company not found.");
+  if (!company) throw new NotFoundError((await serverT("admin"))("errors.companyNotFound"));
   return company;
 }
 

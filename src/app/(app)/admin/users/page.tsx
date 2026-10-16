@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { UsersRound } from "lucide-react";
 import { requireAuth, requirePermission } from "@/server/auth/context";
 import { USER_SORTS, listUsers } from "@/server/services/user.service";
 import { listRoles } from "@/server/services/admin.service";
 import { first, parseListParams, type SearchParams } from "@/lib/list-params";
-import { formatDateTime } from "@/lib/dates";
+import { getFormat } from "@/server/i18n";
+import { roleLabel } from "../roles/role-label";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +18,9 @@ import { ClearFilters, FilterSelect, SearchInput, Toolbar } from "@/components/d
 import { EmptyState } from "@/components/empty-state";
 import { UserRowActions } from "./user-row-actions";
 
-export const metadata: Metadata = { title: "Users & access" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("admin"))("users.title") };
+}
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -27,38 +31,42 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const state = stateParam === "active" || stateParam === "inactive" || stateParam === "pending" ? stateParam : undefined;
   const [result, roles] = await Promise.all([listUsers(ctx, params, { roleId: first(sp.role), state }), listRoles(ctx)]);
   const path = "/admin/users";
-  const roleOptions = roles.map((r) => ({ id: r.id, name: r.name, key: r.key }));
+  const t = await getTranslations("admin");
+  const tc = await getTranslations("common");
+  const f = await getFormat();
+  const roleName = (r: { key: string; name: string }) => roleLabel(t, r).name;
+  const roleOptions = roles.map((r) => ({ id: r.id, name: roleName(r), key: r.key }));
   return (
     <>
-      <PageHeader title="Users & access" description="Login accounts, role assignments and access. A user can hold several roles." />
+      <PageHeader title={t("users.title")} description={t("users.description")} />
       <Toolbar>
-        <SearchInput placeholder="Search name or email…" />
-        <FilterSelect param="role" label="Role" options={roles.map((r) => ({ value: r.id, label: r.name }))} />
+        <SearchInput placeholder={t("users.search")} />
+        <FilterSelect param="role" label={t("users.role")} options={roles.map((r) => ({ value: r.id, label: roleName(r) }))} />
         <FilterSelect
           param="state"
-          label="State"
+          label={t("users.state")}
           options={[
-            { value: "active", label: "Active" },
-            { value: "pending", label: "Invitation pending" },
-            { value: "inactive", label: "Disabled" },
+            { value: "active", label: t("users.states.active") },
+            { value: "pending", label: t("users.states.pending") },
+            { value: "inactive", label: t("users.states.inactive") },
           ]}
         />
         <ClearFilters params={["q", "role", "state"]} />
       </Toolbar>
       {result.items.length === 0 ? (
-        <EmptyState icon={UsersRound} title="No users match" />
+        <EmptyState icon={UsersRound} title={t("users.empty")} />
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <SortHeader label="Name" sortKey="name" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-                <SortHeader label="Email" sortKey="email" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden md:table-cell" />
-                <TableHead>Roles</TableHead>
-                <TableHead>State</TableHead>
-                <SortHeader label="Last sign-in" sortKey="lastLogin" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden lg:table-cell" />
+                <SortHeader label={tc("name")} sortKey="name" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
+                <SortHeader label={tc("email")} sortKey="email" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden md:table-cell" />
+                <TableHead>{t("users.columns.roles")}</TableHead>
+                <TableHead>{t("users.state")}</TableHead>
+                <SortHeader label={t("users.columns.lastSignIn")} sortKey="lastLogin" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="hidden lg:table-cell" />
                 <TableHead className="text-end">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{tc("actions")}</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -73,23 +81,27 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                     ) : (
                       <span className="font-medium">{u.name}</span>
                     )}
-                    <p className="text-muted-foreground text-xs md:hidden">{u.email}</p>
+                    <p className="text-muted-foreground text-xs md:hidden">
+                      <span dir="ltr">{u.email}</span>
+                    </p>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{u.email}</TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <span dir="ltr">{u.email}</span>
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {u.roles.length === 0 && <span className="text-muted-foreground text-xs">No roles</span>}
+                      {u.roles.length === 0 && <span className="text-muted-foreground text-xs">{t("users.noRoles")}</span>}
                       {u.roles.map((r) => (
                         <Badge key={r.id} variant={r.key === "SUPER_ADMIN" ? "default" : "secondary"}>
-                          {r.name}
+                          {roleName(r)}
                         </Badge>
                       ))}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {!u.isActive ? <Badge variant="destructive">Disabled</Badge> : u.activated ? <Badge variant="success">Active</Badge> : <Badge variant="warning">Pending</Badge>}
+                    {!u.isActive ? <Badge variant="destructive">{t("users.badges.disabled")}</Badge> : u.activated ? <Badge variant="success">{t("active")}</Badge> : <Badge variant="warning">{t("users.badges.pending")}</Badge>}
                   </TableCell>
-                  <TableCell className="hidden text-sm lg:table-cell">{formatDateTime(u.lastLoginAt, ctx.timezone)}</TableCell>
+                  <TableCell className="hidden text-sm lg:table-cell">{f.dateTime(u.lastLoginAt, ctx.timezone)}</TableCell>
                   <TableCell className="text-end">
                     <UserRowActions user={{ id: u.id, name: u.name, isActive: u.isActive, activated: u.activated, roleIds: u.roles.map((r) => r.id) }} roles={roleOptions} isSelf={u.id === ctx.userId} />
                   </TableCell>

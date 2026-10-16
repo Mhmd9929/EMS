@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Briefcase } from "lucide-react";
 import { requireAuth, requirePermission } from "@/server/auth/context";
 import { POSITION_SORTS, listPositions } from "@/server/services/org.service";
@@ -13,7 +14,9 @@ import { ClearFilters, FilterSelect, SearchInput, Toolbar } from "@/components/d
 import { EmptyState } from "@/components/empty-state";
 import { PositionDialog } from "./position-dialog";
 
-export const metadata: Metadata = { title: "Positions" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("organization"))("positions.title") };
+}
 
 export default async function PositionsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -23,32 +26,34 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   const active = first(sp.active);
   const result = await listPositions(ctx, params, { active: active === "yes" ? true : active === "no" ? false : undefined });
   const path = "/organization/positions";
+  const t = await getTranslations("organization");
+  const tc = await getTranslations("common");
   const sort = (label: string, key: (typeof POSITION_SORTS)[number], className?: string) => (
     <SortHeader label={label} sortKey={key} current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className={className} />
   );
   return (
     <>
-      <PageHeader title="Positions" description="Job titles with grade and level." actions={<PositionDialog />} />
+      <PageHeader title={t("positions.title")} description={t("positions.description")} actions={<PositionDialog />} />
       <Toolbar>
-        <SearchInput placeholder="Search title, code, grade…" />
-        <FilterSelect param="active" label="Status" options={[{ value: "yes", label: "Active" }, { value: "no", label: "Inactive" }]} />
+        <SearchInput placeholder={t("positions.search")} />
+        <FilterSelect param="active" label={tc("status")} options={[{ value: "yes", label: t("active") }, { value: "no", label: t("inactive") }]} />
         <ClearFilters params={["q", "active"]} />
       </Toolbar>
       {result.items.length === 0 ? (
-        <EmptyState icon={Briefcase} title={params.q ? "No positions match" : "No positions yet"} />
+        <EmptyState icon={Briefcase} title={params.q ? t("positions.noMatch") : t("positions.empty")} />
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                {sort("Title", "title")}
-                {sort("Code", "code")}
-                {sort("Grade", "grade", "hidden sm:table-cell")}
-                {sort("Level", "level", "hidden sm:table-cell")}
-                <TableHead>People</TableHead>
-                <TableHead>Status</TableHead>
+                {sort(t("positions.columns.title"), "title")}
+                {sort(t("code"), "code")}
+                {sort(t("positions.columns.grade"), "grade", "hidden sm:table-cell")}
+                {sort(t("positions.columns.level"), "level", "hidden sm:table-cell")}
+                <TableHead>{t("people")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
                 <TableHead className="text-end">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{tc("actions")}</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -60,7 +65,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                   <TableCell className="hidden sm:table-cell">{p.grade ?? "—"}</TableCell>
                   <TableCell className="hidden tabular-nums sm:table-cell">{p.level ?? "—"}</TableCell>
                   <TableCell className="tabular-nums">{p._count.employees}</TableCell>
-                  <TableCell>{p.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
+                  <TableCell>{p.isActive ? <Badge variant="success">{t("active")}</Badge> : <Badge variant="secondary">{t("inactive")}</Badge>}</TableCell>
                   <TableCell className="text-end">
                     <PositionDialog position={{ id: p.id, title: p.title, code: p.code, grade: p.grade, level: p.level, description: p.description, isActive: p.isActive }} />
                   </TableCell>

@@ -6,6 +6,7 @@ import { parseInput, runAction } from "./result";
 import { upsertDepartment, upsertLocation, upsertPosition } from "@/server/services/org.service";
 import { departmentSchema, locationSchema, positionSchema } from "@/lib/validation/org";
 import type { ActionResult } from "@/lib/action-result";
+import { serverT } from "@/server/i18n";
 
 export async function saveDepartmentAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const ctx = await requireAuth();
@@ -13,7 +14,7 @@ export async function saveDepartmentAction(_prev: ActionResult | null, formData:
     await upsertDepartment(ctx, parseInput(departmentSchema, formData));
     revalidatePath("/organization/departments");
     revalidatePath("/org-chart");
-  }, "Department saved.");
+  }, (await serverT("organization"))("departments.saved"));
 }
 
 export async function savePositionAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -21,7 +22,7 @@ export async function savePositionAction(_prev: ActionResult | null, formData: F
   return runAction(async () => {
     await upsertPosition(ctx, parseInput(positionSchema, formData));
     revalidatePath("/organization/positions");
-  }, "Position saved.");
+  }, (await serverT("organization"))("positions.saved"));
 }
 
 export async function saveLocationAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -29,5 +30,5 @@ export async function saveLocationAction(_prev: ActionResult | null, formData: F
   return runAction(async () => {
     await upsertLocation(ctx, parseInput(locationSchema, formData));
     revalidatePath("/organization/locations");
-  }, "Location saved.");
+  }, (await serverT("organization"))("locations.saved"));
 }

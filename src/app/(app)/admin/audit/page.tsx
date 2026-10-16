@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import type { Messages } from "@/i18n/messages";
 import { ScrollText } from "lucide-react";
 import { requireAuth, requirePermission } from "@/server/auth/context";
 import { auditFilterOptions, listAuditLogs } from "@/server/services/admin.service";
 import { first, parseListParams, type SearchParams } from "@/lib/list-params";
-import { formatDateTime } from "@/lib/dates";
+import { getFormat } from "@/server/i18n";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +16,13 @@ import { ClearFilters, FilterSelect, SearchInput, Toolbar } from "@/components/d
 import { DateRangeFilter } from "./date-range-filter";
 import { EmptyState } from "@/components/empty-state";
 
-export const metadata: Metadata = { title: "Audit log" };
+type AuditMessages = Messages["admin"]["audit"];
 
-function Changes({ before, after }: { before: unknown; after: unknown }) {
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("admin"))("audit.title") };
+}
+
+function Changes({ before, after, fieldsLabel }: { before: unknown; after: unknown; fieldsLabel: (count: number) => string }) {
   const b = (before ?? {}) as Record<string, unknown>;
   const a = (after ?? {}) as Record<string, unknown>;
   const keys = [...new Set([...Object.keys(b), ...Object.keys(a)])];
@@ -24,14 +30,16 @@ function Changes({ before, after }: { before: unknown; after: unknown }) {
   const show = (v: unknown) => (v === null || v === undefined ? "∅" : typeof v === "object" ? JSON.stringify(v) : String(v));
   return (
     <details className="text-xs">
-      <summary className="text-link cursor-pointer select-none">{keys.length} field{keys.length === 1 ? "" : "s"}</summary>
+      <summary className="text-link cursor-pointer select-none">{fieldsLabel(keys.length)}</summary>
       <table className="mt-2 w-full">
         <tbody>
           {keys.map((k) => (
             <tr key={k} className="border-t align-top">
-              <td className="py-1 pe-2 font-mono">{k}</td>
-              <td className="text-destructive py-1 pe-2 break-all line-through decoration-1">{k in b ? show(b[k]) : ""}</td>
-              <td className="text-success py-1 break-all">{k in a ? show(a[k]) : ""}</td>
+              <td className="py-1 pe-2 font-mono" dir="ltr">
+                {k}
+              </td>
+              <td className="text-destructive py-1 pe-2 break-all line-through decoration-1" dir="ltr">{k in b ? show(b[k]) : ""}</td>
+              <td className="text-success py-1 break-all" dir="ltr">{k in a ? show(a[k]) : ""}</td>
             </tr>
           ))}
         </tbody>
@@ -57,47 +65,60 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
     auditFilterOptions(ctx),
   ]);
   const path = "/admin/audit";
+  const t = await getTranslations("admin.audit");
+  const f = await getFormat();
+  // Entity types and action keys are codes; show a translated label when one exists.
+  const entityLabel = (e: string) => {
+    const key = `entityTypes.${e}` as `entityTypes.${keyof AuditMessages["entityTypes"]}`;
+    return t.has(key) ? t(key) : e;
+  };
+  const actionLabel = (a: string) => {
+    const key = `actions.${a.replaceAll(".", "_")}` as `actions.${keyof AuditMessages["actions"]}`;
+    return t.has(key) ? t(key) : undefined;
+  };
   return (
     <>
-      <PageHeader title="Audit log" description="Every change to sensitive data: who, what, when, before/after values and IP address." />
+      <PageHeader title={t("title")} description={t("description")} />
       <Toolbar>
-        <SearchInput placeholder="Search summary, action or entity id…" />
-        <FilterSelect param="actor" label="User" options={options.actors} />
-        <FilterSelect param="entity" label="Entity" options={options.entityTypes.map((e) => ({ value: e, label: e }))} />
+        <SearchInput placeholder={t("search")} />
+        <FilterSelect param="actor" label={t("user")} options={options.actors} />
+        <FilterSelect param="entity" label={t("entity")} options={options.entityTypes.map((e) => ({ value: e, label: entityLabel(e) }))} />
         <DateRangeFilter />
         <ClearFilters params={["q", "actor", "entity", "action", "from", "to", "entityId"]} />
       </Toolbar>
       {result.items.length === 0 ? (
-        <EmptyState icon={ScrollText} title="No audit events match" />
+        <EmptyState icon={ScrollText} title={t("empty")} />
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <SortHeader label="When" sortKey="createdAt" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-                <TableHead>User</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead className="hidden md:table-cell">Summary</TableHead>
-                <TableHead>Changes</TableHead>
-                <TableHead className="hidden lg:table-cell">IP</TableHead>
+                <SortHeader label={t("columns.when")} sortKey="createdAt" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
+                <TableHead>{t("columns.user")}</TableHead>
+                <TableHead>{t("columns.action")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("columns.summary")}</TableHead>
+                <TableHead>{t("columns.changes")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("columns.ip")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {result.items.map((a) => (
                 <TableRow key={a.id} className="align-top">
-                  <TableCell className="text-xs whitespace-nowrap">{formatDateTime(a.createdAt, ctx.timezone)}</TableCell>
-                  <TableCell className="text-sm">{a.actor?.name ?? <span className="text-muted-foreground">System</span>}</TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">{f.dateTime(a.createdAt, ctx.timezone)}</TableCell>
+                  <TableCell className="text-sm">{a.actor?.name ?? <span className="text-muted-foreground">{t("system")}</span>}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="font-mono">
+                    <Badge variant="outline" className="font-mono" dir="ltr" title={actionLabel(a.action)}>
                       {a.action}
                     </Badge>
-                    <p className="text-muted-foreground mt-1 text-xs">{a.entityType}</p>
+                    <p className="text-muted-foreground mt-1 text-xs">{entityLabel(a.entityType)}</p>
                   </TableCell>
                   <TableCell className="hidden max-w-sm text-sm md:table-cell">{a.summary ?? "—"}</TableCell>
                   <TableCell className="max-w-md">
-                    <Changes before={a.before} after={a.after} />
+                    <Changes before={a.before} after={a.after} fieldsLabel={(count) => t("fields", { count })} />
                   </TableCell>
-                  <TableCell className="hidden font-mono text-xs lg:table-cell">{a.ip ?? "—"}</TableCell>
+                  <TableCell className="hidden font-mono text-xs lg:table-cell">
+                    <span dir="ltr">{a.ip ?? "—"}</span>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

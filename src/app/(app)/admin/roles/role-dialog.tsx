@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteRoleAction, saveRoleAction } from "@/server/actions/admin.actions";
 import { useFormAction } from "@/components/forms/use-form-action";
@@ -18,16 +19,18 @@ type RoleValues = { id: string; name: string; description: string | null; permis
 
 export function RoleDialog({ catalogue, role }: { catalogue: Perm[]; role?: RoleValues }) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {role ? (
-          <Button variant="ghost" size="sm" aria-label={`Edit ${role.name}`}>
-            <Pencil aria-hidden /> Edit
+          <Button variant="ghost" size="sm" aria-label={t("roles.editLabel", { name: role.name })}>
+            <Pencil aria-hidden /> {tc("edit")}
           </Button>
         ) : (
           <Button>
-            <Plus aria-hidden /> New role
+            <Plus aria-hidden /> {t("roles.new")}
           </Button>
         )}
       </DialogTrigger>
@@ -46,19 +49,21 @@ function RoleForm({ catalogue, role, onDone }: { catalogue: Perm[]; role?: RoleV
     },
   });
   const modules = [...new Set(catalogue.map((p) => p.module))];
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{role ? `Edit ${role.name}` : "New role"}</DialogTitle>
+        <DialogTitle>{role ? t("roles.editLabel", { name: role.name }) : t("roles.new")}</DialogTitle>
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4">
         <FormError state={state} />
         <input type="hidden" name="id" value={role?.id ?? ""} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Name" name="name" error={fieldError(state, "name")} required>
+          <Field label={tc("name")} name="name" error={fieldError(state, "name")} required>
             <Input defaultValue={role?.name} />
           </Field>
-          <Field label="Description" name="description" error={fieldError(state, "description")}>
+          <Field label={tc("description")} name="description" error={fieldError(state, "description")}>
             <Input defaultValue={role?.description ?? ""} />
           </Field>
         </div>
@@ -72,7 +77,9 @@ function RoleForm({ catalogue, role, onDone }: { catalogue: Perm[]; role?: RoleV
                   <label key={p.key} className="hover:bg-accent flex items-start gap-3 rounded-md p-2 text-sm">
                     <Checkbox name="permissions" value={p.key} defaultChecked={role?.permissions.includes(p.key)} className="mt-0.5" />
                     <span>
-                      <span className="block font-mono text-xs">{p.key}</span>
+                      <span className="block font-mono text-xs" dir="ltr">
+                        {p.key}
+                      </span>
                       <span className="text-muted-foreground block text-xs">{p.description}</span>
                     </span>
                   </label>
@@ -82,9 +89,9 @@ function RoleForm({ catalogue, role, onDone }: { catalogue: Perm[]; role?: RoleV
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <SubmitButton pending={pending}>Save role</SubmitButton>
+          <SubmitButton pending={pending}>{t("roles.saveRole")}</SubmitButton>
         </DialogFooter>
       </form>
     </>
@@ -93,17 +100,19 @@ function RoleForm({ catalogue, role, onDone }: { catalogue: Perm[]; role?: RoleV
 
 export function DeleteRoleButton({ roleId, name }: { roleId: string; name: string }) {
   const router = useRouter();
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   return (
     <ConfirmAction
       trigger={
-        <Button variant="ghost" size="sm" aria-label={`Delete ${name}`}>
+        <Button variant="ghost" size="sm" aria-label={t("roles.deleteLabel", { name })}>
           <Trash2 aria-hidden />
         </Button>
       }
-      title={`Delete role "${name}"?`}
-      description="Only roles with no assigned users can be deleted."
+      title={t("roles.deleteTitle", { name })}
+      description={t("roles.deleteDescription")}
       destructive
-      confirmLabel="Delete"
+      confirmLabel={tc("delete")}
       action={() => deleteRoleAction(roleId)}
       onDone={() => router.refresh()}
     />

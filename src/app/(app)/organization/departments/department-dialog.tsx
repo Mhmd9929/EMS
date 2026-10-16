@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Pencil, Plus } from "lucide-react";
 import { saveDepartmentAction } from "@/server/actions/org.actions";
 import { useFormAction } from "@/components/forms/use-form-action";
@@ -28,17 +29,19 @@ type Options = { parents: { value: string; label: string; isActive: boolean }[];
 
 export function DepartmentDialog({ department, options, trigger }: { department?: DepartmentValues; options: Options; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ??
           (department ? (
-            <Button variant="ghost" size="sm" aria-label={`Edit ${department.name}`}>
-              <Pencil aria-hidden /> Edit
+            <Button variant="ghost" size="sm" aria-label={t("departments.editLabel", { name: department.name })}>
+              <Pencil aria-hidden /> {tc("edit")}
             </Button>
           ) : (
             <Button>
-              <Plus aria-hidden /> New department
+              <Plus aria-hidden /> {t("departments.new")}
             </Button>
           ))}
       </DialogTrigger>
@@ -57,25 +60,27 @@ function DepartmentForm({ department, options, onDone }: { department?: Departme
     },
   });
   const err = (n: string) => fieldError(state, n);
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{department ? `Edit ${department.name}` : "New department"}</DialogTitle>
+        <DialogTitle>{department ? t("departments.editLabel", { name: department.name }) : t("departments.new")}</DialogTitle>
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4">
         <FormError state={state} />
         {department && <input type="hidden" name="id" value={department.id} />}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Name" name="name" error={err("name")} required>
+          <Field label={tc("name")} name="name" error={err("name")} required>
             <Input defaultValue={department?.name} />
           </Field>
-          <Field label="Code" name="code" error={err("code")} required hint="Used in CSV imports">
+          <Field label={t("code")} name="code" error={err("code")} required hint={t("departments.form.codeHint")}>
             <Input defaultValue={department?.code} className="uppercase" />
           </Field>
         </div>
-        <Field label="Parent department" name="parentId" error={err("parentId")}>
+        <Field label={t("departments.form.parent")} name="parentId" error={err("parentId")}>
           <NativeSelect defaultValue={department?.parentId ?? ""}>
-            <option value="">— Top level —</option>
+            <option value="">{t("departments.form.topLevel")}</option>
             {options.parents
               .filter((p) => p.value !== department?.id && (p.isActive || p.value === department?.parentId))
               .map((p) => (
@@ -85,9 +90,9 @@ function DepartmentForm({ department, options, onDone }: { department?: Departme
               ))}
           </NativeSelect>
         </Field>
-        <Field label="Department head" name="headId" error={err("headId")}>
+        <Field label={t("departments.form.head")} name="headId" error={err("headId")}>
           <NativeSelect defaultValue={department?.headId ?? ""}>
-            <option value="">— None —</option>
+            <option value="">{t("departments.form.noHead")}</option>
             {options.employees.map((p) => (
               <option key={p.value} value={p.value}>
                 {p.label}
@@ -95,22 +100,22 @@ function DepartmentForm({ department, options, onDone }: { department?: Departme
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Cost centre code" name="costCenterCode" error={err("costCenterCode")}>
+        <Field label={t("departments.form.costCentre")} name="costCenterCode" error={err("costCenterCode")}>
           <Input defaultValue={department?.costCenterCode ?? ""} />
         </Field>
-        <Field label="Description" name="description" error={err("description")}>
+        <Field label={tc("description")} name="description" error={err("description")}>
           <Textarea rows={2} defaultValue={department?.description ?? ""} />
         </Field>
         <div className="flex items-center gap-2">
           <Checkbox id="dep-active" name="isActive" defaultChecked={department?.isActive ?? true} />
-          <Label htmlFor="dep-active">Active</Label>
+          <Label htmlFor="dep-active">{t("active")}</Label>
         </div>
         {err("isActive") && <p className="text-destructive text-xs">{err("isActive")![0]}</p>}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <SubmitButton pending={pending}>Save</SubmitButton>
+          <SubmitButton pending={pending}>{tc("save")}</SubmitButton>
         </DialogFooter>
       </form>
     </>

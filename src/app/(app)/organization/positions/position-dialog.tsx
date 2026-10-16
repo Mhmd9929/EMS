@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Pencil, Plus } from "lucide-react";
 import { savePositionAction } from "@/server/actions/org.actions";
 import { useFormAction } from "@/components/forms/use-form-action";
@@ -17,16 +18,18 @@ type Values = { id: string; title: string; code: string; grade: string | null; l
 
 export function PositionDialog({ position }: { position?: Values }) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {position ? (
-          <Button variant="ghost" size="sm" aria-label={`Edit ${position.title}`}>
-            <Pencil aria-hidden /> Edit
+          <Button variant="ghost" size="sm" aria-label={t("positions.editLabel", { name: position.title })}>
+            <Pencil aria-hidden /> {tc("edit")}
           </Button>
         ) : (
           <Button>
-            <Plus aria-hidden /> New position
+            <Plus aria-hidden /> {t("positions.new")}
           </Button>
         )}
       </DialogTrigger>
@@ -45,40 +48,42 @@ function PositionForm({ position, onDone }: { position?: Values; onDone: () => v
     },
   });
   const err = (n: string) => fieldError(state, n);
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{position ? `Edit ${position.title}` : "New position"}</DialogTitle>
+        <DialogTitle>{position ? t("positions.editLabel", { name: position.title }) : t("positions.new")}</DialogTitle>
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4">
         <FormError state={state} />
         {position && <input type="hidden" name="id" value={position.id} />}
-        <Field label="Title" name="title" error={err("title")} required>
+        <Field label={t("positions.columns.title")} name="title" error={err("title")} required>
           <Input defaultValue={position?.title} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Code" name="code" error={err("code")} required>
+          <Field label={t("code")} name="code" error={err("code")} required>
             <Input defaultValue={position?.code} className="uppercase" />
           </Field>
-          <Field label="Grade" name="grade" error={err("grade")}>
+          <Field label={t("positions.columns.grade")} name="grade" error={err("grade")}>
             <Input defaultValue={position?.grade ?? ""} placeholder="G5" />
           </Field>
-          <Field label="Level" name="level" error={err("level")}>
+          <Field label={t("positions.columns.level")} name="level" error={err("level")}>
             <Input type="number" min={0} max={100} defaultValue={position?.level ?? ""} />
           </Field>
         </div>
-        <Field label="Description" name="description" error={err("description")}>
+        <Field label={tc("description")} name="description" error={err("description")}>
           <Textarea rows={2} defaultValue={position?.description ?? ""} />
         </Field>
         <div className="flex items-center gap-2">
           <Checkbox id="pos-active" name="isActive" defaultChecked={position?.isActive ?? true} />
-          <Label htmlFor="pos-active">Active</Label>
+          <Label htmlFor="pos-active">{t("active")}</Label>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <SubmitButton pending={pending}>Save</SubmitButton>
+          <SubmitButton pending={pending}>{tc("save")}</SubmitButton>
         </DialogFooter>
       </form>
     </>

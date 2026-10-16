@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { KeyRound, LogOut, MoreHorizontal, Send, ShieldCheck, UserCheck, UserX } from "lucide-react";
 import { adminResetPasswordAction, revokeSessionsAction, saveUserRolesAction, sendInviteAction, setUserActiveAction } from "@/server/actions/admin.actions";
@@ -20,39 +21,41 @@ export function UserRowActions({ user, roles, isSelf }: { user: U; roles: { id: 
   const router = useRouter();
   const [rolesOpen, setRolesOpen] = useState(false);
   const [pending, start] = useTransition();
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const run = (fn: () => Promise<ActionResult<{ link: string | null } | unknown>>) =>
     start(async () => {
       const r = await fn();
       if (!r.ok) return void toast.error(r.error);
       const link = (r.data as { link?: string | null } | undefined)?.link;
-      toast.success(r.message ?? "Done", link ? { description: `Dev link: ${link}`, duration: 20000 } : undefined);
+      toast.success(r.message ?? tc("done"), link ? { description: t("users.devLink", { link }), duration: 20000 } : undefined);
       router.refresh();
     });
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label={`Actions for ${user.name}`} disabled={pending}>
+          <Button variant="ghost" size="icon" aria-label={t("users.actionsFor", { name: user.name })} disabled={pending}>
             <MoreHorizontal aria-hidden />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setRolesOpen(true)}>
-            <ShieldCheck aria-hidden /> Edit roles
+            <ShieldCheck aria-hidden /> {t("users.editRoles")}
           </DropdownMenuItem>
           {user.isActive && !user.activated && (
             <DropdownMenuItem onSelect={() => run(() => sendInviteAction(user.id))}>
-              <Send aria-hidden /> Send invitation
+              <Send aria-hidden /> {t("users.sendInvite")}
             </DropdownMenuItem>
           )}
           {user.isActive && user.activated && (
             <DropdownMenuItem onSelect={() => run(() => adminResetPasswordAction(user.id))}>
-              <KeyRound aria-hidden /> Send password reset
+              <KeyRound aria-hidden /> {t("users.sendReset")}
             </DropdownMenuItem>
           )}
           {user.isActive && (
             <DropdownMenuItem onSelect={() => run(() => revokeSessionsAction(user.id))}>
-              <LogOut aria-hidden /> Sign out everywhere
+              <LogOut aria-hidden className="rtl:-scale-x-100" /> {t("users.signOutEverywhere")}
             </DropdownMenuItem>
           )}
           {!isSelf && (
@@ -60,11 +63,11 @@ export function UserRowActions({ user, roles, isSelf }: { user: U; roles: { id: 
               <DropdownMenuSeparator />
               {user.isActive ? (
                 <DropdownMenuItem variant="destructive" onSelect={() => run(() => setUserActiveAction(user.id, false))}>
-                  <UserX aria-hidden /> Disable login
+                  <UserX aria-hidden /> {t("users.disable")}
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onSelect={() => run(() => setUserActiveAction(user.id, true))}>
-                  <UserCheck aria-hidden /> Enable login
+                  <UserCheck aria-hidden /> {t("users.enable")}
                 </DropdownMenuItem>
               )}
             </>
@@ -92,17 +95,19 @@ export function UserRowActions({ user, roles, isSelf }: { user: U; roles: { id: 
 function RolesForm({ user, roles, onDone }: { user: U; roles: { id: string; name: string; key: string }[]; onDone: () => void }) {
   const { state, onSubmit, pending } = useFormAction(saveUserRolesAction);
   useActionFeedback(state, { onSuccess: onDone });
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Roles for {user.name}</DialogTitle>
-        <DialogDescription>Effective permissions are the union of all selected roles. Changes apply on the user&apos;s next request.</DialogDescription>
+        <DialogTitle>{t("users.rolesFor", { name: user.name })}</DialogTitle>
+        <DialogDescription>{t("users.rolesHelp")}</DialogDescription>
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4">
         <FormError state={state} />
         <input type="hidden" name="userId" value={user.id} />
         <fieldset className="grid gap-2">
-          <legend className="sr-only">Roles</legend>
+          <legend className="sr-only">{t("users.rolesLegend")}</legend>
           {roles.map((r) => (
             <label key={r.id} className="hover:bg-accent flex items-center gap-3 rounded-md border p-2.5 text-sm">
               <Checkbox name="roleIds" value={r.id} defaultChecked={user.roleIds.includes(r.id)} />
@@ -112,9 +117,9 @@ function RolesForm({ user, roles, onDone }: { user: U; roles: { id: string; name
         </fieldset>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <SubmitButton pending={pending}>Save roles</SubmitButton>
+          <SubmitButton pending={pending}>{t("users.saveRoles")}</SubmitButton>
         </DialogFooter>
       </form>
     </>
