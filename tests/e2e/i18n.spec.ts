@@ -34,12 +34,14 @@ test.describe("Arabic / RTL", () => {
   });
 
   test("Arabic payslip page and PDF", async ({ page, context }) => {
+    // A language chosen in the browser wins at sign-in (and becomes the saved preference).
     await context.addCookies([{ name: "locale", value: "ar", url: "http://localhost:3000" }]);
     await page.goto("/login");
     await page.getByLabel("بريد العمل").fill(users.employee);
     await page.getByLabel("كلمة المرور", { exact: true }).fill(PASSWORD);
     await page.getByRole("button", { name: "تسجيل الدخول" }).click();
     await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await page.goto("/payslips");
     const first = page.getByRole("main").getByRole("link").filter({ hasText: /2026/ }).first();
     await first.click();
@@ -49,5 +51,9 @@ test.describe("Arabic / RTL", () => {
     const pdf = await page.request.get(`/api/payslips/${id}/pdf`);
     expect(pdf.status()).toBe(200);
     expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+    // Leave the user in English for the other specs.
+    await page.getByRole("button", { name: "قائمة الحساب" }).click();
+    await page.getByRole("menuitem", { name: "English" }).click();
+    await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   });
 });

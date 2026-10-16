@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Fonts read from disk by the payslip PDF renderer (not imported, so not traced automatically).
   outputFileTracingIncludes: {
-    "/api/payslips/[id]/pdf": ["./node_modules/@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-{latin,arabic}-{400,700}-normal.woff"],
+    "/api/payslips/[id]/pdf": ["./node_modules/@ibm/plex-sans-arabic/fonts/complete/woff/IBMPlexSansArabic-{Regular,Bold}.woff"],
   },
   poweredByHeader: false,
   experimental: {

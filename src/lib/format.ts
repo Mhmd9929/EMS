@@ -40,5 +40,9 @@ export function formatMoneyIn(locale: AppLocale, minor: number | bigint, currenc
   const intl = INTL_LOCALE[locale];
   if (opts.withCode === false) return new Intl.NumberFormat(intl, { minimumFractionDigits: d, maximumFractionDigits: d }).format(value);
   if (locale === "en") return `${currency} ${new Intl.NumberFormat("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }).format(value)}`;
-  return new Intl.NumberFormat(intl, { style: "currency", currency, minimumFractionDigits: d, maximumFractionDigits: d }).format(value);
+  // Intl wraps Arabic currency output in bidi marks (U+200F…); the page's bidi algorithm doesn't need them and
+  // the PDF renderer's font engine crashes on them, so they are removed.
+  return new Intl.NumberFormat(intl, { style: "currency", currency, minimumFractionDigits: d, maximumFractionDigits: d })
+    .format(value)
+    .replace(/[\u200e\u200f\u061c]/g, "");
 }

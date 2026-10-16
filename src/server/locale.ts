@@ -10,14 +10,17 @@ export async function setLocaleCookie(locale: AppLocale) {
 }
 
 /**
- * At sign-in: a saved preference wins and becomes the cookie; otherwise the language picked on the
- * login page is saved as the user's preference.
+ * At sign-in: a language already chosen in this browser (switcher, login page) wins and is saved as the
+ * user's preference; on a browser with no choice yet (e.g. a new device) the saved preference is applied.
  */
 export async function syncLocaleAtSignIn(user: { id: string; locale: string | null }) {
   try {
-    if (isLocale(user.locale)) return await setLocaleCookie(user.locale);
     const current = (await cookies()).get(LOCALE_COOKIE)?.value;
-    if (isLocale(current)) await db.user.update({ where: { id: user.id }, data: { locale: current } });
+    if (isLocale(current)) {
+      if (current !== user.locale) await db.user.update({ where: { id: user.id }, data: { locale: current } });
+      return;
+    }
+    if (isLocale(user.locale)) await setLocaleCookie(user.locale);
   } catch {
     // Not in a request that can set cookies (should not happen at sign-in); language falls back to the cookie/default.
   }

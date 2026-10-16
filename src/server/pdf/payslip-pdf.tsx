@@ -12,13 +12,15 @@ import { translatorFor } from "@/server/i18n";
 import { readBrandAsset } from "@/server/brand-assets";
 import { brand, palette } from "@/theme/brand";
 
-/* IBM Plex Sans (Latin + Arabic subsets) for both languages; react-pdf falls back per glyph. */
-const fontFile = (subset: string, weight: number) =>
-  path.join(process.cwd(), "node_modules/@fontsource/ibm-plex-sans-arabic/files", `ibm-plex-sans-arabic-${subset}-${weight}-normal.woff`);
-Font.register({ family: "PlexLatin", fonts: [400, 700].map((w) => ({ src: fontFile("latin", w), fontWeight: w })) });
-Font.register({ family: "PlexArabic", fonts: [400, 700].map((w) => ({ src: fontFile("arabic", w), fontWeight: w })) });
+/*
+ * IBM Plex Sans Arabic (complete font: Latin + Arabic glyphs with full shaping tables) for both languages.
+ * The @fontsource subsets are not used here: their trimmed layout tables crash the PDF font engine on
+ * mixed Arabic/Latin runs.
+ */
+const fontFile = (style: string) => path.join(process.cwd(), "node_modules/@ibm/plex-sans-arabic/fonts/complete/woff", `IBMPlexSansArabic-${style}.woff`);
+Font.register({ family: "Plex", fonts: [{ src: fontFile("Regular"), fontWeight: 400 }, { src: fontFile("Bold"), fontWeight: 700 }] });
 Font.registerHyphenationCallback((word) => [word]); // never hyphenate (breaks Arabic shaping)
-const FONT = ["PlexLatin", "PlexArabic"];
+const FONT = "Plex";
 
 const P = palette;
 const s = StyleSheet.create({
