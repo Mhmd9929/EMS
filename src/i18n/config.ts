@@ -16,7 +16,7 @@ export const isRtl = (locale: string) => RTL_LOCALES.includes(locale);
  * Add a namespace here and create both files.
  */
 export const NAMESPACES = [
-  "app", "nav", "auth", "common", "enums", "errors", "emails",
+  "app", "nav", "auth", "common", "enums", "errors", "emails", "documents",
   "dashboard", "profile", "notifications", "directory", "orgChart",
   "employees", "organization", "admin", "leave", "payroll", "payslips",
 ] as const;

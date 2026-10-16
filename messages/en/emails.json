@@ -1,1 +1,103 @@
-{}
+{
+  "layout": {
+    "buttonFallback": "If the button does not work, copy this link into your browser:",
+    "openPortal": "Open in {portal}"
+  },
+  "invite": {
+    "subject": "You're invited to the {portal}",
+    "title": "Welcome, {name}",
+    "body": "An account has been created for you on the {company} employee portal. Set your password to get started.",
+    "button": "Set my password",
+    "expires": "This link expires in {hours} hours.",
+    "text": "Welcome, {name}.\n\nSet your password for the {company} employee portal:\n{link}\n\nThis link expires in {hours} hours."
+  },
+  "reset": {
+    "subject": "Reset your password",
+    "title": "Password reset",
+    "body": "Hi {name}, we received a request to reset your password.",
+    "button": "Reset password",
+    "expires": "This link expires in 1 hour. If you did not request it, you can ignore this email.",
+    "text": "Hi {name},\n\nReset your password: {link}\n\nThis link expires in 1 hour. If you did not request it, ignore this email."
+  },
+  "changed": {
+    "subject": "Your password was changed",
+    "title": "Password changed",
+    "body": "Hi {name}, your password was just changed. If this wasn't you, contact HR immediately."
+  },
+  "notifications": {
+    "leaveSubmitted": {
+      "title": "Leave request from {name}",
+      "body": "{name} requested {days, plural, one {# day} other {# days}} of {type} ({start} – {end}). Please review it."
+    },
+    "leaveSubmittedSelf": {
+      "title": "{type} request submitted",
+      "body": "Your request was sent for approval ({chain})."
+    },
+    "leaveAutoApproved": {
+      "title": "{type} approved",
+      "body": "Your {type} ({start} – {end}) was approved automatically."
+    },
+    "leaveApproved": {
+      "title": "{type} approved",
+      "body": "{actor} approved your {type} ({start} – {end})."
+    },
+    "leaveRejected": {
+      "title": "{type} rejected",
+      "body": "{actor} rejected your {type} ({start} – {end})."
+    },
+    "leaveStepApproved": {
+      "title": "{type} approved by your manager",
+      "body": "{actor} approved your {type} ({start} – {end}). It now needs HR approval."
+    },
+    "leaveCancellationApproved": {
+      "title": "{type} cancelled",
+      "body": "{actor} approved the cancellation of your {type} ({start} – {end})."
+    },
+    "leaveCancellationDeclined": {
+      "title": "{type} cancellation declined",
+      "body": "{actor} declined the cancellation of your {type} ({start} – {end})."
+    },
+    "commentLine": "Comment: {comment}",
+    "leaveNextApproverHr": {
+      "title": "Leave request from {name} needs HR approval",
+      "body": "{name}'s {type} ({start} – {end}, {days, plural, one {# day} other {# days}}) was approved at the previous step."
+    },
+    "leaveNextApproverYou": {
+      "title": "Leave request from {name} needs your approval",
+      "body": "{name}'s {type} ({start} – {end}, {days, plural, one {# day} other {# days}}) was approved at the previous step."
+    },
+    "leaveWithdrawn": {
+      "title": "{name} withdrew a leave request",
+      "body": "{type} {start} – {end} no longer needs your approval."
+    },
+    "leaveCancellationRequested": {
+      "title": "{name} wants to cancel approved leave",
+      "body": "{type} {start} – {end}. Reason: {reason}"
+    },
+    "leaveCancelledByHr": {
+      "title": "{type} cancelled by HR",
+      "body": "Your {type} ({start} – {end}) was cancelled. Reason: {reason}"
+    },
+    "leaveReminder": {
+      "title": "Reminder: leave request waiting {days} days",
+      "body": "{name}'s {type} ({start} – {end}) is still waiting for your decision."
+    },
+    "leaveEscalated": {
+      "title": "Escalated: leave request waiting {days} days",
+      "body": "{name}'s {type} ({start} – {end}) has not been decided by the manager. You can act on it as HR."
+    },
+    "leaveBalanceAdjusted": {
+      "title": "Your {type} balance was adjusted",
+      "body": "HR adjusted your {type} balance for {year} by {days} days. Reason: {reason}"
+    },
+    "leaveDelegation": {
+      "title": "{actor} delegated leave approvals to you",
+      "body": "From {start} to {end} you can approve leave for {actor}'s team."
+    },
+    "noteLine": " Note: {note}",
+    "payslipReady": {
+      "title": "Your {month} payslip is ready",
+      "body": "Your payslip for {month} has been released. Open it to view or download the PDF."
+    }
+  }
+}

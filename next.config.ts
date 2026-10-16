@@ -28,6 +28,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Fonts read from disk by the payslip PDF renderer (not imported, so not traced automatically).
+  outputFileTracingIncludes: {
+    "/api/payslips/[id]/pdf": ["./node_modules/@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-{latin,arabic}-{400,700}-normal.woff"],
+  },
   poweredByHeader: false,
   experimental: {
     authInterrupts: true,

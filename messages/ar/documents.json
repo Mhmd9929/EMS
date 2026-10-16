@@ -1,0 +1,30 @@
+{
+  "payslip": {
+    "title": "قسيمة الراتب",
+    "employee": "الموظف",
+    "employeeNo": "الرقم الوظيفي",
+    "position": "المسمى الوظيفي",
+    "department": "القسم",
+    "joinDate": "تاريخ الالتحاق",
+    "payPeriod": "فترة الراتب",
+    "paidDays": "الأيام المدفوعة",
+    "basis30": "على أساس 30 يومًا",
+    "basisCalendar": "أيام التقويم",
+    "unpaidLeaveDays": "أيام الإجازة بدون راتب",
+    "bankIban": "البنك / الآيبان",
+    "earnings": "الاستحقاقات",
+    "deductions": "الاستقطاعات",
+    "amount": "المبلغ",
+    "totalEarnings": "إجمالي الاستحقاقات",
+    "totalDeductions": "إجمالي الاستقطاعات",
+    "netPay": "صافي الراتب",
+    "ytd": "منذ بداية السنة (من {month})",
+    "grossYtd": "الإجمالي منذ بداية السنة",
+    "deductionsYtd": "الاستقطاعات منذ بداية السنة",
+    "netYtd": "الصافي منذ بداية السنة",
+    "tradeLicence": "الرخصة التجارية {number}",
+    "footer": "قسيمة راتب صادرة إلكترونيًا ولا تتطلب توقيعًا. صدرت في {date}. سرّية.",
+    "docTitle": "قسيمة الراتب {number}",
+    "docSubject": "قسيمة راتب {month}"
+  }
+}

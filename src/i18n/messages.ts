@@ -9,6 +9,7 @@ export type Messages = {
   enums: typeof import("../../messages/en/enums.json");
   errors: typeof import("../../messages/en/errors.json");
   emails: typeof import("../../messages/en/emails.json");
+  documents: typeof import("../../messages/en/documents.json");
   dashboard: typeof import("../../messages/en/dashboard.json");
   profile: typeof import("../../messages/en/profile.json");
   notifications: typeof import("../../messages/en/notifications.json");
