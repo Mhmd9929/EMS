@@ -95,6 +95,8 @@ export async function renderPayslipPdf(p: PayslipData, locale: AppLocale = "en",
   const align = rtl ? "right" : "left";
   const end = rtl ? "left" : "right";
   const money = (n: number) => f.money(n, p.currency, { withCode: false });
+  // The PDF engine reorders "17 يوليو 2022"-style dates inside Arabic text; digits-only dates are stable.
+  const date = rtl ? f.numericDate : f.date;
   const brandLogo = await readBrandAsset("full");
   let logo: Buffer | null = null;
   if (p.company.logoPath && /\.(png|jpg)$/.test(p.company.logoPath)) logo = (await storage.get(p.company.logoPath))?.data ?? null;
@@ -137,8 +139,8 @@ export async function renderPayslipPdf(p: PayslipData, locale: AppLocale = "en",
           {field(t("payslip.employeeNo"), p.employee.number)}
           {field(t("payslip.position"), p.employee.position)}
           {field(t("payslip.department"), p.employee.department)}
-          {field(t("payslip.joinDate"), f.date(p.employee.joinDate))}
-          {field(t("payslip.payPeriod"), `${f.date(p.periodStart)} – ${f.date(p.periodEnd)}`)}
+          {field(t("payslip.joinDate"), date(p.employee.joinDate))}
+          {field(t("payslip.payPeriod"), `${date(p.periodStart)} – ${date(p.periodEnd)}`)}
           {field(t("payslip.paidDays"), `${f.number(p.paidDays)} (${p.basis === "THIRTY_DAYS" ? t("payslip.basis30") : t("payslip.basisCalendar")})`)}
           {field(t("payslip.unpaidLeaveDays"), f.number(p.unpaidLeaveDays))}
           {field(t("payslip.bankIban"), [p.employee.bankName, p.employee.ibanMasked].filter(Boolean).join(" · "))}
@@ -165,7 +167,7 @@ export async function renderPayslipPdf(p: PayslipData, locale: AppLocale = "en",
         </View>
 
         <Text style={s.footer} fixed>
-          {t("payslip.footer", { date: f.date(p.releasedAt) })}
+          {t("payslip.footer", { date: date(p.releasedAt) })}
         </Text>
       </Page>
     </Document>

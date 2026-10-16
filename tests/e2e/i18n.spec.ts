@@ -33,9 +33,9 @@ test.describe("Arabic / RTL", () => {
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Dashboard" })).toBeVisible();
   });
 
-  test("Arabic payslip page and PDF", async ({ page, context }) => {
+  test("Arabic payslip page and PDF", async ({ page, context, baseURL }) => {
     // A language chosen in the browser wins at sign-in (and becomes the saved preference).
-    await context.addCookies([{ name: "locale", value: "ar", url: "http://localhost:3000" }]);
+    await context.addCookies([{ name: "locale", value: "ar", url: baseURL! }]);
     await page.goto("/login");
     await page.getByLabel("بريد العمل").fill(users.employee);
     await page.getByLabel("كلمة المرور", { exact: true }).fill(PASSWORD);

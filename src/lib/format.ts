@@ -21,6 +21,9 @@ export function createFormat(locale: AppLocale) {
     intl,
     /** Calendar date, e.g. "05 Oct 2026" / "05 أكتوبر 2026". */
     date: (d: Date | null | undefined) => (d ? dateFmt.format(d) : "—"),
+    /** Calendar date as digits only, e.g. "05/10/2026" (bidi-safe inside Arabic text in PDFs). */
+    numericDate: (d: Date | null | undefined) =>
+      d ? new Intl.DateTimeFormat(intl, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC", numberingSystem: "latn" }).format(d).replace(/[\u200e\u200f\u061c]/g, "") : "—",
     /** Instant in a timezone, with time. */
     dateTime: (d: Date | null | undefined, timeZone: string) =>
       d ? new Intl.DateTimeFormat(intl, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone }).format(d) : "—",
