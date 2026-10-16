@@ -1,5 +1,5 @@
 import "server-only";
-import { createTranslator } from "next-intl";
+import { createTranslator } from "use-intl/core"; // framework-free: also works in the worker and seed scripts
 import { getLocale, getTranslations } from "next-intl/server";
 import { DEFAULT_LOCALE, isLocale, type AppLocale, type Namespace } from "@/i18n/config";
 import { loadMessages } from "@/i18n/messages";
