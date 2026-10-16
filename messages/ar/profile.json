@@ -1,1 +1,43 @@
-{}
+{
+  "meta": { "title": "ملفي الشخصي" },
+  "title": "ملفي الشخصي",
+  "description": "حافظ على تحديث بيانات الاتصال الخاصة بك. تواصل مع الموارد البشرية لتغيير بيانات الوظيفة أو الهوية أو البنك.",
+  "changePassword": "تغيير كلمة المرور",
+  "employmentRecord": "السجل الوظيفي",
+  "maintainedByHr": "تديره الموارد البشرية",
+  "personalInformation": "المعلومات الشخصية",
+  "emergencyContacts": "جهات الاتصال في حالات الطوارئ",
+  "emergencyContactsDescription": "بمن نتصل في حالة الطوارئ؟ بحد أقصى 5 جهات اتصال.",
+  "fields": {
+    "employeeNumber": "الرقم الوظيفي",
+    "workEmail": "البريد الإلكتروني للعمل",
+    "position": "المسمى الوظيفي",
+    "department": "القسم",
+    "manager": "المدير",
+    "location": "الموقع",
+    "employmentType": "نوع التوظيف",
+    "joinDate": "تاريخ الالتحاق",
+    "dateOfBirth": "تاريخ الميلاد",
+    "gender": "الجنس",
+    "nationality": "الجنسية",
+    "emiratesId": "الهوية الإماراتية",
+    "passport": "جواز السفر",
+    "bank": "البنك",
+    "iban": "رقم الآيبان"
+  },
+  "expiry": "(تنتهي في {date})",
+  "form": {
+    "preferredName": "الاسم المفضل",
+    "maritalStatus": "الحالة الاجتماعية",
+    "mobilePhone": "رقم الهاتف المتحرك",
+    "personalEmail": "البريد الإلكتروني الشخصي",
+    "homeAddress": "عنوان السكن",
+    "saveChanges": "حفظ التغييرات"
+  },
+  "maritalStatus": {
+    "Single": "أعزب",
+    "Married": "متزوج",
+    "Divorced": "مطلق",
+    "Widowed": "أرمل"
+  }
+}

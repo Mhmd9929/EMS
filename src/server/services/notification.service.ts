@@ -5,6 +5,7 @@ import type { AuthContext } from "@/server/auth/permissions";
 import { sendMail } from "@/server/mail";
 import { notificationEmail } from "@/server/mail/templates";
 import { NotFoundError } from "@/server/errors";
+import { serverT } from "@/server/i18n";
 
 export type NotificationInput = {
   companyId: string;
@@ -100,7 +101,7 @@ export async function unreadCount(ctx: AuthContext) {
 
 export async function markRead(ctx: AuthContext, id: string) {
   const n = await db.notification.findFirst({ where: { id, userId: ctx.userId } });
-  if (!n) throw new NotFoundError("Notification not found.");
+  if (!n) throw new NotFoundError((await serverT("notifications"))("errors.notFound"));
   if (!n.readAt) await db.notification.update({ where: { id }, data: { readAt: new Date() } });
   return n;
 }

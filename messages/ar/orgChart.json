@@ -1,1 +1,27 @@
-{}
+{
+  "meta": { "title": "الهيكل التنظيمي" },
+  "title": "الهيكل التنظيمي",
+  "description": "اسحب للتنقل، واستخدم عجلة التمرير أو الأزرار للتكبير والتصغير. انقر على أي شخص لعرض بطاقته.",
+  "noEmployees": "لا يوجد موظفون لعرضهم بعد.",
+  "chartView": "طريقة عرض الهيكل",
+  "modes": {
+    "reporting": "التسلسل الإداري",
+    "department": "الأقسام"
+  },
+  "findPerson": "ابحث عن شخص…",
+  "findDepartment": "ابحث عن قسم…",
+  "searchLabel": "البحث في الهيكل التنظيمي",
+  "zoomIn": "تكبير",
+  "zoomOut": "تصغير",
+  "fit": "ملاءمة الشاشة",
+  "expandAll": "توسيع الكل",
+  "collapseAll": "طي",
+  "expandNode": "توسيع ({count})",
+  "collapseNode": "طي",
+  "head": "رئيس القسم: {name}",
+  "noHead": "بدون رئيس",
+  "members": "{count, plural, zero {لا أحد} one {شخص واحد} two {شخصان} few {# أشخاص} many {# شخصًا} other {# شخص}}",
+  "peopleCount": "{count, plural, zero {لا أحد} one {شخص واحد} two {شخصان} few {# أشخاص} many {# شخصًا} other {# شخص}}",
+  "headBadge": "(رئيس القسم)",
+  "noDirectMembers": "لا يوجد أحد معيَّن مباشرةً في هذا القسم."
+}

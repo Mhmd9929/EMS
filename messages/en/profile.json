@@ -1,1 +1,43 @@
-{}
+{
+  "meta": { "title": "My profile" },
+  "title": "My profile",
+  "description": "Keep your contact details up to date. Ask HR to change job, identity or bank details.",
+  "changePassword": "Change password",
+  "employmentRecord": "Employment record",
+  "maintainedByHr": "Maintained by HR",
+  "personalInformation": "Personal information",
+  "emergencyContacts": "Emergency contacts",
+  "emergencyContactsDescription": "Who should we call in an emergency? Up to 5 contacts.",
+  "fields": {
+    "employeeNumber": "Employee number",
+    "workEmail": "Work email",
+    "position": "Position",
+    "department": "Department",
+    "manager": "Manager",
+    "location": "Location",
+    "employmentType": "Employment type",
+    "joinDate": "Join date",
+    "dateOfBirth": "Date of birth",
+    "gender": "Gender",
+    "nationality": "Nationality",
+    "emiratesId": "Emirates ID",
+    "passport": "Passport",
+    "bank": "Bank",
+    "iban": "IBAN"
+  },
+  "expiry": "(exp. {date})",
+  "form": {
+    "preferredName": "Preferred name",
+    "maritalStatus": "Marital status",
+    "mobilePhone": "Mobile phone",
+    "personalEmail": "Personal email",
+    "homeAddress": "Home address",
+    "saveChanges": "Save changes"
+  },
+  "maritalStatus": {
+    "Single": "Single",
+    "Married": "Married",
+    "Divorced": "Divorced",
+    "Widowed": "Widowed"
+  }
+}

@@ -1,1 +1,12 @@
-{}
+{
+  "meta": { "title": "Notifications" },
+  "title": "Notifications",
+  "unread": "{count} unread",
+  "allCaughtUp": "You're all caught up.",
+  "empty": "No notifications yet",
+  "markAllRead": "Mark all as read",
+  "unreadDot": "Unread",
+  "errors": {
+    "notFound": "Notification not found."
+  }
+}

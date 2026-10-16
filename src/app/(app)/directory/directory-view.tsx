@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { LayoutGrid, List } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 export function DirectoryView({ people, view, sp, sort, dir }: { people: PersonCardData[]; view: "cards" | "table"; sp: SearchParams; sort: string; dir: string }) {
   const [selected, setSelected] = useState<PersonCardData | null>(null);
+  const t = useTranslations("directory");
   const toggle = (v: "cards" | "table", Icon: typeof List, label: string) => (
     <Link
       href={hrefWith("/directory", sp, { view: v === "cards" ? undefined : v })}
@@ -26,17 +28,17 @@ export function DirectoryView({ people, view, sp, sort, dir }: { people: PersonC
     <>
       <div className="mb-3 flex items-center justify-between">
         <div className="text-muted-foreground flex gap-3 text-sm">
-          Sort:
+          {t("sortLabel")}
           {(["name", "department"] as const).map((s) => (
             <Link key={s} href={hrefWith("/directory", sp, { sort: s, dir: sort === s && dir === "asc" ? "desc" : "asc", page: undefined })} className={cn("capitalize hover:underline", sort === s && "text-foreground font-medium")}>
-              {s}
+              {t(`sort.${s}`)}
               {sort === s && (dir === "asc" ? " ↑" : " ↓")}
             </Link>
           ))}
         </div>
         <div className="flex gap-1 rounded-lg border p-0.5">
-          {toggle("cards", LayoutGrid, "Card view")}
-          {toggle("table", List, "Table view")}
+          {toggle("cards", LayoutGrid, t("cardView"))}
+          {toggle("table", List, t("tableView"))}
         </div>
       </div>
       {view === "cards" ? (
@@ -59,11 +61,11 @@ export function DirectoryView({ people, view, sp, sort, dir }: { people: PersonC
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Title</TableHead>
-                <TableHead className="hidden md:table-cell">Department</TableHead>
-                <TableHead className="hidden lg:table-cell">Location</TableHead>
-                <TableHead className="hidden lg:table-cell">Email</TableHead>
+                <TableHead>{t("columns.name")}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t("columns.title")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("columns.department")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("columns.location")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("columns.email")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -78,7 +80,9 @@ export function DirectoryView({ people, view, sp, sort, dir }: { people: PersonC
                   <TableCell className="hidden sm:table-cell">{p.title ?? "—"}</TableCell>
                   <TableCell className="hidden md:table-cell">{p.department ?? "—"}</TableCell>
                   <TableCell className="hidden lg:table-cell">{p.location ?? "—"}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{p.email}</TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <span dir="ltr">{p.email}</span>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

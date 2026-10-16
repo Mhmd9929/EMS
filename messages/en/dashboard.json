@@ -1,1 +1,80 @@
-{}
+{
+  "meta": { "title": "Dashboard" },
+  "welcome": "Welcome back, {name}",
+  "me": {
+    "heading": "My workspace",
+    "leaveBalance": "Leave balance",
+    "noLeaveBalance": "No leave balance yet.",
+    "daysUnit": "{count, plural, other {days}}",
+    "pending": "{count} pending",
+    "applyForLeave": "Apply for leave",
+    "allBalances": "All balances",
+    "latestPayslip": "Latest payslip",
+    "netPay": "{period} · net pay",
+    "viewPayslip": "View payslip",
+    "allPayslips": "All payslips",
+    "noPayslips": "No payslips yet. They appear here once payroll is released.",
+    "upcomingHolidays": "Upcoming holidays",
+    "noHolidays": "No upcoming public holidays on the calendar.",
+    "reportsTo": "Reports to {name}",
+    "probationEnds": "Probation ends {date}"
+  },
+  "payroll": {
+    "heading": "Payroll — {period}",
+    "allRuns": "All runs",
+    "noRun": "No payroll run for this month yet.",
+    "scopeDepartment": "Department: {name}",
+    "scopeLocation": "Location: {name}",
+    "employees": "{count} employees",
+    "waitingForApproval": "waiting for approval",
+    "readyToRelease": "ready to release",
+    "payslipsIssued": "payslips issued",
+    "inPreparation": "in preparation"
+  },
+  "team": {
+    "heading": "My team",
+    "viewAll": "View all",
+    "directReports": "Direct reports",
+    "wholeTeam": "Whole team (incl. indirect)",
+    "approvalsWaiting": "Leave approvals waiting",
+    "probationsEnding": "{count} probation(s) ending in 30 days"
+  },
+  "offToday": {
+    "heading": "Off today",
+    "leaveCalendar": "Leave calendar",
+    "back": "back {date}"
+  },
+  "hr": {
+    "heading": "HR overview",
+    "headcount": "Headcount",
+    "onLeave": "{count} on leave",
+    "joinersThisMonth": "Joiners this month",
+    "leaversThisMonth": "Leavers this month",
+    "scheduledTerminations": "{count} scheduled terminations",
+    "pendingInvitations": "Pending invitations",
+    "pendingInvitationsHint": "Accounts not yet activated · {count} off today",
+    "headcountByDepartment": "Headcount by department",
+    "documentsExpiring": "Documents expiring within 60 days",
+    "noDocumentsExpiring": "No identity documents are expiring soon.",
+    "expiredAgo": "expired {days}d ago",
+    "expiresIn": "{date} ({days}d)",
+    "noJoiners": "No joiners this month.",
+    "noLeavers": "No leavers this month.",
+    "probationEnding": "Probation ending (30 days)",
+    "noProbations": "No probations ending soon.",
+    "unassigned": "Unassigned",
+    "unknown": "Unknown",
+    "documents": {
+      "emiratesId": "Emirates ID",
+      "passport": "Passport",
+      "visa": "Visa",
+      "labourCard": "Labour card"
+    }
+  },
+  "activity": {
+    "heading": "Recent activity",
+    "auditLog": "Audit log",
+    "empty": "No activity yet",
+    "system": "System"
+  }
+}

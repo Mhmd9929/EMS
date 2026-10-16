@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { TransformComponent, TransformWrapper, type ReactZoomPanPinchContentRef } from "react-zoom-pan-pinch";
 import { ChevronDown, ChevronUp, Crosshair, Maximize2, Minimize2, Search, Users, ZoomIn, ZoomOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { PersonCardDialog, type PersonCardData } from "@/components/person-card";
 import { buildTree, pathToRoot, type TreeNode } from "@/lib/tree";
 import { cn } from "@/lib/utils";
+import { isRtl } from "@/i18n/config";
 import type { OrgChartPerson } from "@/server/services/employee.service";
 
 type Department = { id: string; name: string; code: string; parentId: string | null; headId: string | null };
@@ -46,6 +48,8 @@ export function OrgChart({
   const [selected, setSelected] = useState<PersonCardData | null>(null);
   const [deptOpen, setDeptOpen] = useState<Department | null>(null);
   const zoomRef = useRef<ReactZoomPanPinchContentRef>(null);
+  const t = useTranslations("orgChart");
+  const dir = isRtl(useLocale()) ? "rtl" : "ltr";
 
   const byId = useMemo(() => new Map(persons.map((p) => [p.id, p])), [persons]);
   const peopleTree = useMemo(() => buildTree(persons, (p) => (p.managerId && byId.has(p.managerId) ? p.managerId : null)), [persons, byId]);
@@ -135,7 +139,7 @@ export function OrgChart({
         }}
         className="bg-background hover:bg-accent absolute -bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-full border px-1.5 text-[10px] leading-5"
         aria-expanded={!collapsed.has(id)}
-        aria-label={collapsed.has(id) ? `Expand (${count})` : "Collapse"}
+        aria-label={collapsed.has(id) ? t("expandNode", { count }) : t("collapseNode")}
       >
         {collapsed.has(id) ? <ChevronDown className="size-3" aria-hidden /> : <ChevronUp className="size-3" aria-hidden />}
         {count}
@@ -183,9 +187,9 @@ export function OrgChart({
           >
             <Building2 className="text-link size-5" aria-hidden />
             <span className="w-full truncate text-sm font-medium">{node.name}</span>
-            <span className="text-muted-foreground w-full truncate text-xs">{head ? `Head: ${head.name}` : "No head"}</span>
+            <span className="text-muted-foreground w-full truncate text-xs">{head ? t("head", { name: head.name }) : t("noHead")}</span>
             <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
-              <Users className="size-3" aria-hidden /> {members} {members === 1 ? "person" : "people"} · {node.code}
+              <Users className="size-3" aria-hidden /> {t("members", { count: members })} · {node.code}
             </span>
           </button>
           <ToggleButton id={node.id} count={node.children.length} />
@@ -196,13 +200,13 @@ export function OrgChart({
   };
 
   if (persons.length === 0) {
-    return <p className="text-muted-foreground text-sm">No employees to show yet.</p>;
+    return <p className="text-muted-foreground text-sm">{t("noEmployees")}</p>;
   }
 
   return (
     <Card className="gap-0 overflow-hidden py-0">
       <div className="flex flex-col gap-2 border-b p-3 sm:flex-row sm:items-center">
-        <div className="flex rounded-lg border p-0.5" role="tablist" aria-label="Chart view">
+        <div className="flex rounded-lg border p-0.5" role="tablist" aria-label={t("chartView")}>
           {(["reporting", "department"] as const).map((m) => (
             <button
               key={m}
@@ -215,7 +219,7 @@ export function OrgChart({
               }}
               className={cn("rounded-md px-3 py-1 text-sm", mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
             >
-              {m === "reporting" ? "Reporting line" : "Departments"}
+              {t(`modes.${m}`)}
             </button>
           ))}
         </div>
@@ -226,8 +230,8 @@ export function OrgChart({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && matches[0] && focus(matches[0].id)}
-            placeholder={mode === "reporting" ? "Find a person…" : "Find a department…"}
-            aria-label="Search the org chart"
+            placeholder={mode === "reporting" ? t("findPerson") : t("findDepartment")}
+            aria-label={t("searchLabel")}
             className="ps-8"
           />
           {matches.length > 0 && (
@@ -243,27 +247,28 @@ export function OrgChart({
           )}
         </div>
         <div className="flex gap-1 sm:ms-auto">
-          <Button variant="outline" size="icon" onClick={() => zoomRef.current?.zoomIn()} aria-label="Zoom in">
+          <Button variant="outline" size="icon" onClick={() => zoomRef.current?.zoomIn()} aria-label={t("zoomIn")}>
             <ZoomIn aria-hidden />
           </Button>
-          <Button variant="outline" size="icon" onClick={() => zoomRef.current?.zoomOut()} aria-label="Zoom out">
+          <Button variant="outline" size="icon" onClick={() => zoomRef.current?.zoomOut()} aria-label={t("zoomOut")}>
             <ZoomOut aria-hidden />
           </Button>
-          <Button variant="outline" size="icon" onClick={fit} aria-label="Fit to screen">
+          <Button variant="outline" size="icon" onClick={fit} aria-label={t("fit")}>
             <Crosshair aria-hidden />
           </Button>
           <Button variant="outline" size="sm" onClick={expandAll}>
-            <Maximize2 aria-hidden /> Expand all
+            <Maximize2 aria-hidden /> {t("expandAll")}
           </Button>
           <Button variant="outline" size="sm" onClick={collapseAll}>
-            <Minimize2 aria-hidden /> Collapse
+            <Minimize2 aria-hidden /> {t("collapseAll")}
           </Button>
         </div>
       </div>
-      <div className="bg-muted/30 h-[70vh] cursor-grab active:cursor-grabbing">
+      {/* The pan/zoom surface stays LTR (its transforms are physical); the tree inside follows the page direction. */}
+      <div dir="ltr" className="bg-muted/30 h-[70vh] cursor-grab active:cursor-grabbing">
         <TransformWrapper ref={zoomRef} minScale={0.2} maxScale={2} initialScale={1} limitToBounds={false} centerOnInit onInit={() => setTimeout(fit, 30)} wheel={{ step: 0.08 }} doubleClick={{ disabled: true }}>
           <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }}>
-            <div className="orgchart p-10">
+            <div dir={dir} className="orgchart p-10">
               <ul>{mode === "reporting" ? peopleTree.map(renderPerson) : deptTree.map(renderDept)}</ul>
             </div>
           </TransformComponent>
@@ -277,7 +282,7 @@ export function OrgChart({
               <DialogHeader>
                 <DialogTitle>{deptOpen.name}</DialogTitle>
                 <DialogDescription>
-                  {deptOpen.code} · {membersByDept.get(deptOpen.id)?.length ?? 0} people
+                  {deptOpen.code} · {t("peopleCount", { count: membersByDept.get(deptOpen.id)?.length ?? 0 })}
                 </DialogDescription>
               </DialogHeader>
               <ul className="max-h-80 divide-y overflow-y-auto">
@@ -295,7 +300,7 @@ export function OrgChart({
                         <Avatar employeeId={p.id} hasPhoto={p.photo} firstName={f} lastName={r.at(-1)} size={32} />
                         <span>
                           <span className="block text-sm font-medium">
-                            {p.name} {deptOpen.headId === p.id && <span className="text-link text-xs">(Head)</span>}
+                            {p.name} {deptOpen.headId === p.id && <span className="text-link text-xs">{t("headBadge")}</span>}
                           </span>
                           <span className="text-muted-foreground block text-xs">{p.title ?? "—"}</span>
                         </span>
@@ -303,7 +308,7 @@ export function OrgChart({
                     </li>
                   );
                 })}
-                {(membersByDept.get(deptOpen.id) ?? []).length === 0 && <li className="text-muted-foreground p-2 text-sm">No one is assigned directly to this department.</li>}
+                {(membersByDept.get(deptOpen.id) ?? []).length === 0 && <li className="text-muted-foreground p-2 text-sm">{t("noDirectMembers")}</li>}
               </ul>
             </>
           )}

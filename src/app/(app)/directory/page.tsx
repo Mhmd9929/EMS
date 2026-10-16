@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { BookUser } from "lucide-react";
 import { requireAuth, requirePermission } from "@/server/auth/context";
 import { DIRECTORY_SORTS, listDirectory } from "@/server/services/employee.service";
@@ -12,7 +13,9 @@ import { EmptyState } from "@/components/empty-state";
 import { DirectoryView } from "./directory-view";
 import type { PersonCardData } from "@/components/person-card";
 
-export const metadata: Metadata = { title: "Directory" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("directory"))("meta.title") };
+}
 
 export default async function DirectoryPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -39,19 +42,20 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     hasPhoto: !!e.photoPath,
     canOpenProfile: visible === null || visible.has(e.id),
   }));
+  const t = await getTranslations("directory");
   const view = first(sp.view) === "table" ? "table" : "cards";
 
   return (
     <>
-      <PageHeader title="Company directory" description="Find colleagues by name, role or department." />
+      <PageHeader title={t("title")} description={t("description")} />
       <Toolbar>
-        <SearchInput placeholder="Search name, title, department…" />
-        <FilterSelect param="department" label="Department" options={departments} />
-        <FilterSelect param="location" label="Location" options={locations} />
+        <SearchInput placeholder={t("searchPlaceholder")} />
+        <FilterSelect param="department" label={t("columns.department")} options={departments} />
+        <FilterSelect param="location" label={t("columns.location")} options={locations} />
         <ClearFilters params={["q", "department", "location"]} />
       </Toolbar>
       {people.length === 0 ? (
-        <EmptyState icon={BookUser} title="No one found" description="Try a different name or clear the filters." />
+        <EmptyState icon={BookUser} title={t("emptyTitle")} description={t("emptyDescription")} />
       ) : (
         <DirectoryView people={people} view={view} sp={sp} sort={params.sort} dir={params.dir} />
       )}

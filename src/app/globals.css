@@ -117,21 +117,22 @@
   padding: 1.25rem 0.375rem 0;
   list-style: none;
 }
+/* Connectors use logical sides so the tree mirrors correctly when it is rendered right-to-left. */
 .orgchart li::before,
 .orgchart li::after {
   content: "";
   position: absolute;
   top: 0;
-  right: 50%;
+  inset-inline-end: 50%;
   width: 50%;
   height: 1.25rem;
   border-top: 1px solid var(--muted-foreground);
   opacity: 0.45;
 }
 .orgchart li::after {
-  right: auto;
-  left: 50%;
-  border-left: 1px solid var(--muted-foreground);
+  inset-inline-end: auto;
+  inset-inline-start: 50%;
+  border-inline-start: 1px solid var(--muted-foreground);
 }
 .orgchart li:only-child::before,
 .orgchart li:only-child::after {
@@ -145,11 +146,11 @@
   border: 0 none;
 }
 .orgchart li:last-child::before {
-  border-right: 1px solid var(--muted-foreground);
-  border-radius: 0 6px 0 0;
+  border-inline-end: 1px solid var(--muted-foreground);
+  border-start-end-radius: 6px;
 }
 .orgchart li:first-child::after {
-  border-radius: 6px 0 0 0;
+  border-start-start-radius: 6px;
 }
 .orgchart ul ul::before {
   content: "";

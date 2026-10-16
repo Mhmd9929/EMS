@@ -1,1 +1,26 @@
-{}
+{
+  "meta": { "title": "Directory" },
+  "title": "Company directory",
+  "description": "Find colleagues by name, role or department.",
+  "searchPlaceholder": "Search name, title, department…",
+  "emptyTitle": "No one found",
+  "emptyDescription": "Try a different name or clear the filters.",
+  "sortLabel": "Sort:",
+  "sort": {
+    "name": "name",
+    "department": "department"
+  },
+  "cardView": "Card view",
+  "tableView": "Table view",
+  "columns": {
+    "name": "Name",
+    "title": "Title",
+    "department": "Department",
+    "location": "Location",
+    "email": "Email"
+  },
+  "personCard": {
+    "reportsTo": "Reports to {name}",
+    "openProfile": "Open full profile"
+  }
+}
