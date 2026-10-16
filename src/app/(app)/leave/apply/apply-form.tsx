@@ -13,7 +13,9 @@ import { Input, NativeSelect, Textarea } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { formatDate, parseDateOnly } from "@/lib/dates";
+import { parseDateOnly } from "@/lib/dates";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/components/i18n/use-format";
 
 type TypeOption = {
   id: string;
@@ -28,11 +30,13 @@ type TypeOption = {
   reason: string | null;
 };
 
-const d = (s: string) => formatDate(parseDateOnly(s));
-const days = (n: number) => `${n} ${Math.abs(n) === 1 ? "day" : "days"}`;
-
 export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: string }) {
-  const firstEligible = types.find((t) => t.eligible)?.id ?? "";
+  const t = useTranslations("leave.apply");
+  const tc = useTranslations("common");
+  const te = useTranslations("enums");
+  const f = useFormat();
+  const d = (s: string) => f.date(parseDateOnly(s));
+  const firstEligible = types.find((o) => o.eligible)?.id ?? "";
   const [leaveTypeId, setLeaveTypeId] = useState(firstEligible);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -42,7 +46,7 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
   const { state, onSubmit, pending } = useFormAction(applyLeaveAction);
   useActionFeedback(state, { silentSuccess: true });
 
-  const type = types.find((t) => t.id === leaveTypeId);
+  const type = types.find((o) => o.id === leaveTypeId);
   const singleDay = !!startDate && startDate === endDate;
 
   // Keep end date >= start date for convenience.
@@ -59,13 +63,13 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
       setPreview(null);
       return;
     }
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       startPreview(async () => {
         const r = await previewLeaveAction({ leaveTypeId, startDate, endDate, halfDay });
         setPreview(r.ok ? (r.data ?? null) : null);
       });
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [leaveTypeId, startDate, endDate, halfDay]);
 
   const blocking = useMemo(() => !preview || !preview.ok, [preview]);
@@ -83,37 +87,37 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
         )}
         <Card>
           <CardContent className="grid gap-4">
-            <Field label="Leave type" name="leaveTypeId" error={fieldError(state, "leaveTypeId")} required>
+            <Field label={t("leaveType")} name="leaveTypeId" error={fieldError(state, "leaveTypeId")} required>
               <NativeSelect value={leaveTypeId} onChange={(e) => setLeaveTypeId(e.target.value)}>
                 <option value="" disabled>
-                  Choose…
+                  {t("choose")}
                 </option>
-                {types.map((t) => (
-                  <option key={t.id} value={t.id} disabled={!t.eligible}>
-                    {t.name}
-                    {!t.isPaid ? " (unpaid)" : ""}
-                    {!t.eligible ? ` — ${t.reason}` : ""}
+                {types.map((o) => (
+                  <option key={o.id} value={o.id} disabled={!o.eligible}>
+                    {o.name}
+                    {!o.isPaid ? t("unpaidSuffix") : ""}
+                    {!o.eligible ? t("ineligibleSuffix", { reason: o.reason ?? "" }) : ""}
                   </option>
                 ))}
               </NativeSelect>
             </Field>
             {type?.description && <p className="text-muted-foreground -mt-2 text-xs">{type.description}</p>}
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="First day" name="startDate" error={fieldError(state, "startDate")} required>
+              <Field label={t("firstDay")} name="startDate" error={fieldError(state, "startDate")} required>
                 <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </Field>
-              <Field label="Last day" name="endDate" error={fieldError(state, "endDate")} required>
+              <Field label={t("lastDay")} name="endDate" error={fieldError(state, "endDate")} required>
                 <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
               </Field>
             </div>
             {type?.allowHalfDay && singleDay && (
               <fieldset className="grid gap-2">
-                <legend className="text-sm font-medium">Duration</legend>
+                <legend className="text-sm font-medium">{t("duration")}</legend>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    ["NONE", "Full day"],
-                    ["FIRST_HALF", "Morning (half day)"],
-                    ["SECOND_HALF", "Afternoon (half day)"],
+                    ["NONE", t("fullDay")],
+                    ["FIRST_HALF", t("morningHalf")],
+                    ["SECOND_HALF", t("afternoonHalf")],
                   ].map(([value, label]) => (
                     <label key={value} className="has-[:checked]:border-primary has-[:checked]:bg-primary/10 flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
                       <input type="radio" name="halfDay" value={value} checked={halfDay === value} onChange={() => setHalfDay(value)} className="accent-primary" />
@@ -124,12 +128,12 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
               </fieldset>
             )}
             {!(type?.allowHalfDay && singleDay) && <input type="hidden" name="halfDay" value="NONE" />}
-            <Field label="Reason" name="reason" error={fieldError(state, "reason")} hint="Optional — visible to your approvers.">
+            <Field label={tc("reason")} name="reason" error={fieldError(state, "reason")} hint={t("reasonHint")}>
               <Textarea rows={3} maxLength={1000} />
             </Field>
             <div className="grid gap-1.5">
               <label htmlFor="attachment" className="flex items-center gap-2 text-sm font-medium">
-                <Paperclip className="size-4" aria-hidden /> Supporting document {preview?.attachmentRequired && <span className="text-destructive">*</span>}
+                <Paperclip className="size-4" aria-hidden /> {t("supportingDocument")} {preview?.attachmentRequired && <span className="text-destructive">*</span>}
               </label>
               <input
                 id="attachment"
@@ -138,16 +142,16 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
                 accept="application/pdf,image/png,image/jpeg,image/webp"
                 className="text-muted-foreground file:bg-secondary file:text-foreground text-sm file:me-2 file:rounded-md file:border-0 file:px-3 file:py-1.5"
               />
-              <p className="text-muted-foreground text-xs">PDF, PNG, JPG or WebP up to 5 MB{preview?.attachmentRequired ? " — required for this request" : ""}.</p>
+              <p className="text-muted-foreground text-xs">{preview?.attachmentRequired ? t("fileHintRequired") : t("fileHint")}</p>
             </div>
           </CardContent>
         </Card>
         <div className="flex justify-end gap-2">
           <Link href="/leave" className={buttonVariants({ variant: "outline" })}>
-            Cancel
+            {tc("cancel")}
           </Link>
-          <SubmitButton pending={pending} disabled={blocking || previewing} pendingText="Submitting…">
-            Submit request
+          <SubmitButton pending={pending} disabled={blocking || previewing} pendingText={t("submitting")}>
+            {t("submit")}
           </SubmitButton>
         </div>
       </form>
@@ -156,43 +160,43 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
         <Card className="lg:sticky lg:top-20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarCheck className="size-4" aria-hidden /> Summary
-              {previewing && <Loader2 className="text-muted-foreground size-4 animate-spin" aria-label="Calculating" />}
+              <CalendarCheck className="size-4" aria-hidden /> {t("summary")}
+              {previewing && <Loader2 className="text-muted-foreground size-4 animate-spin" aria-label={t("calculating")} />}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            {!preview && <p className="text-muted-foreground">Pick a leave type and dates to see how many working days you&apos;re requesting and what&apos;s left afterwards.</p>}
+            {!preview && <p className="text-muted-foreground">{t("summaryEmpty")}</p>}
             {preview?.count && (
               <div>
-                <p className="text-3xl font-semibold tabular-nums">{days(preview.count.total)}</p>
+                <p className="text-3xl font-semibold tabular-nums">{tc("days", { count: preview.count.total })}</p>
                 {Object.keys(preview.count.byYear).length > 1 && (
                   <p className="text-muted-foreground">
-                    Split across years: {Object.entries(preview.count.byYear).map(([y, n]) => `${y}: ${n}`).join(" · ")}
+                    {t("splitAcrossYears", { list: Object.entries(preview.count.byYear).map(([y, n]) => `${y}: ${n}`).join(" · ") })}
                   </p>
                 )}
                 {preview.count.skipped.length > 0 && (
                   <p className="text-muted-foreground text-xs">
-                    Not counted: {preview.count.skipped.filter((s) => s.reason === "weekend").length} weekend day(s)
-                    {preview.count.skipped.some((s) => s.reason === "holiday") && `, ${preview.count.skipped.filter((s) => s.reason === "holiday").length} public holiday(s)`}
+                    {t("notCountedWeekends", { count: preview.count.skipped.filter((s) => s.reason === "weekend").length })}
+                    {preview.count.skipped.some((s) => s.reason === "holiday") && t("notCountedHolidays", { count: preview.count.skipped.filter((s) => s.reason === "holiday").length })}
                   </p>
                 )}
               </div>
             )}
             {preview?.balances.filter((b) => b.tracked).map((b) => (
               <div key={b.year} className="rounded-lg border p-3">
-                <p className="text-muted-foreground mb-1 text-xs font-medium uppercase">Balance {b.year}</p>
+                <p className="text-muted-foreground mb-1 text-xs font-medium uppercase">{t("balanceYear", { year: String(b.year) })}</p>
                 <dl className="grid grid-cols-2 gap-y-1 tabular-nums">
-                  <dt>Available now</dt>
+                  <dt>{t("availableNow")}</dt>
                   <dd className="text-end">{b.available}</dd>
                   {b.projected > 0 && (
                     <>
-                      <dt>Accrues / carries over by then</dt>
+                      <dt>{t("projected")}</dt>
                       <dd className="text-end">+{b.projected}</dd>
                     </>
                   )}
-                  <dt>This request</dt>
+                  <dt>{t("thisRequest")}</dt>
                   <dd className="text-end">−{b.requested}</dd>
-                  <dt className="font-medium">Remaining after</dt>
+                  <dt className="font-medium">{t("remainingAfter")}</dt>
                   <dd className={`text-end font-semibold ${b.after < 0 ? "text-destructive" : ""}`}>{b.after}</dd>
                 </dl>
               </div>
@@ -212,13 +216,13 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
             {preview && preview.teammatesOff.length > 0 && (
               <div>
                 <p className="mb-1 flex items-center gap-2 font-medium">
-                  <Users className="size-4" aria-hidden /> Also off
+                  <Users className="size-4" aria-hidden /> {t("alsoOff")}
                 </p>
                 <ul className="text-muted-foreground space-y-0.5 text-xs">
-                  {preview.teammatesOff.map((t) => (
-                    <li key={`${t.name}-${t.from}`}>
-                      {t.name}: {d(t.from)}
-                      {t.to !== t.from && ` – ${d(t.to)}`}
+                  {preview.teammatesOff.map((m) => (
+                    <li key={`${m.name}-${m.from}`}>
+                      {m.name}: {d(m.from)}
+                      {m.to !== m.from && ` – ${d(m.to)}`}
                     </li>
                   ))}
                 </ul>
@@ -226,19 +230,19 @@ export function ApplyLeaveForm({ types, today }: { types: TypeOption[]; today: s
             )}
             {preview && (
               <p className="text-muted-foreground text-xs">
-                Approval:{" "}
+                {t("approval")}{" "}
                 {preview.approvalSteps.length ? (
                   preview.approvalSteps.map((s, i) => (
                     <Badge key={s} variant="outline" className="me-1">
-                      {i + 1}. {s === "MANAGER" ? "Manager" : "HR"}
+                      {i + 1}. {te(`approvalRole.${s === "MANAGER" ? "MANAGER" : "HR"}`)}
                     </Badge>
                   ))
                 ) : (
-                  <Badge variant="success">Automatic</Badge>
+                  <Badge variant="success">{t("automatic")}</Badge>
                 )}
               </p>
             )}
-            {type && type.minNoticeDays > 0 && <p className="text-muted-foreground text-xs">{type.name} needs {type.minNoticeDays} days&apos; notice (today is {d(today)}).</p>}
+            {type && type.minNoticeDays > 0 && <p className="text-muted-foreground text-xs">{t("noticeNote", { type: type.name, days: type.minNoticeDays, today: d(today) })}</p>}
           </CardContent>
         </Card>
       </aside>

@@ -5,6 +5,7 @@ import { writeAudit } from "@/server/audit";
 import { ForbiddenError } from "@/server/errors";
 import { csvResponse, xlsxResponse, type Sheet } from "@/server/export";
 import { parseDateOnly, todayInTimeZone, toDateInput } from "@/lib/dates";
+import { serverT } from "@/server/i18n";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAuthContext();
@@ -19,38 +20,39 @@ export async function GET(req: NextRequest) {
   };
   const format = sp.get("format") === "csv" ? "csv" : "xlsx";
   const name = `leave-${sp.get("kind") === "summary" ? "summary" : "detail"}-${toDateInput(filters.from)}-to-${toDateInput(filters.to)}`;
+  const t = await serverT("leave");
   try {
     let sheet: Sheet;
     if (sp.get("kind") === "summary") {
       const r = await leaveTakenReport(ctx, filters);
       sheet = {
-        name: "Summary",
+        name: t("export.sheetSummary"),
         columns: [
-          { header: "Department", key: "department", width: 22 },
-          { header: "Leave type", key: "leaveType", width: 20 },
-          { header: "Paid", key: "paid" },
-          { header: "Days", key: "days", numFmt: "0.00" },
-          { header: "Employees", key: "people" },
-          { header: "Requests", key: "requests" },
+          { header: t("export.department"), key: "department", width: 22 },
+          { header: t("export.leaveType"), key: "leaveType", width: 20 },
+          { header: t("export.paid"), key: "paid" },
+          { header: t("export.days"), key: "days", numFmt: "0.00" },
+          { header: t("export.employees"), key: "people" },
+          { header: t("export.requests"), key: "requests" },
         ],
-        rows: r.rows.map((x) => ({ ...x, paid: x.isPaid ? "Yes" : "No" })),
+        rows: r.rows.map((x) => ({ ...x, paid: x.isPaid ? t("export.yes") : t("export.no") })),
       };
     } else {
       const rows = await leaveTakenDetail(ctx, filters);
       sheet = {
-        name: "Detail",
+        name: t("export.sheetDetail"),
         columns: [
-          { header: "Employee no.", key: "employeeNumber" },
-          { header: "Name", key: "name", width: 26 },
-          { header: "Department", key: "department", width: 20 },
-          { header: "Leave type", key: "leaveType", width: 18 },
-          { header: "Paid", key: "paid" },
-          { header: "From", key: "from" },
-          { header: "To", key: "to" },
-          { header: "Days in period", key: "days", numFmt: "0.00" },
-          { header: "Status", key: "status" },
+          { header: t("export.employeeNumber"), key: "employeeNumber" },
+          { header: t("export.name"), key: "name", width: 26 },
+          { header: t("export.department"), key: "department", width: 20 },
+          { header: t("export.leaveType"), key: "leaveType", width: 18 },
+          { header: t("export.paid"), key: "paid" },
+          { header: t("export.from"), key: "from" },
+          { header: t("export.to"), key: "to" },
+          { header: t("export.daysInPeriod"), key: "days", numFmt: "0.00" },
+          { header: t("export.status"), key: "status" },
         ],
-        rows: rows.map((r) => ({ ...r, department: r.department ?? "", paid: r.isPaid ? "Yes" : "No", from: toDateInput(r.startDate), to: toDateInput(r.endDate) })),
+        rows: rows.map((r) => ({ ...r, department: r.department ?? "", paid: r.isPaid ? t("export.yes") : t("export.no"), from: toDateInput(r.startDate), to: toDateInput(r.endDate) })),
       };
     }
     await writeAudit(ctx, { action: "leave.report.export", entityType: "LeaveRequest", summary: `Exported ${name} (${format})` });

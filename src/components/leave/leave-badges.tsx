@@ -10,6 +10,8 @@ const STATUS: Record<string, { label: string; variant: "success" | "warning" | "
 };
 
 export const LEAVE_STATUSES = Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label }));
+/** Status codes, for filters: label them with `enums.leaveStatus.<code>`. */
+export const LEAVE_STATUS_VALUES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED", "CANCELLATION_REQUESTED"] as const;
 
 export function LeaveStatusBadge({ status }: { status: string }) {
   const t = useTranslations("enums.leaveStatus");

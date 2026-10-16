@@ -12,21 +12,23 @@ import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Input, NativeSelect } from "@/components/ui/input";
 import { ConfirmAction } from "@/components/confirm-action";
+import { useTranslations } from "next-intl";
 
 type H = { id: string; name: string; date: string; locationId: string | null };
 
 export function HolidayDialog({ locations, holiday, defaultDate }: { locations: { value: string; label: string }[]; holiday?: H; defaultDate?: string }) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("leave.holidayDialog");
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {holiday ? (
-          <Button variant="ghost" size="sm" aria-label={`Edit ${holiday.name}`}>
+          <Button variant="ghost" size="sm" aria-label={t("editAria", { name: holiday.name })}>
             <Pencil aria-hidden />
           </Button>
         ) : (
           <Button>
-            <Plus aria-hidden /> Add holiday
+            <Plus aria-hidden /> {t("add")}
           </Button>
         )}
       </DialogTrigger>
@@ -37,6 +39,9 @@ export function HolidayDialog({ locations, holiday, defaultDate }: { locations: 
 
 function HolidayForm({ locations, holiday, defaultDate, onDone }: { locations: { value: string; label: string }[]; holiday?: H; defaultDate?: string; onDone: () => void }) {
   const router = useRouter();
+  const t = useTranslations("leave.holidayDialog");
+  const tc = useTranslations("common");
+  const tl = useTranslations("leave");
   const { state, onSubmit, pending } = useFormAction(saveHolidayAction);
   useActionFeedback(state, {
     onSuccess: () => {
@@ -47,27 +52,27 @@ function HolidayForm({ locations, holiday, defaultDate, onDone }: { locations: {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{holiday ? "Edit holiday" : "Add public holiday"}</DialogTitle>
+        <DialogTitle>{holiday ? t("editTitle") : t("addTitle")}</DialogTitle>
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4">
         <FormError state={state} />
         {holiday && <input type="hidden" name="id" value={holiday.id} />}
-        <Field label="Name" name="name" error={fieldError(state, "name")} required>
-          <Input defaultValue={holiday?.name} placeholder="e.g. Eid Al Fitr" />
+        <Field label={tc("name")} name="name" error={fieldError(state, "name")} required>
+          <Input defaultValue={holiday?.name} placeholder={t("namePlaceholder")} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={holiday ? "Date" : "First day"} name="date" error={fieldError(state, "date")} required>
+          <Field label={holiday ? tc("date") : tl("apply.firstDay")} name="date" error={fieldError(state, "date")} required>
             <Input type="date" defaultValue={holiday?.date ?? defaultDate} />
           </Field>
           {!holiday && (
-            <Field label="Last day" name="endDate" error={fieldError(state, "endDate")} hint="For multi-day holidays">
+            <Field label={tl("apply.lastDay")} name="endDate" error={fieldError(state, "endDate")} hint={t("multiDayHint")}>
               <Input type="date" />
             </Field>
           )}
         </div>
-        <Field label="Location" name="locationId" error={fieldError(state, "locationId")}>
+        <Field label={tc("location")} name="locationId" error={fieldError(state, "locationId")}>
           <NativeSelect defaultValue={holiday?.locationId ?? ""}>
-            <option value="">All locations</option>
+            <option value="">{tl("settings.holidays.allLocations")}</option>
             {locations.map((l) => (
               <option key={l.value} value={l.value}>
                 {l.label}
@@ -77,9 +82,9 @@ function HolidayForm({ locations, holiday, defaultDate, onDone }: { locations: {
         </Field>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <SubmitButton pending={pending}>Save</SubmitButton>
+          <SubmitButton pending={pending}>{tc("save")}</SubmitButton>
         </DialogFooter>
       </form>
     </>
@@ -88,17 +93,19 @@ function HolidayForm({ locations, holiday, defaultDate, onDone }: { locations: {
 
 export function DeleteHolidayButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();
+  const t = useTranslations("leave.holidayDialog");
+  const tc = useTranslations("common");
   return (
     <ConfirmAction
       trigger={
-        <Button variant="ghost" size="sm" aria-label={`Delete ${name}`}>
+        <Button variant="ghost" size="sm" aria-label={t("deleteAria", { name })}>
           <Trash2 aria-hidden />
         </Button>
       }
-      title={`Delete ${name}?`}
-      description="Requests already submitted keep their calculated days."
+      title={t("deleteTitle", { name })}
+      description={t("deleteDescription")}
       destructive
-      confirmLabel="Delete"
+      confirmLabel={tc("delete")}
       action={() => deleteHolidayAction(id)}
       onDone={() => router.refresh()}
     />
@@ -107,15 +114,16 @@ export function DeleteHolidayButton({ id, name }: { id: string; name: string }) 
 
 export function CopyHolidaysButton({ fromYear, toYear }: { fromYear: number; toYear: number }) {
   const router = useRouter();
+  const t = useTranslations("leave.holidayDialog");
   return (
     <ConfirmAction
       trigger={
         <Button variant="outline">
-          <Copy aria-hidden /> Copy from {fromYear}
+          <Copy aria-hidden /> {t("copyFrom", { year: String(fromYear) })}
         </Button>
       }
-      title={`Copy ${fromYear}'s holidays to ${toYear}?`}
-      description="Same day and month. Lunar (Islamic) holidays move every year, so adjust them afterwards."
+      title={t("copyTitle", { from: String(fromYear), to: String(toYear) })}
+      description={t("copyDescription")}
       action={() => copyHolidaysAction(fromYear, toYear)}
       onDone={() => router.refresh()}
     />

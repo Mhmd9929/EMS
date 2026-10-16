@@ -12,26 +12,29 @@ import { FormError } from "@/components/forms/form-error";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ConfirmAction } from "@/components/confirm-action";
+import { useTranslations } from "next-intl";
 
 /** Approve / reject the current step (also used for cancellation requests). */
 export function DecisionForm({ requestId, isCancellation, onBehalfOf }: { requestId: string; isCancellation: boolean; onBehalfOf: string | null }) {
   const router = useRouter();
+  const t = useTranslations("leave.actions");
+  const tc = useTranslations("common");
   const { state, onSubmit, pending } = useFormAction(decideLeaveAction);
   useActionFeedback(state, { onSuccess: () => router.refresh() });
   return (
     <form onSubmit={onSubmit} className="grid gap-3">
       <FormError state={state} />
-      {onBehalfOf && <p className="text-muted-foreground text-xs">You are acting as delegate for {onBehalfOf}.</p>}
+      {onBehalfOf && <p className="text-muted-foreground text-xs">{t("actingAsDelegate", { name: onBehalfOf })}</p>}
       <input type="hidden" name="requestIds" value={requestId} />
-      <Field label="Comment" name="comment" error={fieldError(state, "comment")} hint="Required when rejecting. Shared with the employee.">
+      <Field label={tc("comment")} name="comment" error={fieldError(state, "comment")} hint={t("commentHint")}>
         <Textarea rows={2} maxLength={1000} />
       </Field>
       <div className="flex flex-wrap gap-2">
         <SubmitButton name="decision" value="APPROVED" pending={pending}>
-          <Check aria-hidden /> {isCancellation ? "Approve cancellation" : "Approve"}
+          <Check aria-hidden /> {isCancellation ? t("approveCancellation") : t("approve")}
         </SubmitButton>
         <SubmitButton name="decision" value="REJECTED" variant="outline" disabled={pending}>
-          <X aria-hidden /> {isCancellation ? "Keep the leave" : "Reject"}
+          <X aria-hidden /> {isCancellation ? t("keepLeave") : t("reject")}
         </SubmitButton>
       </div>
     </form>
@@ -40,16 +43,17 @@ export function DecisionForm({ requestId, isCancellation, onBehalfOf }: { reques
 
 export function WithdrawButton({ requestId }: { requestId: string }) {
   const router = useRouter();
+  const t = useTranslations("leave.actions");
   return (
     <ConfirmAction
       trigger={
         <Button variant="outline">
-          <Undo2 aria-hidden /> Withdraw request
+          <Undo2 aria-hidden /> {t("withdrawButton")}
         </Button>
       }
-      title="Withdraw this request?"
-      description="Your approver will no longer see it. Days are released immediately."
-      confirmLabel="Withdraw"
+      title={t("withdrawTitle")}
+      description={t("withdrawDescription")}
+      confirmLabel={t("withdrawConfirm")}
       destructive
       action={() => withdrawLeaveAction(requestId)}
       onDone={(r) => r.ok && router.refresh()}
@@ -74,6 +78,7 @@ function ReasonDialog({
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const tc = useTranslations("common");
   const { state, onSubmit, pending } = useFormAction(action);
   useActionFeedback(state, {
     onSuccess: () => {
@@ -92,12 +97,12 @@ function ReasonDialog({
         <form onSubmit={onSubmit} className="grid gap-4">
           <FormError state={state} />
           <input type="hidden" name="requestId" value={requestId} />
-          <Field label="Reason" name="reason" error={fieldError(state, "reason")} required>
+          <Field label={tc("reason")} name="reason" error={fieldError(state, "reason")} required>
             <Textarea rows={3} maxLength={1000} />
           </Field>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Back
+              {tc("back")}
             </Button>
             <SubmitButton pending={pending} variant="destructive">
               {submitLabel}
@@ -110,16 +115,17 @@ function ReasonDialog({
 }
 
 export function RequestCancellationButton({ requestId }: { requestId: string }) {
+  const t = useTranslations("leave.actions");
   return (
     <ReasonDialog
       requestId={requestId}
       action={requestCancellationAction}
-      title="Cancel approved leave?"
-      description="Your approver needs to confirm. The days stay booked until they do."
-      submitLabel="Request cancellation"
+      title={t("cancelTitle")}
+      description={t("cancelDescription")}
+      submitLabel={t("requestCancellation")}
       trigger={
         <Button variant="outline">
-          <XCircle aria-hidden /> Request cancellation
+          <XCircle aria-hidden /> {t("requestCancellation")}
         </Button>
       }
     />
@@ -127,16 +133,17 @@ export function RequestCancellationButton({ requestId }: { requestId: string }) 
 }
 
 export function HrCancelButton({ requestId }: { requestId: string }) {
+  const t = useTranslations("leave.actions");
   return (
     <ReasonDialog
       requestId={requestId}
       action={hrCancelLeaveAction}
-      title="Cancel this leave (HR)"
-      description="The leave is cancelled immediately and the days are returned to the balance. The employee is notified and the action is audited."
-      submitLabel="Cancel leave"
+      title={t("hrCancelTitle")}
+      description={t("hrCancelDescription")}
+      submitLabel={t("hrCancelSubmit")}
       trigger={
         <Button variant="outline">
-          <XCircle aria-hidden /> Cancel as HR
+          <XCircle aria-hidden /> {t("hrCancelTrigger")}
         </Button>
       }
     />

@@ -5,16 +5,19 @@ import { applicableLeaveTypes } from "@/server/services/leave/request.service";
 import { PageHeader } from "@/components/page-header";
 import { todayInTimeZone, toDateInput } from "@/lib/dates";
 import { ApplyLeaveForm } from "./apply-form";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = { title: "Apply for leave" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("leave"))("meta.apply") };
+}
 
 export default async function ApplyLeavePage() {
   const ctx = await requireAuth();
   if (!ctx.employeeId) redirect("/leave/calendar");
-  const types = await applicableLeaveTypes(ctx);
+  const [types, t] = await Promise.all([applicableLeaveTypes(ctx), getTranslations("leave")]);
   return (
     <>
-      <PageHeader title="Apply for leave" description="Working days are calculated live — weekends and public holidays are excluded unless the leave type counts them." />
+      <PageHeader title={t("apply.title")} description={t("apply.description")} />
       <ApplyLeaveForm types={types} today={toDateInput(todayInTimeZone(ctx.timezone))} />
     </>
   );

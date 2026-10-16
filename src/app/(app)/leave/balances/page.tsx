@@ -16,8 +16,11 @@ import { Pagination } from "@/components/data-table/pagination";
 import { ClearFilters, FilterSelect, SearchInput, Toolbar } from "@/components/data-table/toolbar";
 import { EmptyState } from "@/components/empty-state";
 import { AdjustBalanceDialog } from "./adjust-dialog";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = { title: "Leave balances" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("leave"))("meta.balances") };
+}
 
 export default async function BalancesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const ctx = await requireAuth();
@@ -25,9 +28,10 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const thisYear = todayInTimeZone(ctx.timezone).getUTCFullYear();
   const year = Number(first(sp.year)) || thisYear;
-  const types = (await listLeaveTypes(ctx)).filter((t) => t.accrualMethod !== "NONE");
-  const typeId = types.find((t) => t.id === first(sp.type))?.id ?? types[0]?.id;
-  if (!typeId) return <EmptyState icon={Scale} title="No leave types with balances" />;
+  const [t, tl, tc] = await Promise.all([getTranslations("leave.balances"), getTranslations("leave"), getTranslations("common")]);
+  const types = (await listLeaveTypes(ctx)).filter((lt) => lt.accrualMethod !== "NONE");
+  const typeId = types.find((lt) => lt.id === first(sp.type))?.id ?? types[0]?.id;
+  if (!typeId) return <EmptyState icon={Scale} title={t("emptyTypes")} />;
   const params = parseListParams(sp, { sortable: BALANCE_SORTS, defaultSort: "name" });
   const [result, departments] = await Promise.all([listBalances(ctx, params, { year, leaveTypeId: typeId, departmentId: first(sp.department) }), listDepartmentOptions(ctx)]);
   const canAdjust = can(ctx, "leave.balance.adjust");
@@ -36,47 +40,47 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        title="Leave balances"
-        description="Per employee and leave type. Manual adjustments require a reason and are audited."
+        title={t("title")}
+        description={t("description")}
         actions={
           can(ctx, "leave.report.read") && (
             <>
               <a href={`/api/leave/balances?year=${year}&format=xlsx`} className={buttonVariants({ variant: "outline" })}>
-                <Download aria-hidden /> Excel
+                <Download aria-hidden /> {t("excel")}
               </a>
               <a href={`/api/leave/balances?year=${year}&format=csv`} className={buttonVariants({ variant: "outline" })}>
-                <Download aria-hidden /> CSV
+                <Download aria-hidden /> {t("csv")}
               </a>
             </>
           )
         }
       />
       <Toolbar>
-        <SearchInput placeholder="Search employee…" />
-        <FilterSelect param="type" label="Leave type" options={types.map((t) => ({ value: t.id, label: t.name }))} />
-        <FilterSelect param="year" label="Year" options={[thisYear - 1, thisYear, thisYear + 1].map((y) => ({ value: String(y), label: String(y) }))} />
-        <FilterSelect param="department" label="Department" options={departments} />
+        <SearchInput placeholder={t("searchEmployee")} />
+        <FilterSelect param="type" label={tl("columns.leaveType")} options={types.map((lt) => ({ value: lt.id, label: lt.name }))} />
+        <FilterSelect param="year" label={tc("year")} options={[thisYear - 1, thisYear, thisYear + 1].map((y) => ({ value: String(y), label: String(y) }))} />
+        <FilterSelect param="department" label={tc("department")} options={departments} />
         <ClearFilters params={["q", "department"]} />
       </Toolbar>
       <p className="text-muted-foreground mb-2 text-sm">
-        Showing <strong className="text-foreground">{result.type.name}</strong> for {year}.
+        {t.rich("showing", { type: result.type.name, year: String(year), strong: (chunks) => <strong className="text-foreground">{chunks}</strong> })}
       </p>
       <Card className="py-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <SortHeader label="Employee" sortKey="name" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
-              <TableHead className="text-end">Entitled</TableHead>
-              <TableHead className="text-end">Accrued</TableHead>
-              <TableHead className="hidden text-end md:table-cell">Carried fwd</TableHead>
-              <TableHead className="hidden text-end md:table-cell">Adjusted</TableHead>
-              <TableHead className="hidden text-end lg:table-cell">Expired</TableHead>
-              <TableHead className="text-end">Taken</TableHead>
-              <TableHead className="text-end">Pending</TableHead>
-              <SortHeader label="Available" sortKey="available" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="text-end" />
+              <SortHeader label={tc("employee")} sortKey="name" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} />
+              <TableHead className="text-end">{t("entitled")}</TableHead>
+              <TableHead className="text-end">{t("accrued")}</TableHead>
+              <TableHead className="hidden text-end md:table-cell">{t("carriedFwd")}</TableHead>
+              <TableHead className="hidden text-end md:table-cell">{t("adjusted")}</TableHead>
+              <TableHead className="hidden text-end lg:table-cell">{t("expired")}</TableHead>
+              <TableHead className="text-end">{t("taken")}</TableHead>
+              <TableHead className="text-end">{t("pending")}</TableHead>
+              <SortHeader label={t("available")} sortKey="available" current={params.sort} dir={params.dir} pathname={path} searchParams={sp} className="text-end" />
               {canAdjust && (
                 <TableHead>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{tc("actions")}</span>
                 </TableHead>
               )}
             </TableRow>
@@ -92,7 +96,7 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
                     {e.employeeNumber} · {e.department?.name ?? "—"}
                   </p>
                 </TableCell>
-                <TableCell className="text-end tabular-nums">{b.eligible ? b.entitled : <span className="text-muted-foreground text-xs">not eligible</span>}</TableCell>
+                <TableCell className="text-end tabular-nums">{b.eligible ? b.entitled : <span className="text-muted-foreground text-xs">{t("notEligible")}</span>}</TableCell>
                 <TableCell className="text-end tabular-nums">{n(b.accrued)}</TableCell>
                 <TableCell className="hidden text-end tabular-nums md:table-cell">{n(b.carriedForward)}</TableCell>
                 <TableCell className="hidden text-end tabular-nums md:table-cell">{n(b.adjustments)}</TableCell>
