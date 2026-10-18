@@ -46,3 +46,6 @@ next-env.d.ts
 /playwright-report
 !.env.example
 /*-tmp.mjs
+
+# Archify diagram outputs
+.archify/
